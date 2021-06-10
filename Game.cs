@@ -2,7 +2,7 @@ using Ecs;
 using Godot;
 using System;
 
-public class Game : Godot.Node2D
+public class Game : Godot.YSort
 {
 	public State state;
 
@@ -14,7 +14,7 @@ public class Game : Godot.Node2D
 			new Scale(3, 3),
 			new Sprite("res://resources/tiles/tile072.png"));
 
-		var monster = new Entity(
+		var potion = new Entity(
 			new Position(X: 200, Y: 200),
 			new Collide(),
 			new Click(new AddRotation(36f)),
@@ -23,10 +23,8 @@ public class Game : Godot.Node2D
 
 		state = new State() {
 			{ "hero", hero },
-			{ "monster", monster }
+			{ "potion", potion }
 		};
-
-		state = state.With("hero", new InventoryAddAction(new Potion()));
 	}
 
 	public void _Collision(Area2D area, string id)
