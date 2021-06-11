@@ -181,4 +181,64 @@ namespace Ecs
             }));
         }
     }
+
+    public class Diff
+    {
+        public State Current;
+
+        public Diff()
+        {
+        }
+
+        public Diff(State Current)
+        {
+            this.Current = Current;
+        }
+
+        public (IEnumerable<(string, C)> Added, IEnumerable<(string, C)> Removed, IEnumerable<(string, C)> Changed) Compare<C>(State Next) where C : Component
+        {
+            var oldComponents = Current?.Get<C>() ?? new List<(string, C)>();
+            var newComponents = Next.Get<C>();
+
+            var oldIds = oldComponents.Select(entry => entry.Item1);
+            var newIds = newComponents.Select(entry => entry.Item1);
+
+            var removedIds = oldIds.Except(newIds);
+            var addedIds = newIds.Except(oldIds);
+            var commonIds = newIds.Union(oldIds);
+
+            var removed = oldComponents.Where(entry => removedIds.Contains(entry.Item1));
+            var added = newComponents.Where(entry => addedIds.Contains(entry.Item1));
+            var changed = newComponents.Where(newComponent =>
+            {
+                var id = newComponent.Item1;
+                var changes = oldComponents.Where(entry =>
+                {
+                    return entry.Item1 == id && newComponent.Item2 != entry.Item2;
+                });
+
+                return changes.Count() > 0;
+            });
+
+            this.Current = Next;
+
+            foreach (var remove in removed)
+            {
+                Console.WriteLine($"- {remove}");
+            }
+
+            foreach (var add in added)
+            {
+                Console.WriteLine($"+ {add}");
+            }
+
+            foreach (var change in changed)
+            {
+                Console.WriteLine($"~ {change}");
+            }
+
+            return (Added: added, Removed: removed, Changed: changed);
+
+        }
+    }
 }

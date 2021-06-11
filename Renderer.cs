@@ -13,152 +13,253 @@ public class Renderer
 {
     private static readonly Position NO_POSITION = new Position(0, 0);
 
-    public static Ecs.State System(State state, Game game)
+    public Diff Sprites = new Diff();
+    public Diff Scales = new Diff();
+    public Diff Rotations = new Diff();
+    public Diff Collides = new Diff();
+    public Diff Clicks = new Diff();
+    public Diff Positions = new Diff();
+    public Diff Moves = new Diff();
+
+    public Ecs.State System(State state, Game game)
     {
-        var unused = game.GetChildren().OfType<Node>().Select(node => node.Name).ToHashSet();
+        var perfStart = new DateTimeOffset(DateTime.Now).ToUnixTimeMilliseconds();
 
-        foreach (var (id, sprite) in state.Get<Sprite>())
+        var sprites = Sprites.Compare<Sprite>(state);
+        var scales = Scales.Compare<Scale>(state);
+        var rotations = Rotations.Compare<Rotation>(state);
+        var clicks = Clicks.Compare<Click>(state);
+        var collides = Collides.Compare<Collide>(state);
+        var positions = Positions.Compare<Position>(state);
+        var moves = Moves.Compare<Move>(state);
+
+        foreach (var (id, sprite) in sprites.Removed)
         {
-            var entity = state[id];
             var node = game.GetNodeOrNull<ClickableSprite>(id);
+            if (node == null) continue;
 
-            if (node == null)
+            game.RemoveChild(node);
+            node.QueueFree();
+        }
+
+        foreach (var (id, sprite) in sprites.Added)
+        {
+            var node = game.GetNodeOrNull<ClickableSprite>(id);
+            if (node != null) continue;
+
+            node = new ClickableSprite()
             {
-                node = new ClickableSprite() { Name = id };
+                Name = id,
+                Texture = GD.Load<Texture>(sprite.Image)
+            };
 
-                node.AddChild(new Area2D()
-                {
-                    Name = "area"
-                });
-
-                node.AddChild(new Tween()
-                {
-                    Name = "move"
-                });
-
-                game.AddChild(node);
-            }
-
-            var area = node.GetNode<Area2D>("area");
-            var moveTween = node.GetNode<Tween>("move");
-
-            unused.ExceptWith(new[] { id });
-
-            var image = GetMetaSafely(node, "image") as string;
-            if (image != sprite.Image)
+            node.AddChild(new Tween()
             {
-                node.SetMeta("image", sprite.Image);
+                Name = "move"
+            });
 
-                node.Texture = sprite.Image?.Count() > 0
-                    ? GD.Load<Texture>(sprite.Image)
-                    : null;
+            var area = new Area2D()
+            {
+                Name = "area"
+            };
+            node.AddChild(area);
 
-                foreach (Node child in area.GetChildren())
+            area.AddChild(new CollisionShape2D()
+            {
+                Shape = new RectangleShape2D()
                 {
-                    area.RemoveChild(child);
-                    child.QueueFree();
+                    Extents = node.GetRect().Size / 2f
                 }
+            });
 
-                area.AddChild(new CollisionShape2D()
-                {
-                    Shape = new RectangleShape2D()
-                    {
-                        Extents = node.GetRect().Size / 2f
-                    }
-                });
-            }
+            game.AddChild(node);
+        }
 
-            var scale = entity.Get<Scale>();
-            if (node.Scale.x != scale.X || node.Scale.y != scale.Y)
+        foreach (var (id, sprite) in sprites.Changed)
+        {
+            var node = game.GetNodeOrNull<ClickableSprite>(id);
+            if (node == null) continue;
+
+            node.Texture = GD.Load<Texture>(sprite.Image);
+
+            var area = node.GetNode("area");
+
+            foreach (Node child in area.GetChildren())
             {
-                node.Scale = new Vector2(scale.X, scale.Y);
+                area.RemoveChild(child);
+                child.QueueFree();
             }
 
-            var rotation = entity.Get<Rotation>()?.Degrees ?? 0;
-            if (node.RotationDegrees != rotation)
+            area.AddChild(new CollisionShape2D()
             {
-                node.RotationDegrees = rotation;
-            }
+                Shape = new RectangleShape2D()
+                {
+                    Extents = node.GetRect().Size / 2f
+                }
+            });
+        }
 
-            var click = entity.Get<Click>();
-            var clickMeta = GetMetaSafely(node, "click");
-            if (clickMeta != click?.ToString())
+        foreach (var (id, scale) in scales.Removed)
+        {
+            var node = game.GetNodeOrNull<Node2D>(id);
+            if (node == null) continue;
+            node.Scale = new Vector2(1, 1);
+        }
+
+        foreach (var (id, scale) in scales.Added.Concat(scales.Changed))
+        {
+            var node = game.GetNodeOrNull<Node2D>(id);
+            if (node == null) continue;
+            node.Scale = new Vector2(scale.X, scale.Y);
+        }
+
+        foreach (var (id, rotation) in rotations.Removed)
+        {
+            var node = game.GetNodeOrNull<Node2D>(id);
+            if (node == null) continue;
+            node.RotationDegrees = 0;
+        }
+
+        foreach (var (id, rotation) in rotations.Added.Concat(rotations.Changed))
+        {
+            var node = game.GetNodeOrNull<Node2D>(id);
+            if (node == null) continue;
+            node.RotationDegrees = rotation.Degrees;
+        }
+
+        foreach (var (id, click) in clicks.Removed)
+        {
+            var node = game.GetNodeOrNull<Node2D>(id);
+            if (node == null) continue;
+
+            if (HasConnection(node, "pressed", nameof(game._Event)))
             {
-                node.SetMeta("click", click?.ToString());
-
-                if (HasConnection(node, "pressed", nameof(game._Event)))
-                {
-                    node.Disconnect("pressed", game, nameof(game._Event));
-                }
-
-                if (click != null)
-                {
-                    node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click.Event) });
-                }
+                node.Disconnect("pressed", game, nameof(game._Event));
             }
+        }
 
-            var collide = entity.Get<Collide>();
-            var collideMeta = GetMetaSafely(area, "collide");
-            if (collideMeta != collide?.ToString())
+        foreach (var (id, click) in clicks.Added)
+        {
+            var node = game.GetNodeOrNull<Node2D>(id);
+            if (node == null) continue;
+
+            if (!HasConnection(node, "pressed", nameof(game._Event)))
             {
-                area.SetMeta("collide", collide?.ToString());
+                node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click.Event) });
+            }
+        }
 
-                if (HasConnection(area, "area_entered", nameof(game._Collision)))
-                {
-                    area.Disconnect("area_entered", game, nameof(game._Collision));
-                }
+        foreach (var (id, click) in clicks.Changed)
+        {
+            var node = game.GetNodeOrNull<Node2D>(id);
+            if (node == null) continue;
 
-                if (collide != null)
-                {
-                    area.Connect("area_entered", game, nameof(game._Collision), new Godot.Collections.Array() { id });
-                }
+            if (HasConnection(node, "pressed", nameof(game._Event)))
+            {
+                node.Disconnect("pressed", game, nameof(game._Event));
             }
 
-            var move = entity.Get<Move>();
+            node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click.Event) });
+        }
+
+        foreach (var (id, collide) in collides.Removed)
+        {
+            var node = game.GetNodeOrNull<Node2D>($"{id}/area");
+            if (node == null) continue;
+
+            if (HasConnection(node, "area_entered", nameof(game._Collision)))
+            {
+                node.Disconnect("area_entered", game, nameof(game._Collision));
+            }
+        }
+
+        foreach (var (id, collide) in collides.Added)
+        {
+            var node = game.GetNodeOrNull<Node2D>($"{id}/area");
+            if (node == null) continue;
+
+            if (!HasConnection(node, "area_entered", nameof(game._Collision)))
+            {
+                node.Connect("area_entered", game, nameof(game._Collision), new Godot.Collections.Array() { id });
+            }
+        }
+
+        foreach (var (id, collide) in collides.Changed)
+        {
+            var node = game.GetNodeOrNull<Node2D>($"{id}/area");
+            if (node == null) continue;
+
+            if (HasConnection(node, "area_entered", nameof(game._Collision)))
+            {
+                node.Disconnect("area_entered", game, nameof(game._Collision));
+            }
+
+            node.Connect("area_entered", game, nameof(game._Collision), new Godot.Collections.Array() { id });
+        }
+
+        foreach (var (id, move) in moves.Removed)
+        {
+            var node = game.GetNodeOrNull<Tween>($"{id}/move");
+            if (node == null) continue;
+
+            node.StopAll();
+        }
+
+        foreach (var (id, move) in moves.Added.Concat(moves.Changed))
+        {
+            var node = game.GetNodeOrNull<Node2D>(id);
+            var tween = game.GetNodeOrNull<Tween>($"{id}/move");
+
+            if (node == null || tween == null) continue;
+
+            tween.StopAll();
+
+            var entity = state[id];
             var position = entity.Get<Position>() ?? NO_POSITION;
-            if (move != null)
-            {
-                if (move.Position.X == node.Position.x && move.Position.Y == node.Position.y)
-                {
-                    state = state.With(id, state[id].Without<Move>());
-                }
-                else
-                {
-                    var moveMeta = GetMetaSafely(moveTween, "interpolate");
-                    if (moveMeta != move.ToString())
-                    {
-                        moveTween.SetMeta("interpolate", move.ToString());
 
-                        var start = new Vector2(position.X, position.Y);
-                        var end = new Vector2(move.Position.X, move.Position.Y);
-                        var distance = start.DistanceTo(end);
-                        var duration = distance / move.Speed;
-                        moveTween.StopAll();
-                        moveTween.InterpolateProperty(node, "position", start, end, duration);
-                        moveTween.Start();
-                    }
-                }
-            }
-            else
+            var start = new Vector2(node.Position.x, node.Position.y);
+            var end = new Vector2(move.Position.X, move.Position.Y);
+            var distance = start.DistanceTo(end);
+            var duration = distance / move.Speed;
+            tween.StopAll();
+            tween.InterpolateProperty(node, "position", start, end, duration);
+            tween.Start();
+        }
+
+        foreach (var (id, position) in positions.Added.Concat(positions.Changed))
+        {
+            var node = game.GetNodeOrNull<Node2D>(id);
+            if (node == null) continue;
+
+            var entity = state[id];
+            var move = entity.Get<Move>();
+            if (!position.Self)
             {
-                if (position.X != node.Position.x || position.Y != node.Position.y)
-                {
-                    node.Position = new Vector2(position.X, position.Y);
-                }
+                node.Position = new Vector2(position.X, position.Y);
             }
+        }
+
+        foreach (var (id, position) in state.Get<Position>())
+        {
+            var node = game.GetNodeOrNull<Node2D>(id);
+            if (node == null) continue;
 
             if (position.X != node.Position.x || position.Y != node.Position.y)
             {
-                state = state.With(id, new Position(node.Position.x, node.Position.y));
+                state = state.With(id, new Position(node.Position.x, node.Position.y, true));
+            }
+
+            var entity = state[id];
+            var move = entity?.Get<Move>();
+            if (move == null) continue;
+
+            if (move.Position.X == node.Position.x && move.Position.Y == node.Position.y)
+            {
+                state = state.With(id, state[id].Without<Move>());
             }
         }
 
-        foreach (var name in unused)
-        {
-            var child = game.FindNode(name);
-            game.RemoveChild(child);
-            child.QueueFree();
-        }
+        var perfEnd = new DateTimeOffset(DateTime.Now).ToUnixTimeMilliseconds();
 
         return state;
     }

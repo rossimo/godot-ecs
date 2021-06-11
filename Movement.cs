@@ -3,7 +3,7 @@ using System;
 
 public record Player() : Component;
 
-public record Position(float X, float Y) : Component;
+public record Position(float X, float Y, Boolean Self = false) : Component;
 
 public record Move(Position Position, float Speed): Component;
 

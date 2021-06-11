@@ -5,12 +5,14 @@ using System;
 public class Game : Godot.YSort
 {
     public State state;
+    public Renderer Renderer = new Renderer();
 
     public override void _Ready()
     {
         var hero = new Entity(
             new Player(),
             new Position(X: 50, Y: 50),
+            new Click(new AddRotation(36f)),
             new Scale(3, 3),
             new Sprite("res://resources/tiles/tile072.png"));
 
@@ -32,7 +34,7 @@ public class Game : Godot.YSort
         state = Input.System(state, this, @event);
     }
 
-    public override void _Process(float delta)
+    public override void _PhysicsProcess(float delta)
     {
         state = Movement.System(state);
         state = Items.System(state);
