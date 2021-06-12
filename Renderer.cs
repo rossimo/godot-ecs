@@ -13,29 +13,14 @@ public class Renderer
 {
     private static readonly Position NO_POSITION = new Position(0, 0);
 
-    public Diff Sprites = new Diff();
-    public Diff Scales = new Diff();
-    public Diff Rotations = new Diff();
-    public Diff Collides = new Diff();
-    public Diff Clicks = new Diff();
-    public Diff Positions = new Diff();
-    public Diff Moves = new Diff();
-
-    public Ecs.State System(State state, Game game)
+    public static Ecs.State System(State previous, State state, Game game)
     {
-        var perfStart = new DateTimeOffset(DateTime.Now).ToUnixTimeMilliseconds();
-
-        var sprites = Sprites.Compare<Sprite>(state);
-        var scales = Scales.Compare<Scale>(state);
-        var rotations = Rotations.Compare<Rotation>(state);
-        var clicks = Clicks.Compare<Click>(state);
-        var collides = Collides.Compare<Collide>(state);
-        var positions = Positions.Compare<Position>(state);
-        var moves = Moves.Compare<Move>(state);
+        var (sprites, scales, rotations, clicks, collides, positions, moves) =
+            Diff.Compare<Sprite, Scale, Rotation, Click, Collide, Position, Move>(previous, state);
 
         foreach (var (id, sprite) in sprites.Removed)
         {
-            var node = game.GetNodeOrNull<ClickableSprite>(id);
+            var node = game.GetNodeOrNull<Node2D>(id);
             if (node == null) continue;
 
             game.RemoveChild(node);

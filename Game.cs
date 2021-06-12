@@ -4,8 +4,8 @@ using System;
 
 public class Game : Godot.YSort
 {
-    public State state;
-    public Renderer Renderer = new Renderer();
+    public State State;
+    private State Previous;
 
     public override void _Ready()
     {
@@ -23,7 +23,7 @@ public class Game : Godot.YSort
             new Scale(2, 2),
             new Sprite("res://resources/tiles/tile570.png"));
 
-        state = new State() {
+        State = new State() {
             { "hero", hero },
             { "potion", potion }
         };
@@ -31,19 +31,20 @@ public class Game : Godot.YSort
 
     public override void _Input(InputEvent @event)
     {
-        state = Input.System(state, this, @event);
-    }
-
-    public override void _PhysicsProcess(float delta)
-    {
-        state = Movement.System(state);
-        state = Items.System(state);
-        state = Renderer.System(state, this);
+        State = Input.System(State, this, @event);
     }
 
     public void _Event(string id, GodotWrapper ev)
     {
-        state = Event.System(state, id, ev.Get<Component>());
+        State = Event.System(State, id, ev.Get<Component>());
+    }
+
+    public override void _PhysicsProcess(float delta)
+    {
+        State = Movement.System(State);
+        State = Items.System(State);
+        State = Renderer.System(Previous, State, this);
+        Previous = State;
     }
 
     public void _Collision(Area2D area, string id)

@@ -70,37 +70,6 @@ namespace Ecs
         }
     }
 
-    public delegate State System(State state);
-
-    public record World
-    {
-        public State State = new State();
-        public IEnumerable<Func<State, State>> Systems = new List<Func<State, State>>();
-
-        public Entity this[string id]
-        {
-            get => this.State[id];
-            set => this.State[id] = value;
-        }
-
-        public World With(string id, Component component)
-        {
-            return this with { State = State.With(id, this[id].With(component)) };
-        }
-
-        public World Run()
-        {
-            var state = State;
-
-            foreach (var system in Systems)
-            {
-                state = system(state);
-            }
-
-            return this with { State = state };
-        }
-    }
-
     public static class Utils
     {
         public static Dictionary<K, V> With<K, V>(this Dictionary<K, V> dict, K key, V value)
@@ -182,23 +151,17 @@ namespace Ecs
         }
     }
 
+    public record Result<C>(
+        IEnumerable<(string, C)> Added,
+        IEnumerable<(string, C)> Removed,
+        IEnumerable<(string, C)> Changed);
+
     public class Diff
     {
-        public State Current;
-
-        public Diff()
+        public static Result<C> Compare<C>(State before, State after) where C : Component
         {
-        }
-
-        public Diff(State Current)
-        {
-            this.Current = Current;
-        }
-
-        public (IEnumerable<(string, C)> Added, IEnumerable<(string, C)> Removed, IEnumerable<(string, C)> Changed) Compare<C>(State Next) where C : Component
-        {
-            var oldComponents = Current?.Get<C>() ?? new List<(string, C)>();
-            var newComponents = Next.Get<C>();
+            var oldComponents = before?.Get<C>() ?? new List<(string, C)>();
+            var newComponents = after?.Get<C>() ?? new List<(string, C)>();
 
             var oldIds = oldComponents.Select(entry => entry.Item1);
             var newIds = newComponents.Select(entry => entry.Item1);
@@ -220,8 +183,6 @@ namespace Ecs
                 return changes.Count() > 0;
             });
 
-            this.Current = Next;
-
             foreach (var remove in removed)
             {
                 Console.WriteLine($"- {remove}");
@@ -237,8 +198,135 @@ namespace Ecs
                 Console.WriteLine($"~ {change}");
             }
 
-            return (Added: added, Removed: removed, Changed: changed);
+            return new Result<C>(Added: added, Removed: removed, Changed: changed);
+        }
 
+        public static (Result<C1>, Result<C2>) Compare<C1, C2>(State Current, State next)
+            where C1 : Component
+            where C2 : Component
+        {
+            var changes1 = Compare<C1>(Current, next);
+            var changes2 = Compare<C2>(Current, next);
+            return (changes1, changes2);
+        }
+
+        public static (Result<C1>, Result<C2>, Result<C3>) Compare<C1, C2, C3>(State Current, State next)
+            where C1 : Component
+            where C2 : Component
+            where C3 : Component
+        {
+            var changes1 = Compare<C1>(Current, next);
+            var changes2 = Compare<C2>(Current, next);
+            var changes3 = Compare<C3>(Current, next);
+            return (changes1, changes2, changes3);
+        }
+
+        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>) Compare<C1, C2, C3, C4>(State Current, State next)
+            where C1 : Component
+            where C2 : Component
+            where C3 : Component
+            where C4 : Component
+        {
+            var changes1 = Compare<C1>(Current, next);
+            var changes2 = Compare<C2>(Current, next);
+            var changes3 = Compare<C3>(Current, next);
+            var changes4 = Compare<C4>(Current, next);
+            return (changes1, changes2, changes3, changes4);
+        }
+
+        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>) Compare<C1, C2, C3, C4, C5>(State Current, State next)
+            where C1 : Component
+            where C2 : Component
+            where C3 : Component
+            where C4 : Component
+            where C5 : Component
+        {
+            var changes1 = Compare<C1>(Current, next);
+            var changes2 = Compare<C2>(Current, next);
+            var changes3 = Compare<C3>(Current, next);
+            var changes4 = Compare<C4>(Current, next);
+            var changes5 = Compare<C5>(Current, next);
+            return (changes1, changes2, changes3, changes4, changes5);
+        }
+
+        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>, Result<C6>) Compare<C1, C2, C3, C4, C5, C6>(State Current, State next)
+            where C1 : Component
+            where C2 : Component
+            where C3 : Component
+            where C4 : Component
+            where C5 : Component
+            where C6 : Component
+        {
+            var changes1 = Compare<C1>(Current, next);
+            var changes2 = Compare<C2>(Current, next);
+            var changes3 = Compare<C3>(Current, next);
+            var changes4 = Compare<C4>(Current, next);
+            var changes5 = Compare<C5>(Current, next);
+            var changes6 = Compare<C6>(Current, next);
+            return (changes1, changes2, changes3, changes4, changes5, changes6);
+        }
+
+        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>, Result<C6>, Result<C7>) Compare<C1, C2, C3, C4, C5, C6, C7>(State Current, State next)
+            where C1 : Component
+            where C2 : Component
+            where C3 : Component
+            where C4 : Component
+            where C5 : Component
+            where C6 : Component
+            where C7 : Component
+        {
+            var changes1 = Compare<C1>(Current, next);
+            var changes2 = Compare<C2>(Current, next);
+            var changes3 = Compare<C3>(Current, next);
+            var changes4 = Compare<C4>(Current, next);
+            var changes5 = Compare<C5>(Current, next);
+            var changes6 = Compare<C6>(Current, next);
+            var changes7 = Compare<C7>(Current, next);
+            return (changes1, changes2, changes3, changes4, changes5, changes6, changes7);
+        }
+
+        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>, Result<C6>, Result<C7>, Result<C8>) Compare<C1, C2, C3, C4, C5, C6, C7, C8>(State Current, State next)
+            where C1 : Component
+            where C2 : Component
+            where C3 : Component
+            where C4 : Component
+            where C5 : Component
+            where C6 : Component
+            where C7 : Component
+            where C8 : Component
+        {
+            var changes1 = Compare<C1>(Current, next);
+            var changes2 = Compare<C2>(Current, next);
+            var changes3 = Compare<C3>(Current, next);
+            var changes4 = Compare<C4>(Current, next);
+            var changes5 = Compare<C5>(Current, next);
+            var changes6 = Compare<C6>(Current, next);
+            var changes7 = Compare<C7>(Current, next);
+            var changes8 = Compare<C8>(Current, next);
+            return (changes1, changes2, changes3, changes4, changes5, changes6, changes7, changes8);
+        }
+
+        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>, Result<C6>, Result<C7>, Result<C8>, Result<C9>) Compare<C1, C2, C3, C4, C5, C6, C7, C8, C9>(State Current, State next)
+            where C1 : Component
+            where C2 : Component
+            where C3 : Component
+            where C4 : Component
+            where C5 : Component
+            where C6 : Component
+            where C7 : Component
+            where C8 : Component
+            where C9 : Component
+        {
+            var changes1 = Compare<C1>(Current, next);
+            var changes2 = Compare<C2>(Current, next);
+            var changes3 = Compare<C3>(Current, next);
+            var changes4 = Compare<C4>(Current, next);
+            var changes5 = Compare<C5>(Current, next);
+            var changes6 = Compare<C6>(Current, next);
+            var changes7 = Compare<C7>(Current, next);
+            var changes8 = Compare<C8>(Current, next);
+            var changes9 = Compare<C9>(Current, next);
+            return (changes1, changes2, changes3, changes4, changes5, changes6, changes7, changes8, changes9);
         }
     }
 }
