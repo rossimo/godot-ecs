@@ -48,10 +48,10 @@ public class Game : Godot.YSort
 
     public override void _PhysicsProcess(float delta)
     {
-        State = Items.System(State);
         State = Movement.System(State, this);
 
         Renderer.System(Previous, State, this);
+        
         Previous = State;
     }
 }
