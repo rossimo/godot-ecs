@@ -10,30 +10,24 @@ public class Game : Godot.YSort
 
     public override void _Ready()
     {
-        var hero = new Entity(
-            new Player(),
-            new Position(X: 50, Y: 50),
-            new Click(new AddRotation(Degrees: -36f)),
-            new Scale(3, 3),
-            new Sprite("res://resources/tiles/tile072.png"));
-
-        var potion = new Entity(
-            new Position(X: 200, Y: 200),
-            new Collide(new RemoveEntity()),
-            new Click(new AddRotation(Degrees: 36f)),
-            new Scale(2, 2),
-            new Sprite("res://resources/tiles/tile570.png"));
-
-        var fire = new Entity(
-            new Position(X: 400, Y: 200),
-            new Collide(new RemoveEntity(TargetOther: true)),
-            new Scale(2, 2),
-            new Sprite("res://resources/tiles/tile495.png"));
-
         State = new State() {
-            { "hero", hero },
-            { "potion", potion },
-            { "fire", fire }
+            { "hero", new Entity(
+                new Player(),
+                new Position(X: 50, Y: 50),
+                new Click(new AddRotation(Degrees: -36f)),
+                new Scale(3, 3),
+                new Sprite("res://resources/tiles/tile072.png")) },
+            { "potion", new Entity(
+                new Position(X: 200, Y: 200),
+                new Collide(new RemoveEntity()),
+                new Click(new AddRotation(Degrees: 36f)),
+                new Scale(2, 2),
+                new Sprite("res://resources/tiles/tile570.png")) },
+            { "fire", new Entity(
+                new Position(X: 400, Y: 200),
+                new Collide(new RemoveEntity(TargetOther: true)),
+                new Scale(2, 2),
+                new Sprite("res://resources/tiles/tile495.png")) }
         };
     }
 
