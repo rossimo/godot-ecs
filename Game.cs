@@ -13,20 +13,27 @@ public class Game : Godot.YSort
         var hero = new Entity(
             new Player(),
             new Position(X: 50, Y: 50),
-            new Click(new AddRotation(-36f)),
+            new Click(new AddRotation(Degrees: -36f)),
             new Scale(3, 3),
             new Sprite("res://resources/tiles/tile072.png"));
 
         var potion = new Entity(
             new Position(X: 200, Y: 200),
             new Collide(new RemoveEntity()),
-            new Click(new AddRotation(36f)),
+            new Click(new AddRotation(Degrees: 36f)),
             new Scale(2, 2),
             new Sprite("res://resources/tiles/tile570.png"));
 
+        var fire = new Entity(
+            new Position(X: 400, Y: 200),
+            new Collide(new RemoveEntity(Target: "hero")),
+            new Scale(2, 2),
+            new Sprite("res://resources/tiles/tile495.png"));
+
         State = new State() {
             { "hero", hero },
-            { "potion", potion }
+            { "potion", potion },
+            { "fire", fire }
         };
     }
 
@@ -37,12 +44,12 @@ public class Game : Godot.YSort
 
     public void _Event(string id, GodotWrapper ev)
     {
-        State = Event.System(State, id, ev.Get<IEnumerable<Component>>());
+        State = Events.System(State, id, ev.Get<Component>());
     }
 
     public void _Event(Node node, string id, GodotWrapper ev)
     {
-        State = Event.System(State, id, ev.Get<IEnumerable<Component>>());
+        State = Events.System(State, id, ev.Get<Component>());
     }
 
     public override void _PhysicsProcess(float delta)

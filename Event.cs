@@ -1,4 +1,5 @@
 using Ecs;
+using System;
 using System.Collections.Generic;
 
 public record Player() : Component;
@@ -9,51 +10,65 @@ public record Move(Position Position, float Speed) : Component;
 
 public record Rotation(float Degrees) : Component;
 
-public record AddRotation(float Degrees) : Component;
-
-public record Trigger : Component
+public record Event : Component
 {
-    public IEnumerable<Component> Events = new List<Component>();
+    public IEnumerable<Command> Commands = new List<Command>();
 
-    public Trigger() { }
+    public Event() { }
 
-    public Trigger(IEnumerable<Component> components)
-        => (Events) = (components);
+    public Event(IEnumerable<Command> commands)
+        => (Commands) = (commands);
 }
 
-public record Collide : Trigger
+public record Collide : Event
 {
-    public Collide(params Component[] components)
-        => (Events) = (components);
+    public Collide(params Command[] commands)
+        => (Commands) = (commands);
 }
 
-public record Click : Trigger
+public record Click : Event
 {
-    public Click(params Component[] components)
-        => (Events) = (components);
+    public Click(params Command[] commands)
+        => (Commands) = (commands);
 }
 
-public record RemoveEntity() : Component;
+public record Command(string Target = null) : Component;
 
-public static class Event
+public record RemoveEntity(string Target = null) : Command(Target);
+
+public record AddRotation(float Degrees, string Target = null) : Command(Target);
+
+public static class Events
 {
-    public static State System(State state, string id, IEnumerable<Component> events)
+    public static State System(State state, string id, Component component)
     {
-        foreach (var ev in events)
+        if (!(component is Event))
         {
-            switch (ev)
+            return state;
+        }
+
+        Func<Command, string> findId = (Command command) =>
+        {
+            return command.Target?.Length > 0
+                ? command.Target
+                : id;
+        };
+
+        foreach (var command in (component as Event).Commands)
+        {
+            switch (command)
             {
                 case AddRotation rotate:
                     {
-                        state = state.With(id, new Rotation(
-                            (state[id].Get<Rotation>()?.Degrees ?? 0) +
+                        state = state.With(findId(command), new Rotation(
+                            (state[findId(command)].Get<Rotation>()?.Degrees ?? 0) +
                             rotate.Degrees));
                     }
                     break;
 
                 case RemoveEntity remove:
                     {
-                        state = state.Without(id);
+                        state = state.Without(findId(command));
                     }
                     break;
             }

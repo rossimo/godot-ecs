@@ -129,7 +129,7 @@ public class Renderer
 
             if (!HasConnection(node, "pressed", nameof(game._Event)))
             {
-                node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click.Events) });
+                node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click) });
             }
         }
 
@@ -143,7 +143,7 @@ public class Renderer
                 node.Disconnect("pressed", game, nameof(game._Event));
             }
 
-            node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click.Events) });
+            node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click) });
         }
 
         foreach (var (id, collide) in collides.Removed)
@@ -164,7 +164,7 @@ public class Renderer
 
             if (!HasConnection(node, "area_entered", nameof(game._Event)))
             {
-                node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(collide.Events) });
+                node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(collide) });
             }
         }
 
@@ -178,7 +178,7 @@ public class Renderer
                 node.Disconnect("area_entered", game, nameof(game._Event));
             }
 
-            node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(collide.Events) });
+            node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(collide) });
         }
 
         foreach (var (id, move) in moves.Removed)
