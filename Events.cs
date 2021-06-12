@@ -1,5 +1,6 @@
 using Ecs;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 
 public record Player() : Component;
@@ -41,36 +42,45 @@ public static class Events
             return state;
         }
 
-        Func<Command, string> findId = (Command command) =>
+        foreach (var command in (component as Event).Commands)
         {
+            var target = id;
+
             if (command.TargetOther)
             {
-                return otherId;
+                target = otherId;
             }
 
             if (command.Target?.Length > 0)
             {
-                return command.Target;
+                target = command.Target;
             }
 
-            return id;
-        };
-
-        foreach (var command in (component as Event).Commands)
-        {
             switch (command)
             {
                 case AddRotation rotate:
                     {
-                        state = state.With(findId(command), new Rotation(
-                            (state[findId(command)].Get<Rotation>()?.Degrees ?? 0) +
+                        state = state.With(target, new Rotation(
+                            (state[target].Get<Rotation>()?.Degrees ?? 0) +
                             rotate.Degrees));
                     }
                     break;
 
                 case RemoveEntity remove:
                     {
-                        state = state.Without(findId(command));
+                        state = state.Without(target);
+                    }
+                    break;
+
+                case AddItem addItem:
+                    {
+                        var entity = state[target];
+                        var inventory = entity.Get<Inventory>();
+                        if (inventory != null)
+                        {
+                            state = state.With(target, entity.With(new Inventory(inventory.Items.Concat(new[] { addItem.Item }))));
+
+                        }
                     }
                     break;
             }

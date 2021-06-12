@@ -14,8 +14,6 @@ public record Move(Position Position, float Speed) : Component;
 
 public class Renderer
 {
-    private static readonly Position NO_POSITION = new Position(0, 0);
-
     public static void System(State previous, State state, Game game)
     {
         if (previous == state) return;
@@ -205,7 +203,7 @@ public class Renderer
             tween.StopAll();
 
             var entity = state[id];
-            var position = entity?.Get<Position>() ?? NO_POSITION;
+            var position = entity?.Get<Position>() ?? new Position(0, 0);
 
             var start = new Vector2(node.Position.x, node.Position.y);
             var end = new Vector2(move.Position.X, move.Position.Y);

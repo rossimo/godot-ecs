@@ -110,6 +110,15 @@ namespace Ecs
             });
         }
 
+        public static IEnumerable<(string, Component)> Get(this Dictionary<string, Entity> entities, Type type)
+        {
+            var types = new[] { type };
+            return entities.Get(types).Select(entry =>
+            {
+                return (entry.Item1, entry.Item2.FirstOrDefault());
+            });
+        }
+
         public static IEnumerable<(string, C1)> Get<C1>(this Dictionary<string, Entity> entities)
             where C1 : Component
         {
@@ -164,16 +173,29 @@ namespace Ecs
     public record Result<C>(
         IEnumerable<(string, C)> Added,
         IEnumerable<(string, C)> Removed,
-        IEnumerable<(string, C)> Changed);
+        IEnumerable<(string, C)> Changed)
+        where C : Component
+    {
+        public Result<D> To<D>() where D : Component
+        {
+            return new Result<D>(
+                Added: Added.Select(entry => (entry.Item1, entry.Item2 as D)),
+                Removed: Removed.Select(entry => (entry.Item1, entry.Item2 as D)),
+                Changed: Changed.Select(entry => (entry.Item1, entry.Item2 as D)));
+        }
+    }
 
     public class Diff
     {
         public static Result<C> Compare<C>(State before, State after) where C : Component
         {
-            if (before == after) return new Result<C>(
-                Added: new List<(string, C)>(),
-                Removed: new List<(string, C)>(),
-                Changed: new List<(string, C)>());
+            if (before == after)
+            {
+                return new Result<C>(
+                    Added: new List<(string, C)>(),
+                    Removed: new List<(string, C)>(),
+                    Changed: new List<(string, C)>());
+            }
 
             var oldComponents = before?.Get<C>() ?? new List<(string, C)>();
             var newComponents = after?.Get<C>() ?? new List<(string, C)>();
@@ -197,21 +219,6 @@ namespace Ecs
 
                 return changes.Count() > 0;
             });
-
-            foreach (var remove in removed)
-            {
-                Console.WriteLine($"- {remove}");
-            }
-
-            foreach (var add in added)
-            {
-                Console.WriteLine($"+ {add}");
-            }
-
-            foreach (var change in changed)
-            {
-                Console.WriteLine($"~ {change}");
-            }
 
             return new Result<C>(Added: added, Removed: removed, Changed: changed);
         }
