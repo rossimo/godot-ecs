@@ -13,8 +13,10 @@ public class Renderer
 {
     private static readonly Position NO_POSITION = new Position(0, 0);
 
-    public static Ecs.State System(State previous, State state, Game game)
+    public static void System(State previous, State state, Game game)
     {
+        if (previous == state) return;
+
         var (sprites, scales, rotations, clicks, collides, positions, moves) =
             Diff.Compare<Sprite, Scale, Rotation, Click, Collide, Position, Move>(previous, state);
 
@@ -152,9 +154,9 @@ public class Renderer
             var node = game.GetNodeOrNull<Node2D>($"{id}/area");
             if (node == null) continue;
 
-            if (HasConnection(node, "area_entered", nameof(game._Collision)))
+            if (HasConnection(node, "area_entered", nameof(game._Event)))
             {
-                node.Disconnect("area_entered", game, nameof(game._Collision));
+                node.Disconnect("area_entered", game, nameof(game._Event));
             }
         }
 
@@ -163,9 +165,9 @@ public class Renderer
             var node = game.GetNodeOrNull<Node2D>($"{id}/area");
             if (node == null) continue;
 
-            if (!HasConnection(node, "area_entered", nameof(game._Collision)))
+            if (!HasConnection(node, "area_entered", nameof(game._Event)))
             {
-                node.Connect("area_entered", game, nameof(game._Collision), new Godot.Collections.Array() { id });
+                node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(collide.Event) });
             }
         }
 
@@ -174,12 +176,12 @@ public class Renderer
             var node = game.GetNodeOrNull<Node2D>($"{id}/area");
             if (node == null) continue;
 
-            if (HasConnection(node, "area_entered", nameof(game._Collision)))
+            if (HasConnection(node, "area_entered", nameof(game._Event)))
             {
-                node.Disconnect("area_entered", game, nameof(game._Collision));
+                node.Disconnect("area_entered", game, nameof(game._Event));
             }
 
-            node.Connect("area_entered", game, nameof(game._Collision), new Godot.Collections.Array() { id });
+            node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(collide.Event) });
         }
 
         foreach (var (id, move) in moves.Removed)
@@ -200,7 +202,7 @@ public class Renderer
             tween.StopAll();
 
             var entity = state[id];
-            var position = entity.Get<Position>() ?? NO_POSITION;
+            var position = entity?.Get<Position>() ?? NO_POSITION;
 
             var start = new Vector2(node.Position.x, node.Position.y);
             var end = new Vector2(move.Position.X, move.Position.Y);
@@ -216,37 +218,11 @@ public class Renderer
             var node = game.GetNodeOrNull<Node2D>(id);
             if (node == null) continue;
 
-            var entity = state[id];
-            var move = entity.Get<Move>();
             if (!position.Self)
             {
                 node.Position = new Vector2(position.X, position.Y);
             }
         }
-
-        foreach (var (id, position) in state.Get<Position>())
-        {
-            var node = game.GetNodeOrNull<Node2D>(id);
-            if (node == null) continue;
-
-            if (position.X != node.Position.x || position.Y != node.Position.y)
-            {
-                state = state.With(id, new Position(node.Position.x, node.Position.y, true));
-            }
-
-            var entity = state[id];
-            var move = entity?.Get<Move>();
-            if (move == null) continue;
-
-            if (move.Position.X == node.Position.x && move.Position.Y == node.Position.y)
-            {
-                state = state.With(id, state[id].Without<Move>());
-            }
-        }
-
-        var perfEnd = new DateTimeOffset(DateTime.Now).ToUnixTimeMilliseconds();
-
-        return state;
     }
 
     public static bool HasConnection(Node node, string name, string method)

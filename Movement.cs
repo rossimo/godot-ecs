@@ -1,35 +1,31 @@
 using Ecs;
 using System;
-
-public record Player() : Component;
-
-public record Position(float X, float Y, Boolean Self = false) : Component;
-
-public record Move(Position Position, float Speed): Component;
-
-public record Rotation(float Degrees) : Component;
-
-public record AddRotation(float Degrees) : Component;
-
-public record Collide() : Component;
+using Godot;
 
 public static class Movement
 {
-    public static State System(State state)
+    public static State System(State state, Game game)
     {
-        foreach (var (id, add) in state.Get<AddRotation>())
+        foreach (var (id, position) in state.Get<Position>())
         {
-            state = state.With(id, state[id].Without<AddRotation>());
-            state = state.With(id, new Rotation(
-                (state[id].Get<Rotation>()?.Degrees ?? 0) +
-                add.Degrees));
+            var node = game.GetNodeOrNull<Node2D>(id);
+            if (node == null) continue;
+
+            if (position.X != node.Position.x || position.Y != node.Position.y)
+            {
+                state = state.With(id, new Position(node.Position.x, node.Position.y, true));
+            }
+
+            var entity = state[id];
+            var move = entity.Get<Move>();
+            if (move == null) continue;
+
+            if (move.Position.X == node.Position.x && move.Position.Y == node.Position.y)
+            {
+                state = state.With(id, state[id].Without<Move>());
+            }
         }
 
         return state;
-    }
-
-    public static double Distance(Position start, Position end)
-    {
-        return Math.Sqrt(Math.Pow((end.X - start.X), 2) + Math.Pow((end.Y - start.Y), 2));
     }
 }

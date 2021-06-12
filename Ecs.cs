@@ -68,6 +68,16 @@ namespace Ecs
         {
             return With(id, this[id].With(component));
         }
+
+        public State Without(string id)
+        {
+            var state = new State(this);
+            if (state.ContainsKey(id))
+            {
+                state.Remove(id);
+            }
+            return state;
+        }
     }
 
     public static class Utils
@@ -160,6 +170,11 @@ namespace Ecs
     {
         public static Result<C> Compare<C>(State before, State after) where C : Component
         {
+            if (before == after) return new Result<C>(
+                Added: new List<(string, C)>(),
+                Removed: new List<(string, C)>(),
+                Changed: new List<(string, C)>());
+
             var oldComponents = before?.Get<C>() ?? new List<(string, C)>();
             var newComponents = after?.Get<C>() ?? new List<(string, C)>();
 
