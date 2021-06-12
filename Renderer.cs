@@ -2,9 +2,15 @@ using Ecs;
 using Godot;
 using System.Linq;
 
+public record Sprite(string Image) : Component;
+
+public record Position(float X, float Y, bool Self = false) : Component;
+
+public record Rotation(float Degrees) : Component;
+
 public record Scale(float X, float Y) : Component;
 
-public record Sprite(string Image) : Component;
+public record Move(Position Position, float Speed) : Component;
 
 public class Renderer
 {

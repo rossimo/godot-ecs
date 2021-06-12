@@ -4,12 +4,6 @@ using System.Collections.Generic;
 
 public record Player() : Component;
 
-public record Position(float X, float Y, bool Self = false) : Component;
-
-public record Move(Position Position, float Speed) : Component;
-
-public record Rotation(float Degrees) : Component;
-
 public record Event : Component
 {
     public IEnumerable<Command> Commands = new List<Command>();
@@ -32,7 +26,7 @@ public record Click : Event
         => (Commands) = (commands);
 }
 
-public record Command(string Target = null, bool TargetOther = false) : Component;
+public record Command(string Target = null, bool TargetOther = false);
 
 public record RemoveEntity(string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
 
