@@ -32,15 +32,15 @@ public record Click : Event
         => (Commands) = (commands);
 }
 
-public record Command(string Target = null) : Component;
+public record Command(string Target = null, bool TargetOther = false) : Component;
 
-public record RemoveEntity(string Target = null) : Command(Target);
+public record RemoveEntity(string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
 
 public record AddRotation(float Degrees, string Target = null) : Command(Target);
 
 public static class Events
 {
-    public static State System(State state, string id, Component component)
+    public static State System(State state, string id, string otherId, Component component)
     {
         if (!(component is Event))
         {
@@ -49,9 +49,17 @@ public static class Events
 
         Func<Command, string> findId = (Command command) =>
         {
-            return command.Target?.Length > 0
-                ? command.Target
-                : id;
+            if (command.TargetOther)
+            {
+                return otherId;
+            }
+
+            if (command.Target?.Length > 0)
+            {
+                return command.Target;
+            }
+
+            return id;
         };
 
         foreach (var command in (component as Event).Commands)

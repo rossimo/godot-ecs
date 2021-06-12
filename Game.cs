@@ -26,7 +26,7 @@ public class Game : Godot.YSort
 
         var fire = new Entity(
             new Position(X: 400, Y: 200),
-            new Collide(new RemoveEntity(Target: "hero")),
+            new Collide(new RemoveEntity(TargetOther: true)),
             new Scale(2, 2),
             new Sprite("res://resources/tiles/tile495.png"));
 
@@ -44,12 +44,12 @@ public class Game : Godot.YSort
 
     public void _Event(string id, GodotWrapper ev)
     {
-        State = Events.System(State, id, ev.Get<Component>());
+        State = Events.System(State, id, null, ev.Get<Component>());
     }
 
-    public void _Event(Node node, string id, GodotWrapper ev)
+    public void _Event(Node other, string id, GodotWrapper ev)
     {
-        State = Events.System(State, id, ev.Get<Component>());
+        State = Events.System(State, id, other.GetParent().Name, ev.Get<Component>());
     }
 
     public override void _PhysicsProcess(float delta)
