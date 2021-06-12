@@ -1,13 +1,10 @@
 using Ecs;
-using System;
 using Godot;
 using System.Linq;
 
 public record Scale(float X, float Y) : Component;
 
 public record Sprite(string Image) : Component;
-
-public record Click(Component Event) : Component;
 
 public class Renderer
 {
@@ -132,7 +129,7 @@ public class Renderer
 
             if (!HasConnection(node, "pressed", nameof(game._Event)))
             {
-                node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click.Event) });
+                node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click.Events) });
             }
         }
 
@@ -146,7 +143,7 @@ public class Renderer
                 node.Disconnect("pressed", game, nameof(game._Event));
             }
 
-            node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click.Event) });
+            node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click.Events) });
         }
 
         foreach (var (id, collide) in collides.Removed)
@@ -167,7 +164,7 @@ public class Renderer
 
             if (!HasConnection(node, "area_entered", nameof(game._Event)))
             {
-                node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(collide.Event) });
+                node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(collide.Events) });
             }
         }
 
@@ -181,7 +178,7 @@ public class Renderer
                 node.Disconnect("area_entered", game, nameof(game._Event));
             }
 
-            node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(collide.Event) });
+            node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(collide.Events) });
         }
 
         foreach (var (id, move) in moves.Removed)

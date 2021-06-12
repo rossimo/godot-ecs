@@ -1,36 +1,62 @@
 using Ecs;
+using System.Collections.Generic;
 
 public record Player() : Component;
 
 public record Position(float X, float Y, bool Self = false) : Component;
 
-public record Move(Position Position, float Speed): Component;
+public record Move(Position Position, float Speed) : Component;
 
 public record Rotation(float Degrees) : Component;
 
 public record AddRotation(float Degrees) : Component;
 
-public record Collide(Component Event) : Component;
+public record Trigger : Component
+{
+    public IEnumerable<Component> Events = new List<Component>();
+
+    public Trigger() { }
+
+    public Trigger(IEnumerable<Component> components)
+        => (Events) = (components);
+}
+
+public record Collide : Trigger
+{
+    public Collide(params Component[] components)
+        => (Events) = (components);
+}
+
+public record Click : Trigger
+{
+    public Click(params Component[] components)
+        => (Events) = (components);
+}
 
 public record RemoveEntity() : Component;
 
 public static class Event
 {
-    public static State System(State state, string sourceId, Component ev)
+    public static State System(State state, string id, IEnumerable<Component> events)
     {
-        state = state.With(sourceId, ev);
-
-        foreach (var (id, add) in state.Get<AddRotation>())
+        foreach (var ev in events)
         {
-            state = state.With(id, state[id].Without<AddRotation>());
-            state = state.With(id, new Rotation(
-                (state[id].Get<Rotation>()?.Degrees ?? 0) +
-                add.Degrees));
-        }
+            switch (ev)
+            {
+                case AddRotation rotate:
+                    {
+                        state = state.With(id, new Rotation(
+                            (state[id].Get<Rotation>()?.Degrees ?? 0) +
+                            rotate.Degrees));
+                    }
+                    break;
 
-        foreach (var (id, remove) in state.Get<RemoveEntity>())
-        {
-            state = state.Without(id);
+                case RemoveEntity remove:
+                    {
+                        state = state.Without(id);
+                    }
+                    break;
+            }
         }
 
         return state;

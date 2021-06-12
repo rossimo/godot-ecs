@@ -1,6 +1,7 @@
 using Ecs;
 using Godot;
 using System;
+using System.Collections.Generic;
 
 public class Game : Godot.YSort
 {
@@ -36,12 +37,12 @@ public class Game : Godot.YSort
 
     public void _Event(string id, GodotWrapper ev)
     {
-        State = Event.System(State, id, ev.Get<Component>());
+        State = Event.System(State, id, ev.Get<IEnumerable<Component>>());
     }
 
     public void _Event(Node node, string id, GodotWrapper ev)
     {
-        State = Event.System(State, id, ev.Get<Component>());
+        State = Event.System(State, id, ev.Get<IEnumerable<Component>>());
     }
 
     public override void _PhysicsProcess(float delta)
