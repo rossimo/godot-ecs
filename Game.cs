@@ -65,7 +65,6 @@ public class Game : Godot.YSort
              Diff.Compare<Scale>(Previous, State).To<Component>(),
              Diff.Compare<Rotation>(Previous, State).To<Component>(),
              Diff.Compare<Click>(Previous, State).To<Component>(),
-             Diff.Compare<Sprite>(Previous, State).To<Component>(),
              Diff.Compare<Collide>(Previous, State).To<Component>(),
              Diff.Compare<Position>(Previous, State).To<Component>(),
              Diff.Compare<Path>(Previous, State).To<Component>(),
