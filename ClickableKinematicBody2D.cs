@@ -1,8 +1,10 @@
 using System;
 using Godot;
 
-public class ClickableSprite : Godot.Sprite
+public class ClickableKinematicBody2D : Godot.KinematicBody2D
 {
+    public Rect2 Rect = new Rect2();
+
     [Signal]
     public delegate void pressed();
 
@@ -10,9 +12,8 @@ public class ClickableSprite : Godot.Sprite
     {
         if (@event is InputEventMouseButton mouseButton)
         {
-            if (mouseButton.IsPressed() && GetRect().HasPoint(ToLocal(mouseButton.Position)))
+            if (mouseButton.IsPressed() && Rect.HasPoint(ToLocal(mouseButton.Position)))
             {
-                GetTree().SetInputAsHandled();
                 EmitSignal(nameof(pressed));
             }
         }

@@ -14,9 +14,9 @@ public class Game : Godot.YSort
         State = new State() {
             { "hero", new Entity(
                 new Player(),
+                new Speed(3f),
                 new Inventory(),
                 new Position(X: 50, Y: 50),
-                new Click(new AddRotation(Degrees: -36f)),
                 new Scale(3, 3),
                 new Sprite("res://resources/tiles/tile072.png")) },
             { "potion", new Entity(
@@ -50,7 +50,7 @@ public class Game : Godot.YSort
 
     public override void _PhysicsProcess(float delta)
     {
-        State = Movement.System(State, this);
+        State = Physics.System(State, this);
 
         Renderer.System(Previous, State, this);
 
@@ -68,8 +68,10 @@ public class Game : Godot.YSort
              Diff.Compare<Sprite>(Previous, State).To<Component>(),
              Diff.Compare<Collide>(Previous, State).To<Component>(),
              Diff.Compare<Position>(Previous, State).To<Component>(),
+             Diff.Compare<Track>(Previous, State).To<Component>(),
+             Diff.Compare<Inventory>(Previous, State).To<Component>(),
              Diff.Compare<Move>(Previous, State).To<Component>(),
-             Diff.Compare<Inventory>(Previous, State).To<Component>()
+             Diff.Compare<Velocity>(Previous, State).To<Component>()
         };
 
         IEnumerable<(string, string)> all = new List<(string, string)>();

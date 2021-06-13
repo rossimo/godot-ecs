@@ -30,7 +30,7 @@ public record Click : Event
         => (Commands) = (commands);
 }
 
-public record Move(Position Position, float Speed) : Event;
+public record Track(Position Position, float Speed) : Event;
 
 public record Command(string Target = null, bool TargetOther = false);
 

@@ -64,10 +64,16 @@ namespace Ecs
             return new State(Utils.With(this, id, entity));
         }
 
-        public State With(string id, Component component)
+        public State With(string id, params Component[] components)
         {
-            return With(id, this[id].With(component));
+            var state = this;
+            foreach (var component in components)
+            {
+                state = With(id, state[id].With(component));
+            }
+            return state;
         }
+
 
         public State Without(string id)
         {
@@ -77,6 +83,11 @@ namespace Ecs
                 state.Remove(id);
             }
             return state;
+        }
+
+        public State Without<C>(string id) where C : Component
+        {
+            return With(id, this[id].Without<C>());
         }
     }
 

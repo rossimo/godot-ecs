@@ -11,11 +11,16 @@ public static class Input
                 {
                     if (mouseButton.IsPressed())
                     {
-                        var position = game.ToLocal(mouseButton.Position);
+                        var target = game.ToLocal(mouseButton.Position);
 
                         foreach (var (id, player) in state.Get<Player>())
                         {
-                            state = state.With(id, new Move(Position: new Position(position.x, position.y), Speed: 200f));
+                            var position = state[id].Get<Position>();
+                            var source = new Vector2(position.X, position.Y);
+                            var velocity = source.DirectionTo(new Vector2(target));
+                            state = state.With(id,
+                                new Velocity(velocity.x, velocity.y),
+                                new Move(Start: new Position(source.x, source.y), End: new Position(target.x, target.y)));
                         }
                     }
                 }

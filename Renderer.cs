@@ -17,7 +17,7 @@ public class Renderer
         if (previous == state) return;
 
         var (sprites, scales, rotations, clicks, collides, positions, moves) =
-            Diff.Compare<Sprite, Scale, Rotation, Click, Collide, Position, Move>(previous, state);
+            Diff.Compare<Sprite, Scale, Rotation, Click, Collide, Position, Track>(previous, state);
 
         foreach (var (id, sprite) in sprites.Removed)
         {
@@ -28,21 +28,30 @@ public class Renderer
             node.QueueFree();
         }
 
-        foreach (var (id, sprite) in sprites.Added)
+        foreach (var (id, component) in sprites.Added)
         {
-            var node = game.GetNodeOrNull<ClickableSprite>(id);
+            var node = game.GetNodeOrNull<ClickableKinematicBody2D>(id);
             if (node != null) continue;
 
-            node = new ClickableSprite()
+            node = new ClickableKinematicBody2D()
             {
-                Name = id,
-                Texture = GD.Load<Texture>(sprite.Image)
+                Name = id
             };
+            game.AddChild(node);
 
-            node.AddChild(new Tween()
+            var sprite = new Godot.Sprite()
+            {
+                Name = "sprite",
+                Texture = GD.Load<Texture>(component.Image)
+            };
+            node.AddChild(sprite);
+            node.Rect = sprite.GetRect();
+
+            var tween = new Tween()
             {
                 Name = "move"
-            });
+            };
+            node.AddChild(tween);
 
             var area = new Area2D()
             {
@@ -54,19 +63,19 @@ public class Renderer
             {
                 Shape = new RectangleShape2D()
                 {
-                    Extents = node.GetRect().Size / 2f
+                    Extents = sprite.GetRect().Size / 2f
                 }
             });
-
-            game.AddChild(node);
         }
 
-        foreach (var (id, sprite) in sprites.Changed)
+        foreach (var (id, component) in sprites.Changed)
         {
-            var node = game.GetNodeOrNull<ClickableSprite>(id);
-            if (node == null) continue;
+            var node = game.GetNodeOrNull<ClickableKinematicBody2D>(id);
+            var sprite = node?.GetNode<Godot.Sprite>("sprite");
+            if (node == null || sprite == null) continue;
 
-            node.Texture = GD.Load<Texture>(sprite.Image);
+            sprite.Texture = GD.Load<Texture>(component.Image);
+            node.Rect = sprite.GetRect();
 
             var area = node.GetNode("area");
 
@@ -80,7 +89,7 @@ public class Renderer
             {
                 Shape = new RectangleShape2D()
                 {
-                    Extents = node.GetRect().Size / 2f
+                    Extents = sprite.GetRect().Size / 2f
                 }
             });
         }
