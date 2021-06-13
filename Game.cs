@@ -50,7 +50,7 @@ public class Game : Godot.YSort
 
     public override void _PhysicsProcess(float delta)
     {
-        State = Physics.System(State, this);
+        State = Physics.System(Previous, State, this);
 
         Renderer.System(Previous, State, this);
 
@@ -68,7 +68,7 @@ public class Game : Godot.YSort
              Diff.Compare<Sprite>(Previous, State).To<Component>(),
              Diff.Compare<Collide>(Previous, State).To<Component>(),
              Diff.Compare<Position>(Previous, State).To<Component>(),
-             Diff.Compare<Track>(Previous, State).To<Component>(),
+             Diff.Compare<Path>(Previous, State).To<Component>(),
              Diff.Compare<Inventory>(Previous, State).To<Component>(),
              Diff.Compare<Move>(Previous, State).To<Component>(),
              Diff.Compare<Velocity>(Previous, State).To<Component>()

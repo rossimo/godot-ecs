@@ -30,8 +30,6 @@ public record Click : Event
         => (Commands) = (commands);
 }
 
-public record Track(Position Position, float Speed) : Event;
-
 public record Command(string Target = null, bool TargetOther = false);
 
 public record RemoveEntity(string Target = null, bool TargetOther = false) : Command(Target, TargetOther);

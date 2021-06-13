@@ -16,8 +16,8 @@ public class Renderer
     {
         if (previous == state) return;
 
-        var (sprites, scales, rotations, clicks, collides, positions, moves) =
-            Diff.Compare<Sprite, Scale, Rotation, Click, Collide, Position, Track>(previous, state);
+        var (sprites, scales, rotations, clicks, collides, positions) =
+            Diff.Compare<Sprite, Scale, Rotation, Click, Collide, Position>(previous, state);
 
         foreach (var (id, sprite) in sprites.Removed)
         {
@@ -46,12 +46,6 @@ public class Renderer
             };
             node.AddChild(sprite);
             node.Rect = sprite.GetRect();
-
-            var tween = new Tween()
-            {
-                Name = "move"
-            };
-            node.AddChild(tween);
 
             var area = new Area2D()
             {
@@ -190,43 +184,6 @@ public class Renderer
             }
 
             node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(collide) });
-        }
-
-        foreach (var (id, move) in moves.Removed)
-        {
-            var node = game.GetNodeOrNull<Tween>($"{id}/move");
-            if (node == null) continue;
-
-            node.StopAll();
-        }
-
-        foreach (var (id, move) in moves.Added.Concat(moves.Changed))
-        {
-            var node = game.GetNodeOrNull<Node2D>(id);
-            var tween = game.GetNodeOrNull<Tween>($"{id}/move");
-
-            if (node == null || tween == null) continue;
-
-            tween.StopAll();
-
-            if (HasConnection(tween, "tween_all_completed", nameof(game._Event)))
-            {
-                tween.Disconnect("tween_all_completed", game, nameof(game._Event));
-            }
-
-            var entity = state[id];
-            var position = entity?.Get<Position>() ?? new Position(0, 0);
-
-            var start = new Vector2(node.Position.x, node.Position.y);
-            var end = new Vector2(move.Position.X, move.Position.Y);
-            var distance = start.DistanceTo(end);
-            var duration = distance / move.Speed;
-            tween.InterpolateProperty(node, "position", start, end, duration);
-            tween.Start();
-
-            tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(move with { Commands = move.Commands.Concat(new [] { new RemoveComponent(move) })})
-            });
         }
 
         foreach (var (id, position) in positions.Added.Concat(positions.Changed))
