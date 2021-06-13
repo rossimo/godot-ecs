@@ -13,6 +13,9 @@ public record Event : Component
 
     public Event(IEnumerable<Command> commands)
         => (Commands) = (commands);
+
+    public Event(params Command[] commands)
+        => (Commands) = (commands);
 }
 
 public record Collide : Event
@@ -27,9 +30,13 @@ public record Click : Event
         => (Commands) = (commands);
 }
 
+public record Move(Position Position, float Speed) : Event;
+
 public record Command(string Target = null, bool TargetOther = false);
 
 public record RemoveEntity(string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
+
+public record RemoveComponent(Component Component, string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
 
 public record AddRotation(float Degrees, string Target = null) : Command(Target);
 
@@ -66,7 +73,18 @@ public static class Events
                     }
                     break;
 
-                case RemoveEntity remove:
+
+                case RemoveComponent removeComponent:
+                    {
+                        var entity = state[target];
+                        state = state.With(target, entity with
+                        {
+                            Components = entity.Components.Where(component => component != removeComponent.Component)
+                        });
+                    }
+                    break;
+
+                case RemoveEntity removeEntity:
                     {
                         state = state.Without(target);
                     }

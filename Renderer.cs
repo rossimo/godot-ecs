@@ -10,8 +10,6 @@ public record Rotation(float Degrees) : Component;
 
 public record Scale(float X, float Y) : Component;
 
-public record Move(Position Position, float Speed) : Component;
-
 public class Renderer
 {
     public static void System(State previous, State state, Game game)
@@ -202,6 +200,11 @@ public class Renderer
 
             tween.StopAll();
 
+            if (HasConnection(tween, "tween_all_completed", nameof(game._Event)))
+            {
+                tween.Disconnect("tween_all_completed", game, nameof(game._Event));
+            }
+
             var entity = state[id];
             var position = entity?.Get<Position>() ?? new Position(0, 0);
 
@@ -209,9 +212,12 @@ public class Renderer
             var end = new Vector2(move.Position.X, move.Position.Y);
             var distance = start.DistanceTo(end);
             var duration = distance / move.Speed;
-            tween.StopAll();
             tween.InterpolateProperty(node, "position", start, end, duration);
             tween.Start();
+
+            tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
+                id, new GodotWrapper(move with { Commands = move.Commands.Concat(new [] { new RemoveComponent(move) })})
+            });
         }
 
         foreach (var (id, position) in positions.Added.Concat(positions.Changed))
@@ -240,16 +246,6 @@ public class Renderer
         }
 
         return false;
-    }
-
-    public static string GetMetaSafely(Godot.Object node, string name)
-    {
-        if (node.HasMeta(name))
-        {
-            return node.GetMeta(name) as string;
-        }
-
-        return null;
     }
 }
 

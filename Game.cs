@@ -20,7 +20,7 @@ public class Game : Godot.YSort
                 new Scale(3, 3),
                 new Sprite("res://resources/tiles/tile072.png")) },
             { "potion", new Entity(
-                new Position(X: 200, Y: 200),
+                new Position(X: 200, Y: 300),
                 new Collide(new RemoveEntity(), new AddItem(TargetOther: true, Item: new Component())),
                 new Click(new AddRotation(Degrees: 36f)),
                 new Scale(2, 2),
