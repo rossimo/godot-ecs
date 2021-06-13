@@ -39,6 +39,12 @@ public class Renderer
             };
             game.AddChild(node);
 
+            var tween = new Tween()
+            {
+                Name = "path"
+            };
+            node.AddChild(tween);
+
             var sprite = new Godot.Sprite()
             {
                 Name = "sprite",
@@ -121,7 +127,7 @@ public class Renderer
             var node = game.GetNodeOrNull<Node2D>(id);
             if (node == null) continue;
 
-            if (HasConnection(node, "pressed", nameof(game._Event)))
+            if (node.IsConnected("pressed", game, nameof(game._Event)))
             {
                 node.Disconnect("pressed", game, nameof(game._Event));
             }
@@ -132,7 +138,7 @@ public class Renderer
             var node = game.GetNodeOrNull<Node2D>(id);
             if (node == null) continue;
 
-            if (!HasConnection(node, "pressed", nameof(game._Event)))
+            if (!node.IsConnected("pressed", game, nameof(game._Event)))
             {
                 node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click) });
             }
@@ -143,7 +149,7 @@ public class Renderer
             var node = game.GetNodeOrNull<Node2D>(id);
             if (node == null) continue;
 
-            if (HasConnection(node, "pressed", nameof(game._Event)))
+            if (node.IsConnected("pressed", game, nameof(game._Event)))
             {
                 node.Disconnect("pressed", game, nameof(game._Event));
             }
@@ -156,29 +162,18 @@ public class Renderer
             var node = game.GetNodeOrNull<Node2D>($"{id}/area");
             if (node == null) continue;
 
-            if (HasConnection(node, "area_entered", nameof(game._Event)))
+            if (node.IsConnected("area_entered", game, nameof(game._Event)))
             {
                 node.Disconnect("area_entered", game, nameof(game._Event));
             }
         }
 
-        foreach (var (id, collide) in collides.Added)
+        foreach (var (id, collide) in collides.Added.Concat(collides.Changed))
         {
             var node = game.GetNodeOrNull<Node2D>($"{id}/area");
             if (node == null) continue;
 
-            if (!HasConnection(node, "area_entered", nameof(game._Event)))
-            {
-                node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(collide) });
-            }
-        }
-
-        foreach (var (id, collide) in collides.Changed)
-        {
-            var node = game.GetNodeOrNull<Node2D>($"{id}/area");
-            if (node == null) continue;
-
-            if (HasConnection(node, "area_entered", nameof(game._Event)))
+            if (node.IsConnected("area_entered", game, nameof(game._Event)))
             {
                 node.Disconnect("area_entered", game, nameof(game._Event));
             }
@@ -196,22 +191,6 @@ public class Renderer
                 node.Position = new Vector2(position.X, position.Y);
             }
         }
-    }
-
-    public static bool HasConnection(Node node, string name, string method)
-    {
-        foreach (Godot.Collections.Dictionary signal in node.GetSignalList())
-        {
-            foreach (Godot.Collections.Dictionary connection in node.GetSignalConnectionList(signal["name"] as string))
-            {
-                if (signal["name"] as string == name && connection["method"] as string == method)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 }
 

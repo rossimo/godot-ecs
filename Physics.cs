@@ -4,7 +4,7 @@ using System.Linq;
 
 public record Speed(float Value) : Component;
 
-public record Move(Position Start, Position End) : Component;
+public record Move(Position Target) : Component;
 
 public record Velocity(float X, float Y) : Component;
 
@@ -21,9 +21,26 @@ public static class Physics
             var node = game.GetNodeOrNull<KinematicBody2D>(id);
             if (node == null) continue;
 
-            var speed = state[id]?.Get<Speed>() ?? new Speed(1f);
+            var entity = state[id];
+            var speed = entity.Get<Speed>() ?? new Speed(1f);
+            var travel = new Vector2(velocity.X, velocity.Y) * speed.Value;
 
-            node.MoveAndCollide(new Vector2(velocity.X, velocity.Y) * speed.Value);
+            var (move, position) = entity.Get<Move, Position>();
+            if (move != null && position != null)
+            {
+                var velocityDistance = travel.DistanceTo(new Vector2(0, 0));
+                var moveDistance = new Vector2(position.X, position.Y)
+                    .DistanceTo(new Vector2(move.Target.X, move.Target.Y));
+
+                if (moveDistance < velocityDistance)
+                {
+                    state = state.Without<Move>(id);
+                    state = state.Without<Velocity>(id);
+                    travel *= (moveDistance / velocityDistance);
+                }
+            }
+
+            node.MoveAndCollide(travel);
         }
 
         foreach (var (id, position) in state.Get<Position>())
@@ -37,33 +54,13 @@ public static class Physics
             }
         }
 
-        foreach (var (id, move) in state.Get<Move>())
-        {
-            var entity = state[id];
-            var position = entity.Get<Position>();
-
-            var traveled = new Vector2(move.Start.X, move.Start.Y)
-                .DistanceTo(new Vector2(position.X, position.Y));
-
-            var max = new Vector2(move.Start.X, move.Start.Y)
-                .DistanceTo(new Vector2(move.End.X, move.End.Y));
-
-            if (traveled >= max)
-            {
-                state = state.Without<Move>(id);
-                state = state.Without<Velocity>(id);
-            }
-        }
-
         foreach (var (id, path) in paths.Removed)
         {
             var node = game.GetNodeOrNull<Node2D>(id);
             var tween = game.GetNodeOrNull<Tween>($"{id}/path");
             if (node == null || tween == null) continue;
 
-            tween.StopAll();
-            node.RemoveChild(tween);
-            tween.QueueFree();
+            tween.Stop(node, "position");
         }
 
         foreach (var (id, path) in paths.Added.Concat(paths.Changed))
@@ -73,18 +70,9 @@ public static class Physics
 
             if (node == null) continue;
 
-            if (tween == null)
-            {
-                tween = new Tween()
-                {
-                    Name = "path"
-                };
-                node.AddChild(tween);
-            }
+            tween.Stop(node, "position");
 
-            tween.StopAll();
-
-            if (Renderer.HasConnection(tween, "tween_all_completed", nameof(game._Event)))
+            if (tween.IsConnected("tween_all_completed", game, nameof(game._Event)))
             {
                 tween.Disconnect("tween_all_completed", game, nameof(game._Event));
             }

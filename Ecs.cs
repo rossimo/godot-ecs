@@ -24,6 +24,13 @@ namespace Ecs
             return Components.OfType<C>().FirstOrDefault();
         }
 
+        public (C1, C2) Get<C1, C2>()
+            where C1 : Component
+            where C2 : Component
+        {
+            return (Get<C1>(), Get<C2>());
+        }
+
         public Entity With<C>(C component) where C : Component
         {
             var existing = Get<C>();
