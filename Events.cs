@@ -7,12 +7,14 @@ public record Player() : Component;
 
 public record Event : Component
 {
-    public IEnumerable<Command> Commands = new List<Command>();
+    public string ID;
+
+    public Command[] Commands = new Command[] {};
 
     public Event() { }
 
     public Event(IEnumerable<Command> commands)
-        => (Commands) = (commands);
+        => (Commands) = (commands.ToArray());
 
     public Event(params Command[] commands)
         => (Commands) = (commands);
@@ -32,11 +34,13 @@ public record Click : Event
 
 public record Command(string Target = null, bool TargetOther = false);
 
+public record AddEntity(Entity Entity) : Command;
+
 public record RemoveEntity(string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
 
-public record RemoveComponent(Component Component, string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
+public record AddComponent(Component Component, string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
 
-public record AddRotation(float Degrees, string Target = null) : Command(Target);
+public record RemoveComponent(Component Component, string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
 
 public static class Events
 {
@@ -47,7 +51,9 @@ public static class Events
             return state;
         }
 
-        foreach (var command in (component as Event).Commands)
+        var ev = component as Event;
+
+        foreach (var command in ev.Commands)
         {
             var target = id;
 
@@ -63,14 +69,24 @@ public static class Events
 
             switch (command)
             {
-                case AddRotation rotate:
+                case AddEntity addEntity:
                     {
-                        state = state.With(target, new Rotation(
-                            (state[target].Get<Rotation>()?.Degrees ?? 0) +
-                            rotate.Degrees));
+                        state = state.With(Guid.NewGuid().ToString(), addEntity.Entity);
                     }
                     break;
 
+                case RemoveEntity removeEntity:
+                    {
+                        state = state.Without(target);
+                    }
+                    break;
+
+                case AddComponent addComponent:
+                    {
+                        var entity = state[target];
+                        state = state.With(target, addComponent.Component);
+                    }
+                    break;
 
                 case RemoveComponent removeComponent:
                     {
@@ -79,12 +95,6 @@ public static class Events
                         {
                             Components = entity.Components.Where(component => component != removeComponent.Component)
                         });
-                    }
-                    break;
-
-                case RemoveEntity removeEntity:
-                    {
-                        state = state.Without(target);
                     }
                     break;
 
