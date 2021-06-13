@@ -10,14 +10,18 @@ public record Rotation(float Degrees) : Component;
 
 public record Scale(float X, float Y) : Component;
 
+public record Color(float Red, float Green, float Blue) : Component;
+
+public record Glow(Color Color) : Event;
+
 public class Renderer
 {
     public static void System(State previous, State state, Game game)
     {
         if (previous == state) return;
 
-        var (sprites, scales, rotations, clicks, collides, positions) =
-            Diff.Compare<Sprite, Scale, Rotation, Click, Collide, Position>(previous, state);
+        var (sprites, scales, rotations, clicks, collides, positions, glows) =
+            Diff.Compare<Sprite, Scale, Rotation, Click, Collide, Position, Glow>(previous, state);
 
         foreach (var (id, sprite) in sprites.Removed)
         {
@@ -39,11 +43,17 @@ public class Renderer
             };
             game.AddChild(node);
 
-            var tween = new Tween()
+            var path = new Tween()
             {
                 Name = "path"
             };
-            node.AddChild(tween);
+            node.AddChild(path);
+
+            var modulate = new Tween()
+            {
+                Name = "modulate"
+            };
+            node.AddChild(modulate);
 
             var sprite = new Godot.Sprite()
             {
@@ -133,18 +143,7 @@ public class Renderer
             }
         }
 
-        foreach (var (id, click) in clicks.Added)
-        {
-            var node = game.GetNodeOrNull<Node2D>(id);
-            if (node == null) continue;
-
-            if (!node.IsConnected("pressed", game, nameof(game._Event)))
-            {
-                node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() { id, new GodotWrapper(click) });
-            }
-        }
-
-        foreach (var (id, click) in clicks.Changed)
+        foreach (var (id, click) in clicks.Added.Concat(clicks.Changed))
         {
             var node = game.GetNodeOrNull<Node2D>(id);
             if (node == null) continue;
@@ -190,6 +189,43 @@ public class Renderer
             {
                 node.Position = new Vector2(position.X, position.Y);
             }
+        }
+
+        foreach (var (id, glow) in glows.Removed)
+        {
+            var node = game.GetNodeOrNull<Node2D>(id);
+            var tween = game.GetNodeOrNull<Tween>($"{id}/modulate");
+            if (node == null || tween == null) continue;
+
+            tween.StopAll();
+        }
+
+        foreach (var (id, glow) in glows.Added.Concat(glows.Changed))
+        {
+            var node = game.GetNodeOrNull<Node2D>(id);
+            var tween = game.GetNodeOrNull<Tween>($"{id}/modulate");
+
+            if (node == null) continue;
+
+            tween.StopAll();
+
+            if (tween.IsConnected("tween_all_completed", game, nameof(game._Event)))
+            {
+                tween.Disconnect("tween_all_completed", game, nameof(game._Event));
+            }
+
+            var entity = state[id];
+            var position = entity?.Get<Position>() ?? new Position(0, 0);
+
+            tween.InterpolateProperty(node, "modulate", node.Modulate, new Godot.Color(glow.Color.Red, glow.Color.Green, glow.Color.Blue), 1f);
+            tween.InterpolateProperty(node, "modulate", new Godot.Color(glow.Color.Red, glow.Color.Green, glow.Color.Blue), new Godot.Color(1, 1, 1), 1f,
+                Tween.TransitionType.Linear, Tween.EaseType.InOut, 1f);
+
+            tween.Start();
+
+            tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
+                id, new GodotWrapper(glow with { Commands = glow.Commands.Concat(new [] { new RemoveComponent(glow) }).ToArray()})
+            });
         }
     }
 }

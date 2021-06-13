@@ -21,8 +21,8 @@ public class Game : Godot.YSort
                 new Sprite("res://resources/tiles/tile072.png")) },
             { "potion", new Entity(
                 new Position(X: 200, Y: 300),
-                new Collide(new RemoveEntity(), new AddItem(TargetOther: true, Item: new Component())),
-                new Click(new AddRotation(Degrees: 36f)),
+                new Collide(new RemoveEntity(), new AddItem(Item: new Component(), TargetOther: true)),
+                new Click(new RemoveComponent(new Glow(Color: new Color(1, 0, 0))), new AddComponent(new Glow(Color: new Color(1, 0, 0)))),
                 new Scale(2, 2),
                 new Sprite("res://resources/tiles/tile570.png")) },
             { "fire", new Entity(
@@ -61,16 +61,17 @@ public class Game : Godot.YSort
     void Log()
     {
         var diffs = new[] {
-             Diff.Compare<Sprite>(Previous, State).To<Component>(),
-             Diff.Compare<Scale>(Previous, State).To<Component>(),
-             Diff.Compare<Rotation>(Previous, State).To<Component>(),
-             Diff.Compare<Click>(Previous, State).To<Component>(),
-             Diff.Compare<Collide>(Previous, State).To<Component>(),
-             Diff.Compare<Position>(Previous, State).To<Component>(),
-             Diff.Compare<Path>(Previous, State).To<Component>(),
-             Diff.Compare<Inventory>(Previous, State).To<Component>(),
-             Diff.Compare<Move>(Previous, State).To<Component>(),
-             Diff.Compare<Velocity>(Previous, State).To<Component>()
+            Diff.Compare<Sprite>(Previous, State).To<Component>(),
+            Diff.Compare<Scale>(Previous, State).To<Component>(),
+            Diff.Compare<Rotation>(Previous, State).To<Component>(),
+            Diff.Compare<Click>(Previous, State).To<Component>(),
+            Diff.Compare<Collide>(Previous, State).To<Component>(),
+            Diff.Compare<Position>(Previous, State).To<Component>(),
+            Diff.Compare<Path>(Previous, State).To<Component>(),
+            Diff.Compare<Inventory>(Previous, State).To<Component>(),
+            Diff.Compare<Move>(Previous, State).To<Component>(),
+            Diff.Compare<Velocity>(Previous, State).To<Component>(),
+            Diff.Compare<Glow>(Previous, State).To<Component>()
         };
 
         IEnumerable<(string, string)> all = new List<(string, string)>();

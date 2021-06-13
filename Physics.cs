@@ -60,17 +60,16 @@ public static class Physics
             var tween = game.GetNodeOrNull<Tween>($"{id}/path");
             if (node == null || tween == null) continue;
 
-            tween.Stop(node, "position");
+            tween.StopAll();
         }
 
         foreach (var (id, path) in paths.Added.Concat(paths.Changed))
         {
             var node = game.GetNodeOrNull<Node2D>(id);
             var tween = game.GetNodeOrNull<Tween>($"{id}/path");
-
             if (node == null) continue;
 
-            tween.Stop(node, "position");
+            tween.StopAll();
 
             if (tween.IsConnected("tween_all_completed", game, nameof(game._Event)))
             {
@@ -88,7 +87,7 @@ public static class Physics
             tween.Start();
 
             tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(path with { Commands = path.Commands.Concat(new [] { new RemoveComponent(path) })})
+                id, new GodotWrapper(path with { Commands = path.Commands.Concat(new [] { new RemoveComponent(path) }).ToArray()})
             });
         }
 
