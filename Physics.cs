@@ -22,8 +22,8 @@ public static class Physics
             if (node == null) continue;
 
             var entity = state[id];
-            var speed = entity.Get<Speed>() ?? new Speed(1f);
-            var travel = new Vector2(velocity.X, velocity.Y) * speed.Value;
+            var speed = entity.Get<Speed>() ;
+            var travel = new Vector2(velocity.X, velocity.Y) * (speed?.Value ?? 1f);
 
             var (move, position) = entity.Get<Move, Position>();
             if (move != null && position != null)

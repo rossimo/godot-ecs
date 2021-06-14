@@ -154,7 +154,11 @@ public class Renderer
             }
 
             node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(click.Commands)
+                id, new GodotWrapper(click.Commands.Select(command => command with {
+                    Target = command.Target?.Length > 0
+                        ? command.Target
+                        : click.Target
+                }).ToArray())
             });
         }
 
@@ -180,7 +184,11 @@ public class Renderer
             }
 
             node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(collide.Commands)
+                id, new GodotWrapper(collide.Commands.Select(command => command with {
+                    Target = command.Target?.Length > 0
+                        ? command.Target
+                        : collide.Target
+                }).ToArray())
             });
         }
 

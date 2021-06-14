@@ -8,6 +8,7 @@ public record Player() : Component;
 public record Command(string Target = null, int Tick = 0) : Component
 {
     public static string TARGET_OTHER = "__OTHER";
+    public static string TARGET_SELF = "__SELF";
 }
 
 public record Event : Command
@@ -55,6 +56,14 @@ public static class Events
                 {
                     target = otherId;
                 }
+                else
+                {
+                    continue;
+                }
+            }
+            else if (command.Target == Command.TARGET_SELF)
+            {
+                target = id;
             }
             else if (command.Target?.Length > 0)
             {
@@ -95,7 +104,6 @@ public static class Events
                         if (inventory != null)
                         {
                             state = state.With(target, entity.With(new Inventory(inventory.Items.Concat(new[] { addItem.Item }))));
-
                         }
                     }
                     break;
@@ -110,6 +118,7 @@ public static class Events
                         state = state.With(target, newComponent);
                     }
                     break;
+
                 default:
                     {
                         state = state.With(target, command with { Tick = tick });
