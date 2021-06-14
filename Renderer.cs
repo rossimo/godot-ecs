@@ -12,7 +12,7 @@ public record Scale(float X, float Y) : Component;
 
 public record Color(float Red, float Green, float Blue) : Component;
 
-public record Flash(Color Color, string Target = null) : Command(Target);
+public record Flash(Color Color, string Target = null) : Task(Target);
 
 public class Renderer
 {
@@ -154,9 +154,9 @@ public class Renderer
             }
 
             node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(click.Commands.Select(command => command with {
-                    Target = command.Target?.Length > 0
-                        ? command.Target
+                id, new GodotWrapper(click.Tasks.Select(task => task with {
+                    Target = task.Target?.Length > 0
+                        ? task.Target
                         : click.Target
                 }).ToArray())
             });
@@ -184,9 +184,9 @@ public class Renderer
             }
 
             node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(collide.Commands.Select(command => command with {
-                    Target = command.Target?.Length > 0
-                        ? command.Target
+                id, new GodotWrapper(collide.Tasks.Select(task => task with {
+                    Target = task.Target?.Length > 0
+                        ? task.Target
                         : collide.Target
                 }).ToArray())
             });

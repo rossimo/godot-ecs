@@ -23,7 +23,7 @@ public class Game : Godot.YSort
             { "potion", POTION },
             { "fire", new Entity(
                 new Position(X: 400, Y: 200),
-                new Collide(new Flash(Color: new Color(1f, 0f, 0f))) { Target = Command.TARGET_OTHER },
+                new Collide(new Flash(Color: new Color(1f, 0f, 0f), Target: Task.TARGET_OTHER), new Flash(Color: new Color(1f, 1f, 1f))),
                 new Scale(2, 2),
                 new Sprite("res://resources/tiles/tile495.png")) },
             { "button", new Entity(
@@ -48,12 +48,12 @@ public class Game : Godot.YSort
 
     public void _Event(string id, GodotWrapper ev)
     {
-        State = Events.System(Tick, State, id, null, ev.Get<Command[]>());
+        State = Events.System(Tick, State, id, null, ev.Get<Task[]>());
     }
 
     public void _Event(Node other, string id, GodotWrapper ev)
     {
-        State = Events.System(Tick, State, id, other.GetParent().Name, ev.Get<Command[]>());
+        State = Events.System(Tick, State, id, other.GetParent().Name, ev.Get<Task[]>());
     }
 
     public override void _PhysicsProcess(float delta)

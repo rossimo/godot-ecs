@@ -87,7 +87,7 @@ public static class Physics
             tween.Start();
 
             tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(path with { Commands = path.Commands.Concat(new [] { new RemoveComponent(path) }).ToArray()})
+                id, new GodotWrapper(path with { Tasks = path.Tasks.Concat(new [] { new RemoveComponent(path) }).ToArray()})
             });
         }
 

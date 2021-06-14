@@ -12,4 +12,4 @@ public record Inventory : Component
         => (Items) = (items.ToArray());
 }
 
-public record AddItem(Component Item, string Target = null) : Command(Target);
+public record AddItem(Component Item, string Target = null) : Task(Target);

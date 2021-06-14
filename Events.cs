@@ -5,52 +5,52 @@ using System.Collections.Generic;
 
 public record Player() : Component;
 
-public record Command(string Target = null, int Tick = 0) : Component
+public record Task(string Target = null, int Tick = 0) : Component
 {
     public static string TARGET_OTHER = "__OTHER";
     public static string TARGET_SELF = "__SELF";
 }
 
-public record Event : Command
+public record Event : Task
 {
-    public Command[] Commands = new Command[] { };
+    public Task[] Tasks = new Task[] { };
 
-    public Event(IEnumerable<Command> commands)
-        => (Commands) = (commands.ToArray());
+    public Event(IEnumerable<Task> tasks)
+        => (Tasks) = (tasks.ToArray());
 
-    public Event(params Command[] commands)
-        => (Commands) = (commands);
+    public Event(params Task[] tasks)
+        => (Tasks) = (tasks);
 }
 
 public record Collide : Event
 {
-    public Collide(params Command[] commands)
-        => (Commands) = (commands);
+    public Collide(params Task[] tasks)
+        => (Tasks) = (tasks);
 }
 
 public record Click : Event
 {
-    public Click(params Command[] commands)
-        => (Commands) = (commands);
+    public Click(params Task[] tasks)
+        => (Tasks) = (tasks);
 }
 
-public record AddEntity(Entity Entity, string ID = null) : Command;
+public record AddEntity(Entity Entity, string ID = null) : Task;
 
-public record RemoveEntity(string Target = null) : Command(Target);
+public record RemoveEntity(string Target = null) : Task(Target);
 
-public record AddComponent(Component Component, string Target = null) : Command(Target);
+public record AddComponent(Component Component, string Target = null) : Task(Target);
 
-public record RemoveComponent(Component Component, string Target = null) : Command(Target);
+public record RemoveComponent(Component Component, string Target = null) : Task(Target);
 
 public static class Events
 {
-    public static State System(int tick, State state, string id, string otherId, Command[] commands)
+    public static State System(int tick, State state, string id, string otherId, Task[] tasks)
     {
-        foreach (var command in commands)
+        foreach (var task in tasks)
         {
             var target = id;
 
-            if (command.Target == Command.TARGET_OTHER)
+            if (task.Target == Task.TARGET_OTHER)
             {
                 if (otherId?.Length > 0)
                 {
@@ -61,16 +61,16 @@ public static class Events
                     continue;
                 }
             }
-            else if (command.Target == Command.TARGET_SELF)
+            else if (task.Target == Task.TARGET_SELF)
             {
                 target = id;
             }
-            else if (command.Target?.Length > 0)
+            else if (task.Target?.Length > 0)
             {
-                target = command.Target;
+                target = task.Target;
             }
 
-            switch (command)
+            switch (task)
             {
                 case AddEntity addEntity:
                     {
@@ -111,9 +111,9 @@ public static class Events
                 case AddComponent addComponent:
                     {
                         var newComponent = addComponent.Component;
-                        if (newComponent is Command addCommand)
+                        if (newComponent is Task addTask)
                         {
-                            newComponent = addCommand with { Tick = tick };
+                            newComponent = addTask with { Tick = tick };
                         }
                         state = state.With(target, newComponent);
                     }
@@ -121,7 +121,7 @@ public static class Events
 
                 default:
                     {
-                        state = state.With(target, command with { Tick = tick });
+                        state = state.With(target, task with { Tick = tick });
                     }
                     break;
 
