@@ -22,18 +22,6 @@ public record Event : Task
         => (Tasks) = (tasks);
 }
 
-public record Collide : Event
-{
-    public Collide(params Task[] tasks)
-        => (Tasks) = (tasks);
-}
-
-public record Click : Event
-{
-    public Click(params Task[] tasks)
-        => (Tasks) = (tasks);
-}
-
 public record AddEntity(Entity Entity, string ID = null) : Task;
 
 public record RemoveEntity(string Target = null) : Task(Target);

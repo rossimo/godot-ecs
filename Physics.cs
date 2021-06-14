@@ -10,6 +10,12 @@ public record Velocity(float X, float Y) : Component;
 
 public record Path(Position Position, float Speed) : Event;
 
+public record Collide : Event
+{
+    public Collide(params Task[] tasks)
+        => (Tasks) = (tasks);
+}
+
 public static class Physics
 {
     public static State System(State previous, State state, Game game)

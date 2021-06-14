@@ -14,6 +14,12 @@ public record Color(float Red, float Green, float Blue) : Component;
 
 public record Flash(Color Color, string Target = null) : Task(Target);
 
+public record Click : Event
+{
+    public Click(params Task[] tasks)
+        => (Tasks) = (tasks);
+}
+
 public class Renderer
 {
     public static void System(State previous, State state, Game game)
