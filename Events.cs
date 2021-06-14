@@ -5,13 +5,12 @@ using System.Collections.Generic;
 
 public record Player() : Component;
 
-public record Event : Component
+public record Command(string Target = null, bool TargetOther = false, int Tick = 0) : Component;
+
+
+public record Event : Command
 {
-    public string ID;
-
-    public Command[] Commands = new Command[] {};
-
-    public Event() { }
+    public Command[] Commands = new Command[] { };
 
     public Event(IEnumerable<Command> commands)
         => (Commands) = (commands.ToArray());
@@ -32,9 +31,7 @@ public record Click : Event
         => (Commands) = (commands);
 }
 
-public record Command(string Target = null, bool TargetOther = false);
-
-public record AddEntity(Entity Entity) : Command;
+public record AddEntity(Entity Entity, string ID = null) : Command;
 
 public record RemoveEntity(string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
 
@@ -44,16 +41,9 @@ public record RemoveComponent(Component Component, string Target = null, bool Ta
 
 public static class Events
 {
-    public static State System(State state, string id, string otherId, Component component)
+    public static State System(int tick, State state, string id, string otherId, Command[] commands)
     {
-        if (!(component is Event))
-        {
-            return state;
-        }
-
-        var ev = component as Event;
-
-        foreach (var command in ev.Commands)
+        foreach (var command in commands)
         {
             var target = id;
 
@@ -71,20 +61,16 @@ public static class Events
             {
                 case AddEntity addEntity:
                     {
-                        state = state.With(Guid.NewGuid().ToString(), addEntity.Entity);
+                        var entityId = addEntity.ID?.Length > 0
+                            ? addEntity.ID
+                            : Guid.NewGuid().ToString();
+                        state = state.With(entityId, addEntity.Entity);
                     }
                     break;
 
                 case RemoveEntity removeEntity:
                     {
                         state = state.Without(target);
-                    }
-                    break;
-
-                case AddComponent addComponent:
-                    {
-                        var entity = state[target];
-                        state = state.With(target, addComponent.Component);
                     }
                     break;
 
@@ -109,6 +95,23 @@ public static class Events
                         }
                     }
                     break;
+
+                case AddComponent addComponent:
+                    {
+                        var newComponent = addComponent.Component;
+                        if (newComponent is Command addCommand)
+                        {
+                            newComponent = addCommand with { Tick = tick };
+                        }
+                        state = state.With(target, newComponent);
+                    }
+                    break;
+                default:
+                    {
+                        state = state.With(target, command with { Tick = tick });
+                    }
+                    break;
+
             }
         }
 
