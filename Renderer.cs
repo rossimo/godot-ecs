@@ -12,7 +12,7 @@ public record Scale(float X, float Y) : Component;
 
 public record Color(float Red, float Green, float Blue) : Component;
 
-public record Flash(Color Color, string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
+public record Flash(Color Color, string Target = null) : Command(Target);
 
 public class Renderer
 {

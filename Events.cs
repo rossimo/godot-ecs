@@ -5,8 +5,10 @@ using System.Collections.Generic;
 
 public record Player() : Component;
 
-public record Command(string Target = null, bool TargetOther = false, int Tick = 0) : Component;
-
+public record Command(string Target = null, int Tick = 0) : Component
+{
+    public static string TARGET_OTHER = "__OTHER";
+}
 
 public record Event : Command
 {
@@ -33,11 +35,11 @@ public record Click : Event
 
 public record AddEntity(Entity Entity, string ID = null) : Command;
 
-public record RemoveEntity(string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
+public record RemoveEntity(string Target = null) : Command(Target);
 
-public record AddComponent(Component Component, string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
+public record AddComponent(Component Component, string Target = null) : Command(Target);
 
-public record RemoveComponent(Component Component, string Target = null, bool TargetOther = false) : Command(Target, TargetOther);
+public record RemoveComponent(Component Component, string Target = null) : Command(Target);
 
 public static class Events
 {
@@ -47,12 +49,14 @@ public static class Events
         {
             var target = id;
 
-            if (command.TargetOther)
+            if (command.Target == Command.TARGET_OTHER)
             {
-                target = otherId;
+                if (otherId?.Length > 0)
+                {
+                    target = otherId;
+                }
             }
-
-            if (command.Target?.Length > 0)
+            else if (command.Target?.Length > 0)
             {
                 target = command.Target;
             }

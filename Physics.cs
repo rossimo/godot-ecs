@@ -4,7 +4,7 @@ using System.Linq;
 
 public record Speed(float Value) : Component;
 
-public record Move(Position Target) : Component;
+public record Move(Position Destination) : Component;
 
 public record Velocity(float X, float Y) : Component;
 
@@ -30,7 +30,7 @@ public static class Physics
             {
                 var velocityDistance = travel.DistanceTo(new Vector2(0, 0));
                 var moveDistance = new Vector2(position.X, position.Y)
-                    .DistanceTo(new Vector2(move.Target.X, move.Target.Y));
+                    .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
 
                 if (moveDistance < velocityDistance)
                 {

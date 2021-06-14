@@ -23,7 +23,7 @@ public class Game : Godot.YSort
             { "potion", POTION },
             { "fire", new Entity(
                 new Position(X: 400, Y: 200),
-                new Collide(new AddComponent(new Flash(Color: new Color(1f, 0f, 0f)), TargetOther: true)),
+                new Collide(new AddComponent(new Flash(Color: new Color(1f, 0f, 0f)), Target: Command.TARGET_OTHER)),
                 new Scale(2, 2),
                 new Sprite("res://resources/tiles/tile495.png")) },
             { "button", new Entity(

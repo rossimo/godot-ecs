@@ -81,7 +81,6 @@ namespace Ecs
             return state;
         }
 
-
         public State Without(string id)
         {
             var state = new State(this);

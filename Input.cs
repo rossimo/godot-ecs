@@ -20,7 +20,7 @@ public static class Input
                             var velocity = source.DirectionTo(new Vector2(target));
                             state = state.With(id,
                                 new Velocity(velocity.x, velocity.y),
-                                new Move(Target: new Position(target.x, target.y)));
+                                new Move(Destination: new Position(target.x, target.y)));
                         }
                     }
                 }
