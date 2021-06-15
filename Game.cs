@@ -20,25 +20,25 @@ public class Game : Godot.YSort
                 new Position(X: 50, Y: 50),
                 new Scale(3, 3),
                 new Sprite("res://resources/tiles/tile072.png")) },
-            { "potion", POTION },
+            { "potion", Potion },
             { "fire", new Entity(
                 new Position(X: 400, Y: 200),
                 new CollideEvent(
-                    new FlashTask(Color: new Color(1f, 0f, 0f), Target: Task.TARGET_OTHER),
+                    new FlashTask(Color: new Color(1f, 0f, 0f), Target: Target.Other),
                     new FlashTask(Color: new Color(2f, 2f, 0f))),
                 new Scale(2, 2),
                 new Sprite("res://resources/tiles/tile495.png")) },
             { "button", new Entity(
                 new Position(X: 300, Y: 300),
                 new CollideEvent(
-                    new AddEntityTask(ID: "potion", Entity: POTION),
+                    new AddEntityTask(Entity: Potion, Target: "potion"),
                     new FlashTask(Color: new Color(0.1f, 0.1f, 0.1f))),
                 new Scale(2, 2),
                 new Sprite("res://resources/tiles/tile481.png")) }
         };
     }
 
-    public static Entity POTION = new Entity(
+    public static Entity Potion = new Entity(
         new Position(X: 200, Y: 300),
         new CollideEvent(new RemoveEntityTask()),
         new FlashTask(Color: new Color(2f, 2f, 2f)),

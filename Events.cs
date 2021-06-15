@@ -1,15 +1,16 @@
 using Ecs;
 using System;
 using System.Linq;
-using System.Collections.Generic;
 
 public record Player() : Component;
 
-public record Task(string Target = null, int Tick = 0) : Component
+public static class Target
 {
-    public static string TARGET_OTHER = "__OTHER";
-    public static string TARGET_SELF = "__SELF";
+    public static string Other = "__OTHER";
+    public static string Self = "__SELF";
 }
+
+public record Task(string Target = null, int Tick = 0) : Component;
 
 public record Event : Component
 {
@@ -19,7 +20,7 @@ public record Event : Component
         => (Tasks) = (tasks);
 }
 
-public record AddEntityTask(Entity Entity, string ID = null) : Task;
+public record AddEntityTask(Entity Entity, string Target = null) : Task(Target);
 
 public record RemoveEntityTask(string Target = null) : Task(Target);
 
@@ -35,7 +36,7 @@ public static class Events
         {
             var target = id;
 
-            if (task.Target == Task.TARGET_OTHER)
+            if (task.Target == Target.Other)
             {
                 if (otherId?.Length > 0)
                 {
@@ -46,7 +47,7 @@ public static class Events
                     continue;
                 }
             }
-            else if (task.Target == Task.TARGET_SELF)
+            else if (task.Target == Target.Self)
             {
                 target = id;
             }
@@ -59,8 +60,8 @@ public static class Events
             {
                 case AddEntityTask addEntity:
                     {
-                        var entityId = addEntity.ID?.Length > 0
-                            ? addEntity.ID
+                        var entityId = addEntity.Target?.Length > 0
+                            ? addEntity.Target
                             : Guid.NewGuid().ToString();
                         state = state.With(entityId, addEntity.Entity);
                     }
