@@ -23,12 +23,16 @@ public class Game : Godot.YSort
             { "potion", POTION },
             { "fire", new Entity(
                 new Position(X: 400, Y: 200),
-                new Collide(new Flash(Color: new Color(1f, 0f, 0f), Target: Task.TARGET_OTHER), new Flash(Color: new Color(2f, 2f, 0f))),
+                new CollideEvent(
+                    new FlashTask(Color: new Color(1f, 0f, 0f), Target: Task.TARGET_OTHER),
+                    new FlashTask(Color: new Color(2f, 2f, 0f))),
                 new Scale(2, 2),
                 new Sprite("res://resources/tiles/tile495.png")) },
             { "button", new Entity(
                 new Position(X: 300, Y: 300),
-                new Collide(new AddEntity(ID: "potion", Entity: POTION), new Flash(Color: new Color(0.1f, 0.1f, 0.1f))),
+                new CollideEvent(
+                    new AddEntityTask(ID: "potion", Entity: POTION),
+                    new FlashTask(Color: new Color(0.1f, 0.1f, 0.1f))),
                 new Scale(2, 2),
                 new Sprite("res://resources/tiles/tile481.png")) }
         };
@@ -36,8 +40,8 @@ public class Game : Godot.YSort
 
     public static Entity POTION = new Entity(
         new Position(X: 200, Y: 300),
-        new Collide(new RemoveEntity()),
-        new Flash(Color: new Color(2f, 2f, 2f)),
+        new CollideEvent(new RemoveEntityTask()),
+        new FlashTask(Color: new Color(2f, 2f, 2f)),
         new Scale(2, 2),
         new Sprite("res://resources/tiles/tile570.png"));
 
@@ -46,20 +50,24 @@ public class Game : Godot.YSort
         State = Input.System(State, this, @event);
     }
 
+    public void Event(string id, string otherId, Event ev)
+    {
+        State = Events.System(Tick, State, id, otherId, ev);
+    }
+
     public void _Event(string id, GodotWrapper ev)
     {
-        State = Events.System(Tick, State, id, null, ev.Get<Task[]>());
+        Event(id, null, ev.Get<Event>());
     }
 
     public void _Event(Node other, string id, GodotWrapper ev)
     {
-        State = Events.System(Tick, State, id, other.GetParent().Name, ev.Get<Task[]>());
+        Event(id, other.GetParent().Name, ev.Get<Event>());
     }
 
     public override void _PhysicsProcess(float delta)
     {
         State = Physics.System(Previous, State, this);
-
         Renderer.System(Previous, State, this);
 
         Log();
@@ -73,14 +81,14 @@ public class Game : Godot.YSort
             Diff.Compare<Sprite>(Previous, State).To<Component>(),
             Diff.Compare<Scale>(Previous, State).To<Component>(),
             Diff.Compare<Rotation>(Previous, State).To<Component>(),
-            Diff.Compare<Click>(Previous, State).To<Component>(),
-            Diff.Compare<Collide>(Previous, State).To<Component>(),
+            Diff.Compare<ClickEvent>(Previous, State).To<Component>(),
+            Diff.Compare<CollideEvent>(Previous, State).To<Component>(),
             Diff.Compare<Position>(Previous, State).To<Component>(),
-            Diff.Compare<Path>(Previous, State).To<Component>(),
+            Diff.Compare<PathEvent>(Previous, State).To<Component>(),
             Diff.Compare<Inventory>(Previous, State).To<Component>(),
             Diff.Compare<Move>(Previous, State).To<Component>(),
             Diff.Compare<Velocity>(Previous, State).To<Component>(),
-            Diff.Compare<Flash>(Previous, State).To<Component>()
+            Diff.Compare<FlashTask>(Previous, State).To<Component>()
         };
 
         IEnumerable<(string, string)> all = new List<(string, string)>();

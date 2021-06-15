@@ -11,30 +11,27 @@ public record Task(string Target = null, int Tick = 0) : Component
     public static string TARGET_SELF = "__SELF";
 }
 
-public record Event : Task
+public record Event : Component
 {
     public Task[] Tasks = new Task[] { };
-
-    public Event(IEnumerable<Task> tasks)
-        => (Tasks) = (tasks.ToArray());
 
     public Event(params Task[] tasks)
         => (Tasks) = (tasks);
 }
 
-public record AddEntity(Entity Entity, string ID = null) : Task;
+public record AddEntityTask(Entity Entity, string ID = null) : Task;
 
-public record RemoveEntity(string Target = null) : Task(Target);
+public record RemoveEntityTask(string Target = null) : Task(Target);
 
-public record AddComponent(Component Component, string Target = null) : Task(Target);
+public record AddComponentTask(string Target = null) : Task(Target);
 
-public record RemoveComponent(Component Component, string Target = null) : Task(Target);
+public record RemoveComponentTask(Component Component, string Target = null) : Task(Target);
 
 public static class Events
 {
-    public static State System(int tick, State state, string id, string otherId, Task[] tasks)
+    public static State System(int tick, State state, string id, string otherId, Event ev)
     {
-        foreach (var task in tasks)
+        foreach (var task in ev.Tasks)
         {
             var target = id;
 
@@ -60,7 +57,7 @@ public static class Events
 
             switch (task)
             {
-                case AddEntity addEntity:
+                case AddEntityTask addEntity:
                     {
                         var entityId = addEntity.ID?.Length > 0
                             ? addEntity.ID
@@ -69,13 +66,13 @@ public static class Events
                     }
                     break;
 
-                case RemoveEntity removeEntity:
+                case RemoveEntityTask removeEntity:
                     {
                         state = state.Without(target);
                     }
                     break;
 
-                case RemoveComponent removeComponent:
+                case RemoveComponentTask removeComponent:
                     {
                         var entity = state[target];
                         state = state.With(target, entity with
@@ -85,34 +82,11 @@ public static class Events
                     }
                     break;
 
-                case AddItem addItem:
-                    {
-                        var entity = state[target];
-                        var inventory = entity.Get<Inventory>();
-                        if (inventory != null)
-                        {
-                            state = state.With(target, entity.With(new Inventory(inventory.Items.Concat(new[] { addItem.Item }))));
-                        }
-                    }
-                    break;
-
-                case AddComponent addComponent:
-                    {
-                        var newComponent = addComponent.Component;
-                        if (newComponent is Task addTask)
-                        {
-                            newComponent = addTask with { Tick = tick };
-                        }
-                        state = state.With(target, newComponent);
-                    }
-                    break;
-
-                default:
+                case AddComponentTask addComponent:
                     {
                         state = state.With(target, task with { Tick = tick });
                     }
                     break;
-
             }
         }
 

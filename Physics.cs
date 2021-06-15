@@ -8,19 +8,15 @@ public record Move(Position Destination) : Component;
 
 public record Velocity(float X, float Y) : Component;
 
-public record Path(Position Position, float Speed) : Event;
+public record PathEvent(Position Position, float Speed) : Event;
 
-public record Collide : Event
-{
-    public Collide(params Task[] tasks)
-        => (Tasks) = (tasks);
-}
+public record CollideEvent(params Task[] tasks) : Event(tasks);
 
 public static class Physics
 {
     public static State System(State previous, State state, Game game)
     {
-        var paths = Diff.Compare<Path>(previous, state);
+        var paths = Diff.Compare<PathEvent>(previous, state);
 
         foreach (var (id, velocity) in state.Get<Velocity>())
         {
@@ -93,7 +89,7 @@ public static class Physics
             tween.Start();
 
             tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(path with { Tasks = path.Tasks.Concat(new [] { new RemoveComponent(path) }).ToArray()})
+                id, new GodotWrapper(path with { Tasks = path.Tasks.Concat(new [] { new RemoveComponentTask(path) }).ToArray()})
             });
         }
 

@@ -12,13 +12,11 @@ public record Scale(float X, float Y) : Component;
 
 public record Color(float Red, float Green, float Blue) : Component;
 
-public record Flash(Color Color, string Target = null) : Task(Target);
+public record FlashTask(Color Color, string Target = null) : AddComponentTask(Target);
 
-public record Click : Event
-{
-    public Click(params Task[] tasks)
-        => (Tasks) = (tasks);
-}
+public record FlashEndEvent(params Task[] tasks) : Event;
+
+public record ClickEvent(params Task[] tasks) : Event;
 
 public class Renderer
 {
@@ -27,7 +25,7 @@ public class Renderer
         if (previous == state) return;
 
         var (sprites, scales, rotations, clicks, collides, positions, flashes) =
-            Diff.Compare<Sprite, Scale, Rotation, Click, Collide, Position, Flash>(previous, state);
+            Diff.Compare<Sprite, Scale, Rotation, ClickEvent, CollideEvent, Position, FlashTask>(previous, state);
 
         foreach (var (id, sprite) in sprites.Removed)
         {
@@ -158,13 +156,8 @@ public class Renderer
             {
                 node.Disconnect("pressed", game, nameof(game._Event));
             }
-
             node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(click.Tasks.Select(task => task with {
-                    Target = task.Target?.Length > 0
-                        ? task.Target
-                        : click.Target
-                }).ToArray())
+                id, new GodotWrapper(click)
             });
         }
 
@@ -190,11 +183,7 @@ public class Renderer
             }
 
             node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(collide.Tasks.Select(task => task with {
-                    Target = task.Target?.Length > 0
-                        ? task.Target
-                        : collide.Target
-                }).ToArray())
+                id, new GodotWrapper(collide)
             });
         }
 
@@ -243,7 +232,7 @@ public class Renderer
             tween.Start();
 
             tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(new [] { new RemoveComponent(flash) })
+                id, new GodotWrapper(new FlashEndEvent(new RemoveComponentTask(flash)))
             });
         }
     }

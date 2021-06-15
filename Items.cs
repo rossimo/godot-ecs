@@ -13,3 +13,28 @@ public record Inventory : Component
 }
 
 public record AddItem(Component Item, string Target = null) : Task(Target);
+
+public static class Items
+{
+    public static State System(int tick, State state, string target, Task[] tasks)
+    {
+        foreach (var task in tasks)
+        {
+            switch (task)
+            {
+                case AddItem addItem:
+                    {
+                        var entity = state[target];
+                        var inventory = entity.Get<Inventory>();
+                        if (inventory != null)
+                        {
+                            state = state.With(target, entity.With(new Inventory(inventory.Items.Concat(new[] { addItem.Item }))));
+                        }
+                    }
+                    break;
+            }
+        }
+
+        return state;
+    }
+}
