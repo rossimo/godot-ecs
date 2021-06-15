@@ -2,15 +2,33 @@ using Ecs;
 using Godot;
 using System.Linq;
 
-public record Speed(float Value) : Component;
+public record Speed : Component
+{
+    public float Value;
+}
 
-public record Move(Position Destination) : Component;
+public record Move : Component
+{
+    public Position Destination;
+}
 
-public record Velocity(float X, float Y) : Component;
+public record Velocity : Component
+{
+    public float X;
+    public float Y;
+}
 
-public record PathEvent(Position Position, float Speed) : Event;
+public record PathEvent : Event
+{
+    public Position Position;
+    public float Speed;
+}
 
-public record CollideEvent(params Task[] tasks) : Event(tasks);
+public record CollideEvent : Event
+{
+    public CollideEvent(params Task[] tasks)
+        => (Tasks) = (tasks);
+}
 
 public static class Physics
 {
@@ -24,7 +42,7 @@ public static class Physics
             if (node == null) continue;
 
             var entity = state[id];
-            var speed = entity.Get<Speed>() ;
+            var speed = entity.Get<Speed>();
             var travel = new Vector2(velocity.X, velocity.Y) * (speed?.Value ?? 1f);
 
             var (move, position) = entity.Get<Move, Position>();
@@ -52,7 +70,7 @@ public static class Physics
 
             if (position.X != node.Position.x || position.Y != node.Position.y)
             {
-                state = state.With(id, new Position(node.Position.x, node.Position.y, true));
+                state = state.With(id, new Position { X = node.Position.x, Y = node.Position.y, Self = true });
             }
         }
 
@@ -79,7 +97,7 @@ public static class Physics
             }
 
             var entity = state[id];
-            var position = entity?.Get<Position>() ?? new Position(0, 0);
+            var position = entity?.Get<Position>() ?? new Position { X = 0, Y = 0 };
 
             var start = new Vector2(node.Position.x, node.Position.y);
             var end = new Vector2(path.Position.X, path.Position.Y);
@@ -89,7 +107,7 @@ public static class Physics
             tween.Start();
 
             tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(path with { Tasks = path.Tasks.Concat(new [] { new RemoveComponentTask(path) }).ToArray()})
+                id, new GodotWrapper(path with { Tasks = path.Tasks.Concat(new [] { new Remove(path) }).ToArray()})
             });
         }
 

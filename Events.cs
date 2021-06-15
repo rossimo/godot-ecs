@@ -10,7 +10,11 @@ public static class Target
     public static string Self = "__SELF";
 }
 
-public record Task(string Target = null, int Tick = 0) : Component;
+public record Task
+{
+    public string Target = null;
+    public int Tick = 0;
+}
 
 public record Event : Component
 {
@@ -20,13 +24,37 @@ public record Event : Component
         => (Tasks) = (tasks);
 }
 
-public record AddEntityTask(Entity Entity, string Target = null) : Task(Target);
+public record Add : Task
+{
+    public Component Component;
 
-public record RemoveEntityTask(string Target = null) : Task(Target);
+    public Add() { }
 
-public record AddComponentTask(string Target = null) : Task(Target);
+    public Add(Component component, string target = null)
+        => (Component, Target) = (component, target);
+}
 
-public record RemoveComponentTask(Component Component, string Target = null) : Task(Target);
+public record Remove : Task
+{
+    public Component Component;
+
+    public Remove() { }
+
+    public Remove(Component component)
+        => (Component) = (component);
+}
+
+public record AddEntity : Task
+{
+    public Entity Entity;
+
+    public AddEntity() { }
+
+    public AddEntity(Entity entity, string target = null)
+        => (Entity, Target) = (entity, target);
+}
+
+public record RemoveEntity : Task;
 
 public static class Events
 {
@@ -56,36 +84,50 @@ public static class Events
                 target = task.Target;
             }
 
+            Func<Component, Component> addTick = (Component component) =>
+            {
+                return component is TickComponent tickComponent
+                    ? tickComponent with { Tick = tick }
+                    : component;
+            };
+
             switch (task)
             {
-                case AddEntityTask addEntity:
+                case Add add:
                     {
-                        var entityId = addEntity.Target?.Length > 0
-                            ? addEntity.Target
-                            : Guid.NewGuid().ToString();
-                        state = state.With(entityId, addEntity.Entity);
+                        state = state.With(target, addTick(add.Component));
                     }
                     break;
 
-                case RemoveEntityTask removeEntity:
-                    {
-                        state = state.Without(target);
-                    }
-                    break;
-
-                case RemoveComponentTask removeComponent:
+                case Remove remove:
                     {
                         var entity = state[target];
                         state = state.With(target, entity with
                         {
-                            Components = entity.Components.Where(component => component != removeComponent.Component)
+                            Components = entity.Components.Where(component =>
+                                component != remove.Component)
                         });
                     }
                     break;
 
-                case AddComponentTask addComponent:
+                case AddEntity addEntity:
                     {
-                        state = state.With(target, task with { Tick = tick });
+                        target = addEntity.Target?.Length > 0
+                            ? addEntity.Target
+                            : Guid.NewGuid().ToString();
+
+                        var entity = addEntity.Entity;
+                        foreach (var component in entity.Components)
+                        {
+                            entity = entity.With(addTick(component));
+                        }
+                        state = state.With(target, entity);
+                    }
+                    break;
+
+                case RemoveEntity removeEntity:
+                    {
+                        state = state.Without(target);
                     }
                     break;
             }

@@ -19,8 +19,8 @@ public static class Input
                             var source = new Vector2(position.X, position.Y);
                             var velocity = source.DirectionTo(new Vector2(target));
                             state = state.With(id,
-                                new Velocity(velocity.x, velocity.y),
-                                new Move(Destination: new Position(target.x, target.y)));
+                                new Velocity { X = velocity.x, Y = velocity.y },
+                                new Move { Destination = new Position { X = target.x, Y = target.y } });
                         }
                     }
                 }

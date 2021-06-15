@@ -1,18 +1,15 @@
 using Ecs;
 using System.Linq;
-using System.Collections.Generic;
 
 public record Inventory : Component
 {
     public Component[] Items = new Component[] { };
-
-    public Inventory() { }
-
-    public Inventory(IEnumerable<Component> items)
-        => (Items) = (items.ToArray());
 }
 
-public record AddItem(Component Item, string Target = null) : Task(Target);
+public record AddItem : Task
+{
+    public Component Item;
+}
 
 public static class Items
 {
@@ -28,7 +25,10 @@ public static class Items
                         var inventory = entity.Get<Inventory>();
                         if (inventory != null)
                         {
-                            state = state.With(target, entity.With(new Inventory(inventory.Items.Concat(new[] { addItem.Item }))));
+                            state = state.With(target, entity.With(new Inventory
+                            {
+                                Items = inventory.Items.Concat(new[] { addItem.Item }).ToArray()
+                            }));
                         }
                     }
                     break;

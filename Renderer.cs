@@ -2,21 +2,49 @@ using Ecs;
 using Godot;
 using System.Linq;
 
-public record Sprite(string Image) : Component;
+public record Sprite : Component
+{
+    public string Image;
+}
 
-public record Position(float X, float Y, bool Self = false) : Component;
+public record Position : Component
+{
+    public float X;
+    public float Y;
+    public bool Self = false;
+}
 
-public record Rotation(float Degrees) : Component;
+public record Rotation : Component
+{
+    public float Degrees;
+}
 
-public record Scale(float X, float Y) : Component;
+public record Scale : Component
+{
+    public float X;
+    public float Y;
+}
 
-public record Color(float Red, float Green, float Blue) : Component;
+public record Color : Component
+{
+    public float Red;
+    public float Green;
+    public float Blue;
+}
 
-public record FlashTask(Color Color, string Target = null) : AddComponentTask(Target);
+public record TickComponent : Component
+{
+    public int Tick;
+}
 
-public record FlashEndEvent(params Task[] tasks) : Event;
+public record Flash : TickComponent
+{
+    public Color Color;
+}
 
-public record ClickEvent(params Task[] tasks) : Event;
+public record FlashEndEvent : Event;
+
+public record ClickEvent : Event;
 
 public class Renderer
 {
@@ -25,7 +53,7 @@ public class Renderer
         if (previous == state) return;
 
         var (sprites, scales, rotations, clicks, collides, positions, flashes) =
-            Diff.Compare<Sprite, Scale, Rotation, ClickEvent, CollideEvent, Position, FlashTask>(previous, state);
+            Diff.Compare<Sprite, Scale, Rotation, ClickEvent, CollideEvent, Position, Flash>(previous, state);
 
         foreach (var (id, sprite) in sprites.Removed)
         {
@@ -222,7 +250,7 @@ public class Renderer
             }
 
             var entity = state[id];
-            var position = entity?.Get<Position>() ?? new Position(0, 0);
+            var position = entity?.Get<Position>() ?? new Position { X = 0, Y = 0 };
 
             tween.InterpolateProperty(node, "modulate",
                 new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue),
@@ -232,7 +260,7 @@ public class Renderer
             tween.Start();
 
             tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(new FlashEndEvent(new RemoveComponentTask(flash)))
+                id, new GodotWrapper(new FlashEndEvent{ Tasks = new [] { new Remove(flash) } })
             });
         }
     }

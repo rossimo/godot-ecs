@@ -14,36 +14,38 @@ public class Game : Godot.YSort
     {
         State = new State() {
             { "hero", new Entity(
-                new Player(),
-                new Speed(3f),
-                new Inventory(),
-                new Position(X: 50, Y: 50),
-                new Scale(3, 3),
-                new Sprite("res://resources/tiles/tile072.png")) },
+                new Player { },
+                new Speed { Value = 3f },
+                new Inventory { },
+                new Position{ X = 50, Y = 50 },
+                new Scale { X = 3, Y = 3 },
+                new Sprite { Image = "res://resources/tiles/tile072.png" })},
             { "potion", Potion },
             { "fire", new Entity(
-                new Position(X: 400, Y: 200),
+                new Position { X = 400, Y = 200 },
                 new CollideEvent(
-                    new FlashTask(Color: new Color(1f, 0f, 0f), Target: Target.Other),
-                    new FlashTask(Color: new Color(2f, 2f, 0f))),
-                new Scale(2, 2),
-                new Sprite("res://resources/tiles/tile495.png")) },
+                    new Add(new Flash { Color = new Color { Red = 1f, Green = 0f, Blue = 0f } }, Target.Other),
+                    new Add(new Flash { Color = new Color { Red = 2f, Green = 2f, Blue = 0f } })
+                ),
+                new Scale { X = 2, Y = 2 },
+                new Sprite { Image = "res://resources/tiles/tile495.png" })},
             { "button", new Entity(
-                new Position(X: 300, Y: 300),
+                new Position { X = 300, Y = 300 },
                 new CollideEvent(
-                    new AddEntityTask(Entity: Potion, Target: "potion"),
-                    new FlashTask(Color: new Color(0.1f, 0.1f, 0.1f))),
-                new Scale(2, 2),
-                new Sprite("res://resources/tiles/tile481.png")) }
+                    new Add(new Flash { Color = new Color { Red = 0.1f, Green = 0.1f, Blue = 0.1f } }),
+                    new AddEntity(Potion, "potion")
+                ),
+                new Scale { X = 2, Y = 2 },
+                new Sprite { Image = "res://resources/tiles/tile481.png" })}
         };
     }
 
     public static Entity Potion = new Entity(
-        new Position(X: 200, Y: 300),
-        new CollideEvent(new RemoveEntityTask()),
-        new FlashTask(Color: new Color(2f, 2f, 2f)),
-        new Scale(2, 2),
-        new Sprite("res://resources/tiles/tile570.png"));
+        new Position { X = 200, Y = 300 },
+        new CollideEvent(new RemoveEntity()),
+        new Flash { Color = new Color { Red = 2f, Green = 2f, Blue = 2f } },
+        new Scale { X = 2, Y = 2 },
+        new Sprite { Image = "res://resources/tiles/tile570.png" });
 
     public override void _Input(InputEvent @event)
     {
@@ -88,7 +90,7 @@ public class Game : Godot.YSort
             Diff.Compare<Inventory>(Previous, State).To<Component>(),
             Diff.Compare<Move>(Previous, State).To<Component>(),
             Diff.Compare<Velocity>(Previous, State).To<Component>(),
-            Diff.Compare<FlashTask>(Previous, State).To<Component>()
+            Diff.Compare<Flash>(Previous, State).To<Component>()
         };
 
         IEnumerable<(string, string)> all = new List<(string, string)>();
