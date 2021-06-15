@@ -2,8 +2,6 @@ using Ecs;
 using System;
 using System.Linq;
 
-public record Player() : Component;
-
 public static class Target
 {
     public static string Other = "__OTHER";
@@ -13,7 +11,6 @@ public static class Target
 public record Task
 {
     public string Target = null;
-    public int Tick = 0;
 }
 
 public record Event : Component
@@ -84,18 +81,11 @@ public static class Events
                 target = task.Target;
             }
 
-            Func<Component, Component> addTick = (Component component) =>
-            {
-                return component is TickComponent tickComponent
-                    ? tickComponent with { Tick = tick }
-                    : component;
-            };
-
             switch (task)
             {
                 case Add add:
                     {
-                        state = state.With(target, addTick(add.Component));
+                        state = state.With(target, add.Component);
                     }
                     break;
 
@@ -119,7 +109,7 @@ public static class Events
                         var entity = addEntity.Entity;
                         foreach (var component in entity.Components)
                         {
-                            entity = entity.With(addTick(component));
+                            entity = entity.With(component);
                         }
                         state = state.With(target, entity);
                     }

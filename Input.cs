@@ -1,6 +1,8 @@
 using Ecs;
 using Godot;
 
+public record Player() : Component;
+
 public static class Input
 {
     public static Ecs.State System(Ecs.State state, Game game, InputEvent @event)

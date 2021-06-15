@@ -42,8 +42,6 @@ public record Flash : TickComponent
     public Color Color;
 }
 
-public record FlashEndEvent : Event;
-
 public record ClickEvent : Event;
 
 public class Renderer
@@ -260,7 +258,7 @@ public class Renderer
             tween.Start();
 
             tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(new FlashEndEvent{ Tasks = new [] { new Remove(flash) } })
+                id, new GodotWrapper(new Event(new Remove(flash)))
             });
         }
     }

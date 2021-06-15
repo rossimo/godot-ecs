@@ -54,6 +54,15 @@ public class Game : Godot.YSort
 
     public void Event(string id, string otherId, Event ev)
     {
+        ev = ev with
+        {
+            Tasks = ev.Tasks.Select(task =>
+                task is Add add && add.Component is TickComponent tickComponent
+                    ? add with { Component = tickComponent with { Tick = Tick } }
+                    : task
+            ).ToArray()
+        };
+
         State = Events.System(Tick, State, id, otherId, ev);
     }
 
