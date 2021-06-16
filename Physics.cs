@@ -18,12 +18,6 @@ public record Velocity : Component
     public float Y;
 }
 
-public record PathEvent : Event
-{
-    public Position Position;
-    public float Speed;
-}
-
 public record CollideEvent : Event
 {
     public CollideEvent(params Task[] tasks)
@@ -34,12 +28,71 @@ public static class Physics
 {
     public static State System(State previous, State state, Game game)
     {
-        var paths = Diff.Compare<PathEvent>(previous, state);
+        var collides = Diff.Compare<CollideEvent>(previous, state);
+
+        foreach (var (id, collide) in collides.Removed)
+        {
+            var node = game.GetNodeOrNull<Node2D>($"{id}-physics");
+            if (node == null) continue;
+
+            if (node.IsConnected("area_entered", game, nameof(game._Event)))
+            {
+                node.Disconnect("area_entered", game, nameof(game._Event));
+            }
+        }
+
+        foreach (var (id, collide) in collides.Added.Concat(collides.Changed))
+        {
+            var entity = state[id];
+            var position = entity.Get<Position>() ?? new Position { X = 0, Y = 0 };
+            var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+            if (node == null)
+            {
+                node = new KinematicBody2D()
+                {
+                    Name = $"{id}-physics",
+                    Position = new Vector2(position.X, position.Y)
+                };
+                game.AddChild(node);
+            }
+
+            foreach (Node child in node.GetChildren())
+            {
+                node.RemoveChild(child);
+                child.QueueFree();
+            }
+
+            var sprite = state[id].Get<Sprite>();
+            if (sprite != null)
+            {
+                var texture = GD.Load<Texture>(sprite.Image);
+                var scale = state[id].Get<Scale>() ?? new Scale { X = 1, Y = 1 };
+
+                node.AddChild(new CollisionShape2D()
+                {
+                    Shape = new RectangleShape2D()
+                    {
+                        Extents = new Vector2(
+                            texture.GetHeight() * scale.X,
+                            texture.GetWidth() * scale.Y) / 2f
+                    }
+                });
+            }
+
+            if (node.IsConnected("area_entered", game, nameof(game._Event)))
+            {
+                node.Disconnect("area_entered", game, nameof(game._Event));
+            }
+
+            node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
+                id, new GodotWrapper(collide)
+            });
+        }
 
         foreach (var (id, velocity) in state.Get<Velocity>())
         {
-            var node = game.GetNodeOrNull<KinematicBody2D>(id);
-            if (node == null) continue;
+            var physics = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+            if (physics == null) continue;
 
             var entity = state[id];
             var speed = entity.Get<Speed>();
@@ -60,7 +113,34 @@ public static class Physics
                 }
             }
 
-            node.MoveAndCollide(travel);
+            var oldPosition = physics.Position;
+            physics.MoveAndCollide(travel);
+            var newPosition = physics.Position;
+
+            if (oldPosition.x != newPosition.x || oldPosition.y != newPosition.y)
+            {
+                var sprite = game.GetNodeOrNull<Godot.Sprite>($"{id}");
+                if (sprite == null) continue;
+
+                var tween = sprite.GetNodeOrNull<Tween>("move");
+                if (tween == null)
+                {
+                    tween = new Tween()
+                    {
+                        Name = "move"
+                    };
+                    sprite.AddChild(tween);
+                }
+
+                tween.RemoveAll();
+
+                tween.InterpolateProperty(sprite, "position",
+                    sprite.Position,
+                    newPosition,
+                    1f / 60f);
+
+                tween.Start();
+            }
         }
 
         foreach (var (id, position) in state.Get<Position>())
@@ -72,43 +152,6 @@ public static class Physics
             {
                 state = state.With(id, new Position { X = node.Position.x, Y = node.Position.y, Self = true });
             }
-        }
-
-        foreach (var (id, path) in paths.Removed)
-        {
-            var node = game.GetNodeOrNull<Node2D>(id);
-            var tween = game.GetNodeOrNull<Tween>($"{id}/path");
-            if (node == null || tween == null) continue;
-
-            tween.StopAll();
-        }
-
-        foreach (var (id, path) in paths.Added.Concat(paths.Changed))
-        {
-            var node = game.GetNodeOrNull<Node2D>(id);
-            var tween = game.GetNodeOrNull<Tween>($"{id}/path");
-            if (node == null) continue;
-
-            tween.StopAll();
-
-            if (tween.IsConnected("tween_all_completed", game, nameof(game._Event)))
-            {
-                tween.Disconnect("tween_all_completed", game, nameof(game._Event));
-            }
-
-            var entity = state[id];
-            var position = entity?.Get<Position>() ?? new Position { X = 0, Y = 0 };
-
-            var start = new Vector2(node.Position.x, node.Position.y);
-            var end = new Vector2(path.Position.X, path.Position.Y);
-            var distance = start.DistanceTo(end);
-            var duration = distance / path.Speed;
-            tween.InterpolateProperty(node, "position", start, end, duration);
-            tween.Start();
-
-            tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(path with { Tasks = path.Tasks.Concat(new [] { new Remove(path) }).ToArray()})
-            });
         }
 
         return state;

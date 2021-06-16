@@ -50,8 +50,8 @@ public class Renderer
     {
         if (previous == state) return;
 
-        var (sprites, scales, rotations, clicks, collides, positions, flashes) =
-            Diff.Compare<Sprite, Scale, Rotation, ClickEvent, CollideEvent, Position, Flash>(previous, state);
+        var (sprites, scales, rotations, clicks, positions, flashes) =
+            Diff.Compare<Sprite, Scale, Rotation, ClickEvent, Position, Flash>(previous, state);
 
         foreach (var (id, sprite) in sprites.Removed)
         {
@@ -64,12 +64,13 @@ public class Renderer
 
         foreach (var (id, component) in sprites.Added)
         {
-            var node = game.GetNodeOrNull<ClickableKinematicBody2D>(id);
+            var node = game.GetNodeOrNull<ClickableSprite>(id);
             if (node != null) continue;
 
-            node = new ClickableKinematicBody2D()
+            node = new ClickableSprite()
             {
-                Name = id
+                Name = id,
+                Texture = GD.Load<Texture>(component.Image)
             };
             game.AddChild(node);
 
@@ -84,54 +85,14 @@ public class Renderer
                 Name = "modulate"
             };
             node.AddChild(modulate);
-
-            var sprite = new Godot.Sprite()
-            {
-                Name = "sprite",
-                Texture = GD.Load<Texture>(component.Image)
-            };
-            node.AddChild(sprite);
-            node.Rect = sprite.GetRect();
-
-            var area = new Area2D()
-            {
-                Name = "area"
-            };
-            node.AddChild(area);
-
-            area.AddChild(new CollisionShape2D()
-            {
-                Shape = new RectangleShape2D()
-                {
-                    Extents = sprite.GetRect().Size / 2f
-                }
-            });
         }
 
         foreach (var (id, component) in sprites.Changed)
         {
-            var node = game.GetNodeOrNull<ClickableKinematicBody2D>(id);
-            var sprite = node?.GetNode<Godot.Sprite>("sprite");
-            if (node == null || sprite == null) continue;
+            var node = game.GetNodeOrNull<ClickableSprite>(id);
+            if (node == null) continue;
 
-            sprite.Texture = GD.Load<Texture>(component.Image);
-            node.Rect = sprite.GetRect();
-
-            var area = node.GetNode("area");
-
-            foreach (Node child in area.GetChildren())
-            {
-                area.RemoveChild(child);
-                child.QueueFree();
-            }
-
-            area.AddChild(new CollisionShape2D()
-            {
-                Shape = new RectangleShape2D()
-                {
-                    Extents = sprite.GetRect().Size / 2f
-                }
-            });
+            node.Texture = GD.Load<Texture>(component.Image);
         }
 
         foreach (var (id, scale) in scales.Removed)
@@ -184,32 +145,6 @@ public class Renderer
             }
             node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() {
                 id, new GodotWrapper(click)
-            });
-        }
-
-        foreach (var (id, collide) in collides.Removed)
-        {
-            var node = game.GetNodeOrNull<Node2D>($"{id}/area");
-            if (node == null) continue;
-
-            if (node.IsConnected("area_entered", game, nameof(game._Event)))
-            {
-                node.Disconnect("area_entered", game, nameof(game._Event));
-            }
-        }
-
-        foreach (var (id, collide) in collides.Added.Concat(collides.Changed))
-        {
-            var node = game.GetNodeOrNull<Node2D>($"{id}/area");
-            if (node == null) continue;
-
-            if (node.IsConnected("area_entered", game, nameof(game._Event)))
-            {
-                node.Disconnect("area_entered", game, nameof(game._Event));
-            }
-
-            node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(collide)
             });
         }
 

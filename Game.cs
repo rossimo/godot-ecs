@@ -19,6 +19,7 @@ public class Game : Godot.YSort
                 new Inventory { },
                 new Position{ X = 50, Y = 50 },
                 new Scale { X = 3, Y = 3 },
+                new CollideEvent(),
                 new Sprite { Image = "res://resources/tiles/tile072.png" })},
             { "potion", Potion },
             { "fire", new Entity(
@@ -78,14 +79,13 @@ public class Game : Godot.YSort
 
     public override void _PhysicsProcess(float delta)
     {
-        State = Physics.System(Previous, State, this);
         Renderer.System(Previous, State, this);
+        State = Physics.System(Previous, State, this);
 
         Log();
         Previous = State;
         Tick = Tick + 1;
     }
-
     void Log()
     {
         var diffs = new[] {
@@ -95,7 +95,6 @@ public class Game : Godot.YSort
             Diff.Compare<ClickEvent>(Previous, State).To<Component>(),
             Diff.Compare<CollideEvent>(Previous, State).To<Component>(),
             Diff.Compare<Position>(Previous, State).To<Component>(),
-            Diff.Compare<PathEvent>(Previous, State).To<Component>(),
             Diff.Compare<Inventory>(Previous, State).To<Component>(),
             Diff.Compare<Move>(Previous, State).To<Component>(),
             Diff.Compare<Velocity>(Previous, State).To<Component>(),

@@ -1,7 +1,7 @@
 using System;
 using Godot;
 
-public class ClickableKinematicBody2D : Godot.KinematicBody2D
+public class ClickableSprite : Godot.Sprite
 {
     public Rect2 Rect = new Rect2();
 
