@@ -26,7 +26,7 @@ public record CollideEvent : Event
 
 public static class Physics
 {
-    public static State System(State previous, State state, Game game)
+    public static State System(State previous, State state, Game game, float delta)
     {
         var collides = Diff.Compare<CollideEvent>(previous, state);
 
@@ -137,7 +137,7 @@ public static class Physics
                 tween.InterpolateProperty(sprite, "position",
                     sprite.Position,
                     newPosition,
-                    1f / 60f);
+                    delta);
 
                 tween.Start();
             }
