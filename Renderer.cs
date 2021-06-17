@@ -11,7 +11,6 @@ public record Position : Component
 {
     public float X;
     public float Y;
-    public bool Self = false;
 }
 
 public record Rotation : Component
@@ -67,10 +66,14 @@ public class Renderer
             var node = game.GetNodeOrNull<ClickableSprite>(id);
             if (node != null) continue;
 
+            var entity = state[id];
+            var position = entity.Get<Position>();
+
             node = new ClickableSprite()
             {
                 Name = id,
-                Texture = GD.Load<Texture>(component.Image)
+                Texture = GD.Load<Texture>(component.Image),
+                Position = position == null ? new Vector2(0, 0) : new Vector2(position.X, position.Y)
             };
             game.AddChild(node);
 
@@ -146,17 +149,6 @@ public class Renderer
             node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() {
                 id, new GodotWrapper(click)
             });
-        }
-
-        foreach (var (id, position) in positions.Added.Concat(positions.Changed))
-        {
-            var node = game.GetNodeOrNull<Node2D>(id);
-            if (node == null) continue;
-
-            if (!position.Self)
-            {
-                node.Position = new Vector2(position.X, position.Y);
-            }
         }
 
         foreach (var (id, flash) in flashes.Removed)

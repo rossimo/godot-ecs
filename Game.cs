@@ -7,7 +7,7 @@ using System.Collections.Generic;
 public class Game : Godot.YSort
 {
     public State State;
-    private State Previous;
+    private State Previous, LogPrevious;
     private int Tick;
 
     public override void _Ready()
@@ -15,7 +15,7 @@ public class Game : Godot.YSort
         State = new State() {
             { "hero", new Entity(
                 new Player { },
-                new Speed { Value = 3f },
+                new Speed { Value = 6f },
                 new Inventory { },
                 new Position{ X = 50, Y = 50 },
                 new Scale { X = 3, Y = 3 },
@@ -82,11 +82,17 @@ public class Game : Godot.YSort
         Renderer.System(Previous, State, this);
         State = Physics.System(Previous, State, this, delta);
 
-        Log();
         Previous = State;
         Tick = Tick + 1;
     }
-    void Log()
+
+    public override void _Process(float delta)
+    {
+        Log(LogPrevious, State);
+        LogPrevious = State;
+    }
+
+    static void Log(State Previous, State State)
     {
         var diffs = new[] {
             Diff.Compare<Sprite>(Previous, State).To<Component>(),

@@ -1,5 +1,6 @@
 using Ecs;
 using Godot;
+using System;
 using System.Linq;
 
 public record Speed : Component
@@ -77,6 +78,12 @@ public static class Physics
                             texture.GetWidth() * scale.Y) / 2f
                     }
                 });
+
+                node.AddChild(new RectangleNode()
+                {
+                    Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
+                    Color = new Godot.Color(1, 0, 0)
+                });
             }
 
             if (node.IsConnected("area_entered", game, nameof(game._Event)))
@@ -150,10 +157,29 @@ public static class Physics
 
             if (position.X != node.Position.x || position.Y != node.Position.y)
             {
-                state = state.With(id, new Position { X = node.Position.x, Y = node.Position.y, Self = true });
+                state = state.With(id, new Position { X = node.Position.x, Y = node.Position.y });
             }
         }
 
         return state;
+    }
+}
+
+public class RectangleNode : Node2D
+{
+    public Rect2 Rect = new Rect2();
+    public Godot.Color Color = new Godot.Color(1, 0, 0);
+
+    public override void _Draw()
+    {
+        var vertices = new[] {
+            new Vector2(0, 0),
+            new Vector2(Rect.Size.x, 0),
+            new Vector2(Rect.Size.x, Rect.Size.y),
+            new Vector2(0,  Rect.Size.y),
+            new Vector2(0, 0)
+        }.Select(vert => vert - new Vector2(Rect.Size.x / 2, Rect.Size.y / 2)).ToArray();
+
+        DrawPolyline(vertices, Color);
     }
 }
