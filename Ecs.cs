@@ -53,7 +53,7 @@ namespace Ecs
     {
         public State() : base()
         {
-
+            Log(null, this);
         }
 
         public State(State state) : base(state)
@@ -68,7 +68,10 @@ namespace Ecs
 
         public State With(string id, Entity entity)
         {
-            return new State(Utils.With(this, id, entity));
+            var prev = this;
+            var next = new State(Utils.With(this, id, entity));
+            Log(prev, next);
+            return next;
         }
 
         public State With(string id, params Component[] components)
@@ -83,17 +86,49 @@ namespace Ecs
 
         public State Without(string id)
         {
-            var state = new State(this);
-            if (state.ContainsKey(id))
+            var prev = this;
+            var next = new State(prev);
+            if (next.ContainsKey(id))
             {
-                state.Remove(id);
+                next.Remove(id);
             }
-            return state;
+            Log(prev, next);
+            return next;
         }
 
         public State Without<C>(string id) where C : Component
         {
             return With(id, this[id].Without<C>());
+        }
+
+        public static void Log(State Previous, State State)
+        {
+            var diffs = new[] {
+                Diff.Compare<Sprite>(Previous, State).To<Component>(),
+                Diff.Compare<Scale>(Previous, State).To<Component>(),
+                Diff.Compare<Rotation>(Previous, State).To<Component>(),
+                Diff.Compare<ClickEvent>(Previous, State).To<Component>(),
+                Diff.Compare<CollideEvent>(Previous, State).To<Component>(),
+                Diff.Compare<Position>(Previous, State).To<Component>(),
+                Diff.Compare<Inventory>(Previous, State).To<Component>(),
+                Diff.Compare<Move>(Previous, State).To<Component>(),
+                Diff.Compare<Velocity>(Previous, State).To<Component>(),
+                Diff.Compare<Flash>(Previous, State).To<Component>()
+            };
+
+            IEnumerable<(string, string)> all = new List<(string, string)>();
+            foreach (var (Added, Removed, Changed) in diffs)
+            {
+                all = all
+                    .Concat(Removed.Select(entry => (entry.Item1, $"- {entry}")))
+                    .Concat(Added.Select(entry => (entry.Item1, $"+ {entry}")))
+                    .Concat(Changed.Select(entry => (entry.Item1, $"~ {entry}")));
+            }
+
+            foreach (var entry in all.OrderBy(entry => entry.Item1))
+            {
+                Console.WriteLine(entry.Item2);
+            }
         }
     }
 
@@ -204,18 +239,18 @@ namespace Ecs
 
     public class Diff
     {
-        public static Result<C> Compare<C>(State before, State after) where C : Component
+        public static Result<Component> Compare(Type type, State before, State after)
         {
             if (before == after)
             {
-                return new Result<C>(
-                    Added: new List<(string, C)>(),
-                    Removed: new List<(string, C)>(),
-                    Changed: new List<(string, C)>());
+                return new Result<Component>(
+                    Added: new List<(string, Component)>(),
+                    Removed: new List<(string, Component)>(),
+                    Changed: new List<(string, Component)>());
             }
 
-            var oldComponents = before?.Get<C>() ?? new List<(string, C)>();
-            var newComponents = after?.Get<C>() ?? new List<(string, C)>();
+            var oldComponents = before?.Get(type) ?? new List<(string, Component)>();
+            var newComponents = after?.Get(type) ?? new List<(string, Component)>();
 
             var oldIds = oldComponents.Select(entry => entry.Item1);
             var newIds = newComponents.Select(entry => entry.Item1);
@@ -237,15 +272,22 @@ namespace Ecs
                 return changes.Count() > 0;
             });
 
-            return new Result<C>(Added: added, Removed: removed, Changed: changed);
+            return new Result<Component>(Added: added, Removed: removed, Changed: changed);
+        }
+
+        public static Result<C1> Compare<C1>(State Current, State next)
+            where C1 : Component
+        {
+            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
+            return changes1;
         }
 
         public static (Result<C1>, Result<C2>) Compare<C1, C2>(State Current, State next)
             where C1 : Component
             where C2 : Component
         {
-            var changes1 = Compare<C1>(Current, next);
-            var changes2 = Compare<C2>(Current, next);
+            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
+            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
             return (changes1, changes2);
         }
 
@@ -254,9 +296,9 @@ namespace Ecs
             where C2 : Component
             where C3 : Component
         {
-            var changes1 = Compare<C1>(Current, next);
-            var changes2 = Compare<C2>(Current, next);
-            var changes3 = Compare<C3>(Current, next);
+            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
+            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
+            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
             return (changes1, changes2, changes3);
         }
 
@@ -266,10 +308,10 @@ namespace Ecs
             where C3 : Component
             where C4 : Component
         {
-            var changes1 = Compare<C1>(Current, next);
-            var changes2 = Compare<C2>(Current, next);
-            var changes3 = Compare<C3>(Current, next);
-            var changes4 = Compare<C4>(Current, next);
+            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
+            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
+            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
+            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
             return (changes1, changes2, changes3, changes4);
         }
 
@@ -280,11 +322,11 @@ namespace Ecs
             where C4 : Component
             where C5 : Component
         {
-            var changes1 = Compare<C1>(Current, next);
-            var changes2 = Compare<C2>(Current, next);
-            var changes3 = Compare<C3>(Current, next);
-            var changes4 = Compare<C4>(Current, next);
-            var changes5 = Compare<C5>(Current, next);
+            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
+            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
+            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
+            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
+            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
             return (changes1, changes2, changes3, changes4, changes5);
         }
 
@@ -296,12 +338,12 @@ namespace Ecs
             where C5 : Component
             where C6 : Component
         {
-            var changes1 = Compare<C1>(Current, next);
-            var changes2 = Compare<C2>(Current, next);
-            var changes3 = Compare<C3>(Current, next);
-            var changes4 = Compare<C4>(Current, next);
-            var changes5 = Compare<C5>(Current, next);
-            var changes6 = Compare<C6>(Current, next);
+            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
+            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
+            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
+            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
+            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
+            var changes6 = Compare(typeof(C6), Current, next).To<C6>();
             return (changes1, changes2, changes3, changes4, changes5, changes6);
         }
 
@@ -314,13 +356,13 @@ namespace Ecs
             where C6 : Component
             where C7 : Component
         {
-            var changes1 = Compare<C1>(Current, next);
-            var changes2 = Compare<C2>(Current, next);
-            var changes3 = Compare<C3>(Current, next);
-            var changes4 = Compare<C4>(Current, next);
-            var changes5 = Compare<C5>(Current, next);
-            var changes6 = Compare<C6>(Current, next);
-            var changes7 = Compare<C7>(Current, next);
+            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
+            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
+            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
+            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
+            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
+            var changes6 = Compare(typeof(C6), Current, next).To<C6>();
+            var changes7 = Compare(typeof(C7), Current, next).To<C7>();
             return (changes1, changes2, changes3, changes4, changes5, changes6, changes7);
         }
 
@@ -334,14 +376,14 @@ namespace Ecs
             where C7 : Component
             where C8 : Component
         {
-            var changes1 = Compare<C1>(Current, next);
-            var changes2 = Compare<C2>(Current, next);
-            var changes3 = Compare<C3>(Current, next);
-            var changes4 = Compare<C4>(Current, next);
-            var changes5 = Compare<C5>(Current, next);
-            var changes6 = Compare<C6>(Current, next);
-            var changes7 = Compare<C7>(Current, next);
-            var changes8 = Compare<C8>(Current, next);
+            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
+            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
+            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
+            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
+            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
+            var changes6 = Compare(typeof(C6), Current, next).To<C6>();
+            var changes7 = Compare(typeof(C7), Current, next).To<C7>();
+            var changes8 = Compare(typeof(C8), Current, next).To<C8>();
             return (changes1, changes2, changes3, changes4, changes5, changes6, changes7, changes8);
         }
 
@@ -356,15 +398,15 @@ namespace Ecs
             where C8 : Component
             where C9 : Component
         {
-            var changes1 = Compare<C1>(Current, next);
-            var changes2 = Compare<C2>(Current, next);
-            var changes3 = Compare<C3>(Current, next);
-            var changes4 = Compare<C4>(Current, next);
-            var changes5 = Compare<C5>(Current, next);
-            var changes6 = Compare<C6>(Current, next);
-            var changes7 = Compare<C7>(Current, next);
-            var changes8 = Compare<C8>(Current, next);
-            var changes9 = Compare<C9>(Current, next);
+            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
+            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
+            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
+            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
+            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
+            var changes6 = Compare(typeof(C6), Current, next).To<C6>();
+            var changes7 = Compare(typeof(C7), Current, next).To<C7>();
+            var changes8 = Compare(typeof(C8), Current, next).To<C8>();
+            var changes9 = Compare(typeof(C9), Current, next).To<C9>();
             return (changes1, changes2, changes3, changes4, changes5, changes6, changes7, changes8, changes9);
         }
     }

@@ -2,12 +2,11 @@ using Ecs;
 using Godot;
 using System;
 using System.Linq;
-using System.Collections.Generic;
 
 public class Game : Godot.YSort
 {
     public State State;
-    private State Previous, LogPrevious;
+    private State Previous;
     private int Tick;
 
     public override void _Ready()
@@ -84,41 +83,5 @@ public class Game : Godot.YSort
 
         Previous = State;
         Tick = Tick + 1;
-    }
-
-    public override void _Process(float delta)
-    {
-        Log(LogPrevious, State);
-        LogPrevious = State;
-    }
-
-    static void Log(State Previous, State State)
-    {
-        var diffs = new[] {
-            Diff.Compare<Sprite>(Previous, State).To<Component>(),
-            Diff.Compare<Scale>(Previous, State).To<Component>(),
-            Diff.Compare<Rotation>(Previous, State).To<Component>(),
-            Diff.Compare<ClickEvent>(Previous, State).To<Component>(),
-            Diff.Compare<CollideEvent>(Previous, State).To<Component>(),
-            Diff.Compare<Position>(Previous, State).To<Component>(),
-            Diff.Compare<Inventory>(Previous, State).To<Component>(),
-            Diff.Compare<Move>(Previous, State).To<Component>(),
-            Diff.Compare<Velocity>(Previous, State).To<Component>(),
-            Diff.Compare<Flash>(Previous, State).To<Component>()
-        };
-
-        IEnumerable<(string, string)> all = new List<(string, string)>();
-        foreach (var (Added, Removed, Changed) in diffs)
-        {
-            all = all
-                .Concat(Removed.Select(entry => (entry.Item1, $"- {entry}")))
-                .Concat(Added.Select(entry => (entry.Item1, $"+ {entry}")))
-                .Concat(Changed.Select(entry => (entry.Item1, $"~ {entry}")));
-        }
-
-        foreach (var entry in all.OrderBy(entry => entry.Item1))
-        {
-            Console.WriteLine(entry.Item2);
-        }
     }
 }
