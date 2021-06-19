@@ -29,6 +29,9 @@ public record Add : Task
 
     public Add(Component component, string target = null)
         => (Component, Target) = (component, target);
+
+    public Add(string target, Component component)
+        => (Component, Target) = (component, target);
 }
 
 public record Remove : Task
@@ -56,44 +59,22 @@ public record RemoveEntity : Task;
 
 public static class Events
 {
-    public static State System(int tick, State state, string id, string otherId, Event ev)
+    public static State System(int tick, State state, Event ev)
     {
         foreach (var task in ev.Tasks)
         {
-            var target = id;
-
-            if (task.Target == Target.Other)
-            {
-                if (otherId?.Length > 0)
-                {
-                    target = otherId;
-                }
-                else
-                {
-                    continue;
-                }
-            }
-            else if (task.Target == Target.Self)
-            {
-                target = id;
-            }
-            else if (task.Target?.Length > 0)
-            {
-                target = task.Target;
-            }
-
             switch (task)
             {
                 case Add add:
                     {
-                        state = state.With(target, add.Component);
+                        state = state.With(task.Target, add.Component);
                     }
                     break;
 
                 case Remove remove:
                     {
-                        var entity = state[target];
-                        state = state.With(target, entity with
+                        var entity = state[task.Target];
+                        state = state.With(task.Target, entity with
                         {
                             Components = entity.Components.Where(component => !component.GetType().Equals(remove.Type))
                         });
@@ -102,7 +83,7 @@ public static class Events
 
                 case AddEntity addEntity:
                     {
-                        target = addEntity.Target?.Length > 0
+                        var target = addEntity.Target?.Length > 0
                             ? addEntity.Target
                             : Guid.NewGuid().ToString();
 
@@ -117,7 +98,7 @@ public static class Events
 
                 case RemoveEntity removeEntity:
                     {
-                        state = state.Without(target);
+                        state = state.Without(task.Target);
                     }
                     break;
             }

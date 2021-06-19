@@ -30,6 +30,8 @@ public record EnterEvent : Event
 
 public static class Physics
 {
+    public static float PHYSICS_FPS = float.Parse(ProjectSettings.GetSetting("physics/common/physics_fps").ToString());
+
     public static State System(State previous, State state, Game game, float delta)
     {
         if (previous != state)

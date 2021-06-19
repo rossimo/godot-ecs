@@ -5,7 +5,7 @@ public record Player() : Component;
 
 public static class Input
 {
-    public static Ecs.State System(Ecs.State state, Game game, InputEvent @event)
+    public static Event System(Ecs.State state, Game game, InputEvent @event)
     {
         switch (@event)
         {
@@ -20,14 +20,16 @@ public static class Input
                             var position = state[id].Get<Position>();
                             var source = new Vector2(position.X, position.Y);
                             var velocity = source.DirectionTo(new Vector2(target));
-                            state = state.With(id,
-                                new Velocity { X = velocity.x, Y = velocity.y },
-                                new Move { Destination = new Position { X = target.x, Y = target.y } });
+
+                            return new Event(
+                                new Add(id, new Velocity { X = velocity.x, Y = velocity.y }),
+                                new Add(id, new Move { Destination = new Position { X = target.x, Y = target.y } }));
                         }
                     }
                 }
                 break;
         }
-        return state;
+
+        return null;
     }
 }

@@ -2,12 +2,14 @@ using Ecs;
 using Godot;
 using System;
 using System.Linq;
+using System.Collections.Generic;
 
 public class Game : Godot.YSort
 {
     public State State;
     private State Previous;
     private int Tick;
+    private List<Event> EventQueue = new List<Event>();
 
     public override void _Ready()
     {
@@ -52,21 +54,47 @@ public class Game : Godot.YSort
 
     public override void _Input(InputEvent @event)
     {
-        State = Input.System(State, this, @event);
+        var queued = Input.System(State, this, @event);
+        if (queued != null) EventQueue.Add(queued);
     }
 
     public void Event(string id, string otherId, Event ev)
     {
-        ev = ev with
+        otherId = otherId?.Split("-").FirstOrDefault();
+
+        EventQueue.Add(ev with
         {
             Tasks = ev.Tasks.Select(task =>
-                task is Add add && add.Component is TickComponent tickComponent
-                    ? add with { Component = tickComponent with { Tick = Tick } }
-                    : task
-            ).ToArray()
-        };
+            {
+                var target = id;
 
-        State = Events.System(Tick, State, id, otherId?.Split("-").FirstOrDefault(), ev);
+                if (task.Target == Target.Other)
+                {
+                    if (otherId?.Length > 0)
+                    {
+                        target = otherId;
+                    }
+                    else
+                    {
+                        return task;
+                    }
+                }
+                else if (task.Target == Target.Self)
+                {
+                    target = id;
+                }
+                else if (task.Target?.Length > 0)
+                {
+                    target = task.Target;
+                }
+
+                task = task with { Target = target };
+
+                return task is Add add && add.Component is TickComponent tickComponent
+                    ? add with { Component = tickComponent with { Tick = Tick } }
+                    : task;
+            }).ToArray()
+        });
     }
 
     public void _Event(string id, GodotWrapper ev)
@@ -81,11 +109,17 @@ public class Game : Godot.YSort
 
     public override void _PhysicsProcess(float delta)
     {
+        foreach (var ev in EventQueue)
+        {
+            State = Events.System(Tick, State, ev);
+        }
+        EventQueue.Clear();
+
         Renderer.System(Previous, State, this);
         State = Physics.System(Previous, State, this, delta);
 
         Previous = State;
         Tick = Tick + 1;
-		GC.Collect();
+        GC.Collect();
     }
 }
