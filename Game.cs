@@ -18,12 +18,13 @@ public class Game : Godot.YSort
                 new Inventory { },
                 new Position{ X = 50, Y = 50 },
                 new Scale { X = 3, Y = 3 },
-                new CollideEvent(),
-                new Sprite { Image = "res://resources/tiles/tile072.png" })},
+                new EnterEvent(),
+                new Sprite { Image = "res://resources/tiles/tile072.png" },
+                new Collision())},
             { "potion", Potion },
             { "fire", new Entity(
                 new Position { X = 400, Y = 200 },
-                new CollideEvent(
+                new EnterEvent(
                     new Add(new Flash { Color = new Color { Red = 1f, Green = 0f, Blue = 0f } }, Target.Other),
                     new Add(new Flash { Color = new Color { Red = 2f, Green = 2f, Blue = 0f } })
                 ),
@@ -31,7 +32,7 @@ public class Game : Godot.YSort
                 new Sprite { Image = "res://resources/tiles/tile495.png" })},
             { "button", new Entity(
                 new Position { X = 300, Y = 300 },
-                new CollideEvent(
+                new EnterEvent(
                     new Add(new Flash { Color = new Color { Red = 0.1f, Green = 0.1f, Blue = 0.1f } }),
                     new AddEntity(Potion, "potion")
                 ),
@@ -44,7 +45,7 @@ public class Game : Godot.YSort
 
     public static Entity Potion = new Entity(
         new Position { X = 200, Y = 300 },
-        new CollideEvent(new RemoveEntity()),
+        new EnterEvent(new RemoveEntity()),
         new Flash { Color = new Color { Red = 2f, Green = 2f, Blue = 2f } },
         new Scale { X = 2, Y = 2 },
         new Sprite { Image = "res://resources/tiles/tile570.png" });
@@ -65,7 +66,7 @@ public class Game : Godot.YSort
             ).ToArray()
         };
 
-        State = Events.System(Tick, State, id, otherId, ev);
+        State = Events.System(Tick, State, id, otherId?.Split("-").FirstOrDefault(), ev);
     }
 
     public void _Event(string id, GodotWrapper ev)

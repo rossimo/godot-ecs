@@ -33,12 +33,12 @@ public record Add : Task
 
 public record Remove : Task
 {
-    public Component Component;
+    public Type Type;
 
     public Remove() { }
 
-    public Remove(Component component)
-        => (Component) = (component);
+    public Remove(Type type)
+        => (Type) = (type);
 }
 
 public record AddEntity : Task
@@ -94,8 +94,7 @@ public static class Events
                         var entity = state[target];
                         state = state.With(target, entity with
                         {
-                            Components = entity.Components.Where(component =>
-                                component != remove.Component)
+                            Components = entity.Components.Where(component => !component.GetType().Equals(remove.Type))
                         });
                     }
                     break;

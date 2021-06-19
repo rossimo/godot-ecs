@@ -185,7 +185,7 @@ public class Renderer
             tween.Start();
 
             tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(new Event(new Remove(flash)))
+                id, new GodotWrapper(new Event(new Remove(typeof(Flash))))
             });
         }
     }
