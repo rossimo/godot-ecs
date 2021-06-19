@@ -54,7 +54,10 @@ public class Game : Godot.YSort
 
     public override void _Input(InputEvent @event)
     {
-        State = Input.System(State, this, @event);
+        foreach (var (id, ev) in Input.System(State, this, @event))
+        {
+            Event(id, null, ev);
+        }
     }
 
     public void Event(string id, string otherId, Event ev)

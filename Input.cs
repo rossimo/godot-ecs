@@ -1,16 +1,17 @@
 using Ecs;
 using Godot;
+using System.Linq;
 
 public record Player() : Component;
 
-public record MoveRequest() : Component
+public record Move() : Component
 {
     public Position Destination;
 }
 
 public static class Input
 {
-    public static Ecs.State System(Ecs.State state, Game game, InputEvent @event)
+    public static (string id, Event Event)[] System(Ecs.State state, Game game, InputEvent @event)
     {
         switch (@event)
         {
@@ -20,18 +21,20 @@ public static class Input
                     {
                         var target = game.ToLocal(mouseButton.Position);
 
-                        foreach (var (id, player) in state.Get<Player>())
+                        return state.Get<Player>().Select(entry =>
                         {
+                            var (id, player) = entry;
+
                             var position = state[id].Get<Position>();
                             var source = new Vector2(position.X, position.Y);
                             var velocity = source.DirectionTo(new Vector2(target));
-                            state = state.With(id, new MoveRequest { Destination = new Position { X = target.x, Y = target.y } });
-                        }
+                            return (id, new Event(new Add(new Move() { Destination = new Position { X = target.x, Y = target.y } })));
+                        }).ToArray();
                     }
                 }
                 break;
         }
 
-        return state;
+        return new (string id, Event Event)[] { };
     }
 }

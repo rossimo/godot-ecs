@@ -7,9 +7,9 @@ public record Speed : Component
     public float Value;
 }
 
-public record Move : Component
+public record Destination : Component
 {
-    public Position Destination;
+    public Position Position;
 }
 
 public record Collision : Component
@@ -34,20 +34,20 @@ public static class Physics
 
     public static State System(State previous, State state, Game game, float delta)
     {
-        var (enters, collisions, requests) = Diff.Compare<EnterEvent, Collision, MoveRequest>(previous, state);
+        var (enters, collisions, moves) = Diff.Compare<EnterEvent, Collision, Move>(previous, state);
 
-        foreach (var (id, request) in requests.Added.Concat(requests.Changed))
+        foreach (var (id, move) in moves.Added.Concat(moves.Changed))
         {
-            state = state.Without<MoveRequest>(id);
+            state = state.Without<Move>(id);
 
             var position = state[id].Get<Position>();
             if (position == null) continue;
 
             var source = new Vector2(position.X, position.Y);
-            var velocity = source.DirectionTo(new Vector2(request.Destination.X, request.Destination.Y));
+            var velocity = source.DirectionTo(new Vector2(move.Destination.X, move.Destination.Y));
 
             state = state.With(id, new Velocity { X = velocity.x, Y = velocity.y });
-            state = state.With(id, new Move { Destination = request.Destination });
+            state = state.With(id, new Destination { Position = move.Destination });
         }
 
         foreach (var (id, enter) in enters.Removed)
@@ -210,7 +210,7 @@ public static class Physics
         foreach (var (id, velocity) in state.Get<Velocity>())
         {
             var entity = state[id];
-            var (move, position, speed) = entity.Get<Move, Position, Speed>();
+            var (move, position, speed) = entity.Get<Destination, Position, Speed>();
             speed = speed ?? new Speed { Value = 1f };
 
             var physics = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
@@ -219,14 +219,14 @@ public static class Physics
             var travel = new Vector2(velocity.X, velocity.Y) * speed.Value * (delta / (30f / 1000f));
             var velocityDistance = travel.DistanceTo(new Vector2(0, 0));
             var moveDistance = new Vector2(position.X, position.Y)
-                .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
+                .DistanceTo(new Vector2(move.Position.X, move.Position.Y));
 
             var oldPosition = physics.Position;
 
             if (moveDistance < velocityDistance)
             {
-                physics.Position = new Vector2(move.Destination.X, move.Destination.Y);
-                state = state.Without<Move>(id);
+                physics.Position = new Vector2(move.Position.X, move.Position.Y);
+                state = state.Without<Destination>(id);
                 state = state.Without<Velocity>(id);
             }
             else
