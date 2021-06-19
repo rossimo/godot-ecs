@@ -63,11 +63,12 @@ public class Renderer
 
         foreach (var (id, component) in sprites.Added)
         {
-            var node = game.GetNodeOrNull<ClickableSprite>(id);
-            if (node != null) continue;
-
             var entity = state[id];
             var position = entity.Get<Position>();
+            position = position ?? new Position { X = 0, Y = 0 };
+
+            var node = game.GetNodeOrNull<ClickableSprite>(id);
+            if (node != null) continue;
 
             node = new ClickableSprite()
             {
@@ -162,6 +163,10 @@ public class Renderer
 
         foreach (var (id, flash) in flashes.Added.Concat(flashes.Changed))
         {
+            var entity = state[id];
+            var position = entity.Get<Position>();
+            position = position ?? new Position { X = 0, Y = 0 };
+
             var node = game.GetNodeOrNull<Node2D>(id);
             var tween = game.GetNodeOrNull<Tween>($"{id}/modulate");
 
@@ -173,9 +178,6 @@ public class Renderer
             {
                 tween.Disconnect("tween_all_completed", game, nameof(game._Event));
             }
-
-            var entity = state[id];
-            var position = entity?.Get<Position>() ?? new Position { X = 0, Y = 0 };
 
             tween.InterpolateProperty(node, "modulate",
                 new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue),

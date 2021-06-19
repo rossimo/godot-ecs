@@ -51,7 +51,10 @@ public static class Physics
         foreach (var (id, enter) in enters.Added.Concat(enters.Changed))
         {
             var entity = state[id];
-            var position = entity.Get<Position>() ?? new Position { X = 0, Y = 0 };
+            var (sprite, position, scale) = entity.Get<Sprite, Position, Scale>();
+            position = position ?? new Position { X = 0, Y = 0 };
+            scale = scale ?? new Scale { X = 1, Y = 1 };
+
             var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
             if (node == null)
             {
@@ -76,11 +79,9 @@ public static class Physics
             };
             node.AddChild(area);
 
-            var sprite = state[id].Get<Sprite>();
             if (sprite != null)
             {
                 var texture = GD.Load<Texture>(sprite.Image);
-                var scale = state[id].Get<Scale>() ?? new Scale { X = 1, Y = 1 };
 
                 area.AddChild(new CollisionShape2D()
                 {
@@ -119,6 +120,9 @@ public static class Physics
         foreach (var (id, body) in collisions.Changed.Concat(collisions.Added))
         {
             var entity = state[id];
+            var (sprite, scale) = entity.Get<Sprite, Scale>();
+            scale = scale ?? new Scale { X = 1, Y = 1 };
+
             var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
             var position = entity.Get<Position>() ?? new Position { X = 0, Y = 0 };
             if (node == null)
@@ -138,11 +142,9 @@ public static class Physics
                 collision.QueueFree();
             }
 
-            var sprite = state[id].Get<Sprite>();
             if (sprite != null)
             {
                 var texture = GD.Load<Texture>(sprite.Image);
-                var scale = state[id].Get<Scale>() ?? new Scale { X = 1, Y = 1 };
 
                 node.AddChild(new CollisionShape2D()
                 {
@@ -165,14 +167,14 @@ public static class Physics
 
         foreach (var (id, velocity) in state.Get<Velocity>())
         {
+            var entity = state[id];
+            var (move, position, speed) = entity.Get<Move, Position, Speed>();
+
             var physics = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
             if (physics == null) continue;
 
-            var entity = state[id];
-            var speed = entity.Get<Speed>();
             var travel = new Vector2(velocity.X, velocity.Y) * (speed?.Value ?? 1f);
 
-            var (move, position) = entity.Get<Move, Position>();
             if (move != null && position != null)
             {
                 var velocityDistance = travel.DistanceTo(new Vector2(0, 0));

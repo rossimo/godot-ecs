@@ -31,6 +31,23 @@ namespace Ecs
             return (Get<C1>(), Get<C2>());
         }
 
+        public (C1, C2, C3) Get<C1, C2, C3>()
+            where C1 : Component
+            where C2 : Component
+            where C3 : Component
+        {
+            return (Get<C1>(), Get<C2>(), Get<C3>());
+        }
+
+        public (C1, C2, C3, C4) Get<C1, C2, C3, C4>()
+            where C1 : Component
+            where C2 : Component
+            where C3 : Component
+            where C4 : Component
+        {
+            return (Get<C1>(), Get<C2>(), Get<C3>(), Get<C4>());
+        }
+
         public Entity With<C>(C component) where C : Component
         {
             var existing = Get<C>();
