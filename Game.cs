@@ -38,6 +38,8 @@ public class Game : Godot.YSort
                 new Scale { X = 2, Y = 2 },
                 new Sprite { Image = "res://resources/tiles/tile481.png" })}
         };
+
+        State.Log(null, State);
     }
 
     public static Entity Potion = new Entity(

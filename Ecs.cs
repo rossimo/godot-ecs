@@ -53,23 +53,20 @@ namespace Ecs
     {
         public State() : base()
         {
-            Log(null, this);
         }
 
         public State(State state) : base(state)
         {
-
         }
 
         public State(Dictionary<string, Entity> state) : base(state)
         {
-
         }
 
         public State With(string id, Entity entity)
         {
             var prev = this;
-            var next = new State(Utils.With(this, id, entity));
+            var next = new State(Utils.With(prev, id, entity));
             Log(prev, next);
             return next;
         }
@@ -79,7 +76,7 @@ namespace Ecs
             var state = this;
             foreach (var component in components)
             {
-                state = With(id, state[id].With(component));
+                state = state.With(id, state[id].With(component));
             }
             return state;
         }
