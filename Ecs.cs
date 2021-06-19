@@ -84,6 +84,19 @@ namespace Ecs
             return state;
         }
 
+        public Type[] Types()
+        {
+            var set = new HashSet<Type>();
+            foreach (var entity in Values)
+            {
+                foreach (var component in entity.Components)
+                {
+                    set.Add(component.GetType());
+                }
+            }
+            return set.ToArray();
+        }
+
         public State Without(string id)
         {
             var prev = this;
@@ -103,18 +116,16 @@ namespace Ecs
 
         public static void Log(State Previous, State State)
         {
-            var diffs = new[] {
-                Diff.Compare<Sprite>(Previous, State).To<Component>(),
-                Diff.Compare<Scale>(Previous, State).To<Component>(),
-                Diff.Compare<Rotation>(Previous, State).To<Component>(),
-                Diff.Compare<ClickEvent>(Previous, State).To<Component>(),
-                Diff.Compare<CollideEvent>(Previous, State).To<Component>(),
-                Diff.Compare<Position>(Previous, State).To<Component>(),
-                Diff.Compare<Inventory>(Previous, State).To<Component>(),
-                Diff.Compare<Move>(Previous, State).To<Component>(),
-                Diff.Compare<Velocity>(Previous, State).To<Component>(),
-                Diff.Compare<Flash>(Previous, State).To<Component>()
-            };
+            var types = new List<Type>()
+                .Concat(Previous?.Types() ?? new Type[] { })
+                .Concat(State?.Types() ?? new Type[] { })
+                .Distinct();
+
+            var diffs = new List<Result<Component>>();
+            foreach (var type in types)
+            {
+                diffs.Add(Diff.Compare(type, Previous, State));
+            }
 
             IEnumerable<(string, string)> all = new List<(string, string)>();
             foreach (var (Added, Removed, Changed) in diffs)
