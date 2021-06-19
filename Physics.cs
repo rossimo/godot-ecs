@@ -92,6 +92,12 @@ public static class Physics
                             texture.GetWidth() * scale.Y) / 2f
                     }
                 });
+
+                area.AddChild(new RectangleNode()
+                {
+                    Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
+                    Color = new Godot.Color(0, 0, 1)
+                });
             }
 
             if (area.IsConnected("area_entered", game, nameof(game._Event)))
@@ -146,7 +152,7 @@ public static class Physics
             {
                 var texture = GD.Load<Texture>(sprite.Image);
 
-                node.AddChild(new CollisionShape2D()
+                var shape = new CollisionShape2D()
                 {
                     Name = "collision",
                     Shape = new RectangleShape2D()
@@ -155,9 +161,10 @@ public static class Physics
                             texture.GetHeight() * scale.X,
                             texture.GetWidth() * scale.Y) / 2f
                     }
-                });
+                };
+                node.AddChild(shape);
 
-                node.AddChild(new RectangleNode()
+                shape.AddChild(new RectangleNode()
                 {
                     Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
                     Color = new Godot.Color(1, 0, 0)
@@ -169,28 +176,29 @@ public static class Physics
         {
             var entity = state[id];
             var (move, position, speed) = entity.Get<Move, Position, Speed>();
+            speed = speed ?? new Speed { Value = 1f };
 
             var physics = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
             if (physics == null) continue;
 
-            var travel = new Vector2(velocity.X, velocity.Y) * (speed?.Value ?? 1f);
-
-            if (move != null && position != null)
-            {
-                var velocityDistance = travel.DistanceTo(new Vector2(0, 0));
-                var moveDistance = new Vector2(position.X, position.Y)
-                    .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
-
-                if (moveDistance < velocityDistance)
-                {
-                    state = state.Without<Move>(id);
-                    state = state.Without<Velocity>(id);
-                    travel *= (moveDistance / velocityDistance);
-                }
-            }
+            var travel = new Vector2(velocity.X, velocity.Y) * speed.Value;
+            var velocityDistance = travel.DistanceTo(new Vector2(0, 0));
+            var moveDistance = new Vector2(position.X, position.Y)
+                .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
 
             var oldPosition = physics.Position;
-            physics.MoveAndCollide(travel);
+
+            if (moveDistance < velocityDistance)
+            {
+                physics.Position = new Vector2(move.Destination.X, move.Destination.Y);
+                state = state.Without<Move>(id);
+                state = state.Without<Velocity>(id);
+            }
+            else
+            {
+                physics.MoveAndCollide(travel);
+            }
+
             var newPosition = physics.Position;
 
             if (oldPosition.x != newPosition.x || oldPosition.y != newPosition.y)
@@ -221,7 +229,7 @@ public static class Physics
 
         foreach (var (id, position) in state.Get<Position>())
         {
-            var node = game.GetNodeOrNull<Node2D>(id);
+            var node = game.GetNodeOrNull<Node2D>($"{id}-physics");
             if (node == null) continue;
 
             if (position.X != node.Position.x || position.Y != node.Position.y)
@@ -242,11 +250,11 @@ public class RectangleNode : Node2D
     public override void _Draw()
     {
         var vertices = new[] {
-            new Vector2(0, 0),
-            new Vector2(Rect.Size.x, 0),
-            new Vector2(Rect.Size.x, Rect.Size.y),
-            new Vector2(0,  Rect.Size.y),
-            new Vector2(0, 0)
+            new Vector2(Rect.Position.x, Rect.Position.y),
+            new Vector2(Rect.Position.x + Rect.Size.x, Rect.Position.y),
+            new Vector2(Rect.Position.x + Rect.Size.x, Rect.Position.y + Rect.Size.y),
+            new Vector2(Rect.Position.x, Rect.Position.y + Rect.Size.y),
+            new Vector2(Rect.Position.x, Rect.Position.y)
         }.Select(vert => vert - new Vector2(Rect.Size.x / 2, Rect.Size.y / 2)).ToArray();
 
         DrawPolyline(vertices, Color);
