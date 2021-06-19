@@ -1,6 +1,5 @@
 using Ecs;
 using Godot;
-using System;
 using System.Linq;
 
 public record Speed : Component
@@ -198,11 +197,20 @@ public static class Physics
             {
                 physics.MoveAndCollide(travel);
             }
+        }
 
-            var newPosition = physics.Position;
+        foreach (var (id, collision) in state.Get<Collision>())
+        {
+            var entity = state[id];
+            var position = entity.Get<Position>();
 
-            if (oldPosition.x != newPosition.x || oldPosition.y != newPosition.y)
+            var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+            if (node == null) continue;
+
+            if (position == null || position.X != node.Position.x || position.Y != node.Position.y)
             {
+                state = state.With(id, new Position { X = node.Position.x, Y = node.Position.y });
+
                 var sprite = game.GetNodeOrNull<Godot.Sprite>($"{id}");
                 if (sprite == null) continue;
 
@@ -220,21 +228,10 @@ public static class Physics
 
                 tween.InterpolateProperty(sprite, "position",
                     sprite.Position,
-                    newPosition,
+                    node.Position,
                     delta);
 
                 tween.Start();
-            }
-        }
-
-        foreach (var (id, position) in state.Get<Position>())
-        {
-            var node = game.GetNodeOrNull<Node2D>($"{id}-physics");
-            if (node == null) continue;
-
-            if (position.X != node.Position.x || position.Y != node.Position.y)
-            {
-                state = state.With(id, new Position { X = node.Position.x, Y = node.Position.y });
             }
         }
 
