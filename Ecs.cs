@@ -159,6 +159,13 @@ namespace Ecs
 
     public static class Utils
     {
+        public static V Get<K, V>(this Dictionary<K, V> dict, K key)
+        {
+            V val;
+            dict.TryGetValue(key, out val);
+            return val;
+        }
+
         public static Dictionary<K, V> With<K, V>(this Dictionary<K, V> dict, K key, V value)
         {
             if (dict.ContainsKey(key))

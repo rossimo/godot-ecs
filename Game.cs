@@ -14,7 +14,7 @@ public class Game : Godot.YSort
         State = new State() {
             { "hero", new Entity(
                 new Player { },
-                new Speed { Value = 6f },
+                new Speed { Value = 4f },
                 new Inventory { },
                 new Position{ X = 50, Y = 50 },
                 new Scale { X = 3, Y = 3 },
@@ -86,5 +86,6 @@ public class Game : Godot.YSort
 
         Previous = State;
         Tick = Tick + 1;
+		GC.Collect();
     }
 }
