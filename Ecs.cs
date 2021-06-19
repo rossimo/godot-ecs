@@ -124,18 +124,18 @@ namespace Ecs
                 diffs.Add(Diff.Compare(type, Previous, State));
             }
 
-            IEnumerable<(string, string)> all = new List<(string, string)>();
+            IEnumerable<(string ID, string Message)> all = new List<(string, string)>();
             foreach (var (Added, Removed, Changed) in diffs)
             {
                 all = all
-                    .Concat(Removed.Select(entry => (entry.Item1, $"- {entry}")))
-                    .Concat(Added.Select(entry => (entry.Item1, $"+ {entry}")))
-                    .Concat(Changed.Select(entry => (entry.Item1, $"~ {entry}")));
+                    .Concat(Removed.Select(entry => (entry.ID, $"- {entry}")))
+                    .Concat(Added.Select(entry => (entry.ID, $"+ {entry}")))
+                    .Concat(Changed.Select(entry => (entry.ID, $"~ {entry}")));
             }
 
-            foreach (var entry in all.OrderBy(entry => entry.Item1))
+            foreach (var entry in all.OrderBy(entry => entry.ID))
             {
-                Console.WriteLine(entry.Item2);
+                Console.WriteLine(entry.Message);
             }
         }
     }
@@ -170,7 +170,7 @@ namespace Ecs
             });
         }
 
-        public static IEnumerable<(string, Component)> Get(this Dictionary<string, Entity> entities, Type type)
+        public static IEnumerable<(string ID, Component Component)> Get(this Dictionary<string, Entity> entities, Type type)
         {
             var types = new[] { type };
             return entities.Get(types).Select(entry =>
@@ -231,17 +231,17 @@ namespace Ecs
     }
 
     public record Result<C>(
-        IEnumerable<(string, C)> Added,
-        IEnumerable<(string, C)> Removed,
-        IEnumerable<(string, C)> Changed)
+        IEnumerable<(string ID, C Component)> Added,
+        IEnumerable<(string ID, C Component)> Removed,
+        IEnumerable<(string ID, C Component)> Changed)
         where C : Component
     {
         public Result<D> To<D>() where D : Component
         {
             return new Result<D>(
-                Added: Added.Select(entry => (entry.Item1, entry.Item2 as D)),
-                Removed: Removed.Select(entry => (entry.Item1, entry.Item2 as D)),
-                Changed: Changed.Select(entry => (entry.Item1, entry.Item2 as D)));
+                Added: Added.Select(entry => (entry.ID, entry.Component as D)),
+                Removed: Removed.Select(entry => (entry.ID, entry.Component as D)),
+                Changed: Changed.Select(entry => (entry.ID, entry.Component as D)));
         }
     }
 
@@ -252,29 +252,29 @@ namespace Ecs
             if (before == after)
             {
                 return new Result<Component>(
-                    Added: new List<(string, Component)>(),
-                    Removed: new List<(string, Component)>(),
-                    Changed: new List<(string, Component)>());
+                    Added: new List<(string ID, Component Component)>(),
+                    Removed: new List<(string ID, Component Component)>(),
+                    Changed: new List<(string ID, Component Component)>());
             }
 
-            var oldComponents = before?.Get(type) ?? new List<(string, Component)>();
-            var newComponents = after?.Get(type) ?? new List<(string, Component)>();
+            var oldComponents = before?.Get(type) ?? new List<(string ID, Component Component)>();
+            var newComponents = after?.Get(type) ?? new List<(string ID, Component Component)>();
 
-            var oldIds = oldComponents.Select(entry => entry.Item1);
-            var newIds = newComponents.Select(entry => entry.Item1);
+            var oldIds = oldComponents.Select(entry => entry.ID);
+            var newIds = newComponents.Select(entry => entry.ID);
 
             var removedIds = oldIds.Except(newIds);
             var addedIds = newIds.Except(oldIds);
             var commonIds = newIds.Union(oldIds);
 
-            var removed = oldComponents.Where(entry => removedIds.Contains(entry.Item1));
-            var added = newComponents.Where(entry => addedIds.Contains(entry.Item1));
+            var removed = oldComponents.Where(entry => removedIds.Contains(entry.ID));
+            var added = newComponents.Where(entry => addedIds.Contains(entry.ID));
             var changed = newComponents.Where(newComponent =>
             {
-                var id = newComponent.Item1;
+                var id = newComponent.ID;
                 var changes = oldComponents.Where(entry =>
                 {
-                    return entry.Item1 == id && newComponent.Item2 != entry.Item2;
+                    return entry.ID == id && newComponent.Component != entry.Component;
                 });
 
                 return changes.Count() > 0;
