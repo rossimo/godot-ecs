@@ -34,165 +34,176 @@ public static class Physics
 
     public static State System(State previous, State state, Game game, float delta)
     {
-        if (previous != state)
+        var (enters, collisions, requests) = Diff.Compare<EnterEvent, Collision, MoveRequest>(previous, state);
+
+        foreach (var (id, request) in requests.Added.Concat(requests.Changed))
         {
-            var (enters, collisions) = Diff.Compare<EnterEvent, Collision>(previous, state);
+            state = state.Without<MoveRequest>(id);
 
-            foreach (var (id, enter) in enters.Removed)
+            var position = state[id].Get<Position>();
+            if (position == null) continue;
+
+            var source = new Vector2(position.X, position.Y);
+            var velocity = source.DirectionTo(new Vector2(request.Destination.X, request.Destination.Y));
+
+            state = state.With(id, new Velocity { X = velocity.x, Y = velocity.y });
+            state = state.With(id, new Move { Destination = request.Destination });
+        }
+
+        foreach (var (id, enter) in enters.Removed)
+        {
+            var collision = state.Get(id)?.Get<Collision>();
+
+            var node = game.GetNodeOrNull<Node2D>($"{id}-physics");
+            if (node == null) continue;
+
+            if (collision == null)
             {
-                var collision = state.Get(id)?.Get<Collision>();
-
-                var node = game.GetNodeOrNull<Node2D>($"{id}-physics");
-                if (node == null) continue;
-
-                if (collision == null)
-                {
-                    game.RemoveChild(node);
-                    node.QueueFree();
-                }
-                else
-                {
-                    var area = node.GetNodeOrNull<Area2D>("area");
-                    if (area != null)
-                    {
-                        node.RemoveChild(area);
-                        area.QueueFree();
-                    }
-                }
+                game.RemoveChild(node);
+                node.QueueFree();
             }
-
-            foreach (var (id, enter) in enters.Added.Concat(enters.Changed))
+            else
             {
-                var entity = state[id];
-                var (sprite, position, scale) = entity.Get<Sprite, Position, Scale>();
-                position = position ?? new Position { X = 0, Y = 0 };
-                scale = scale ?? new Scale { X = 1, Y = 1 };
-
-                var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
-                if (node == null)
-                {
-                    node = new KinematicBody2D()
-                    {
-                        Name = $"{id}-physics",
-                        Position = new Vector2(position.X, position.Y)
-                    };
-                    game.AddChild(node);
-                }
-
-                var area = node.GetNodeOrNull<Node2D>("area");
+                var area = node.GetNodeOrNull<Area2D>("area");
                 if (area != null)
                 {
                     node.RemoveChild(area);
                     area.QueueFree();
                 }
+            }
+        }
 
-                area = new Area2D()
+        foreach (var (id, enter) in enters.Added.Concat(enters.Changed))
+        {
+            var entity = state[id];
+            var (sprite, position, scale) = entity.Get<Sprite, Position, Scale>();
+            position = position ?? new Position { X = 0, Y = 0 };
+            scale = scale ?? new Scale { X = 1, Y = 1 };
+
+            var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+            if (node == null)
+            {
+                node = new KinematicBody2D()
                 {
-                    Name = "area"
+                    Name = $"{id}-physics",
+                    Position = new Vector2(position.X, position.Y)
                 };
-                node.AddChild(area);
+                game.AddChild(node);
+            }
 
-                if (sprite != null)
+            var area = node.GetNodeOrNull<Node2D>("area");
+            if (area != null)
+            {
+                node.RemoveChild(area);
+                area.QueueFree();
+            }
+
+            area = new Area2D()
+            {
+                Name = "area"
+            };
+            node.AddChild(area);
+
+            if (sprite != null)
+            {
+                var texture = GD.Load<Texture>(sprite.Image);
+
+                area.AddChild(new CollisionShape2D()
                 {
-                    var texture = GD.Load<Texture>(sprite.Image);
-
-                    area.AddChild(new CollisionShape2D()
+                    Shape = new RectangleShape2D()
                     {
-                        Shape = new RectangleShape2D()
-                        {
-                            Extents = new Vector2(
-                                texture.GetHeight() * scale.X,
-                                texture.GetWidth() * scale.Y) / 2f
-                        }
-                    });
+                        Extents = new Vector2(
+                            texture.GetHeight() * scale.X,
+                            texture.GetWidth() * scale.Y) / 2f
+                    }
+                });
 
-                    area.AddChild(new RectangleNode()
-                    {
-                        Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
-                        Color = new Godot.Color(0, 0, 1)
-                    });
-                }
-
-                if (area.IsConnected("area_entered", game, nameof(game._Event)))
+                area.AddChild(new RectangleNode()
                 {
-                    area.Disconnect("area_entered", game, nameof(game._Event));
-                }
+                    Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
+                    Color = new Godot.Color(0, 0, 1)
+                });
+            }
 
-                area.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
+            if (area.IsConnected("area_entered", game, nameof(game._Event)))
+            {
+                area.Disconnect("area_entered", game, nameof(game._Event));
+            }
+
+            area.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
                 id, new GodotWrapper(enter)
             });
-            }
+        }
 
-            foreach (var (id, body) in collisions.Removed)
+        foreach (var (id, body) in collisions.Removed)
+        {
+            var enter = state.Get(id)?.Get<EnterEvent>();
+
+            var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+            if (node == null) continue;
+
+            if (enter == null)
             {
-                var enter = state.Get(id)?.Get<EnterEvent>();
-
-                var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
-                if (node == null) continue;
-
-                if (enter == null)
-                {
-                    game.RemoveChild(node);
-                    node.QueueFree();
-                }
-                else
-                {
-                    var collision = node.GetNodeOrNull<Node2D>("collision");
-                    if (collision != null)
-                    {
-                        node.RemoveChild(collision);
-                        collision.QueueFree();
-                    }
-                }
+                game.RemoveChild(node);
+                node.QueueFree();
             }
-
-            foreach (var (id, body) in collisions.Changed.Concat(collisions.Added))
+            else
             {
-                var entity = state[id];
-                var (sprite, scale) = entity.Get<Sprite, Scale>();
-                scale = scale ?? new Scale { X = 1, Y = 1 };
-
-                var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
-                var position = entity.Get<Position>() ?? new Position { X = 0, Y = 0 };
-                if (node == null)
-                {
-                    node = new KinematicBody2D()
-                    {
-                        Name = $"{id}-physics",
-                        Position = new Vector2(position.X, position.Y)
-                    };
-                    game.AddChild(node);
-                }
-
                 var collision = node.GetNodeOrNull<Node2D>("collision");
                 if (collision != null)
                 {
                     node.RemoveChild(collision);
                     collision.QueueFree();
                 }
+            }
+        }
 
-                if (sprite != null)
+        foreach (var (id, body) in collisions.Changed.Concat(collisions.Added))
+        {
+            var entity = state[id];
+            var (sprite, scale) = entity.Get<Sprite, Scale>();
+            scale = scale ?? new Scale { X = 1, Y = 1 };
+
+            var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+            var position = entity.Get<Position>() ?? new Position { X = 0, Y = 0 };
+            if (node == null)
+            {
+                node = new KinematicBody2D()
                 {
-                    var texture = GD.Load<Texture>(sprite.Image);
+                    Name = $"{id}-physics",
+                    Position = new Vector2(position.X, position.Y)
+                };
+                game.AddChild(node);
+            }
 
-                    var shape = new CollisionShape2D()
-                    {
-                        Name = "collision",
-                        Shape = new RectangleShape2D()
-                        {
-                            Extents = new Vector2(
-                                texture.GetHeight() * scale.X,
-                                texture.GetWidth() * scale.Y) / 2f
-                        }
-                    };
-                    node.AddChild(shape);
+            var collision = node.GetNodeOrNull<Node2D>("collision");
+            if (collision != null)
+            {
+                node.RemoveChild(collision);
+                collision.QueueFree();
+            }
 
-                    shape.AddChild(new RectangleNode()
+            if (sprite != null)
+            {
+                var texture = GD.Load<Texture>(sprite.Image);
+
+                var shape = new CollisionShape2D()
+                {
+                    Name = "collision",
+                    Shape = new RectangleShape2D()
                     {
-                        Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
-                        Color = new Godot.Color(1, 0, 0)
-                    });
-                }
+                        Extents = new Vector2(
+                            texture.GetHeight() * scale.X,
+                            texture.GetWidth() * scale.Y) / 2f
+                    }
+                };
+                node.AddChild(shape);
+
+                shape.AddChild(new RectangleNode()
+                {
+                    Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
+                    Color = new Godot.Color(1, 0, 0)
+                });
             }
         }
 
@@ -227,7 +238,7 @@ public static class Physics
         foreach (var (id, collision) in state.Get<Collision>())
         {
             var entity = state[id];
-            var position = entity.Get<Position>();
+            var (position, speed) = entity.Get<Position, Speed>();
 
             var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
             if (node == null) continue;

@@ -54,13 +54,19 @@ public class Game : Godot.YSort
 
     public override void _Input(InputEvent @event)
     {
-        var queued = Input.System(State, this, @event);
-        if (queued != null) EventQueue.Add(queued);
+        State = Input.System(State, this, @event);
     }
 
     public void Event(string id, string otherId, Event ev)
     {
         otherId = otherId?.Split("-").FirstOrDefault();
+
+        Func<Task, Task> withTick = (Task task) =>
+        {
+            return task is Add add && add.Component is TickComponent tickComponent
+                ? add with { Component = tickComponent with { Tick = Tick } }
+                : task;
+        };
 
         EventQueue.Add(ev with
         {
@@ -76,7 +82,7 @@ public class Game : Godot.YSort
                     }
                     else
                     {
-                        return task;
+                        return withTick(task);
                     }
                 }
                 else if (task.Target == Target.Self)
@@ -90,9 +96,7 @@ public class Game : Godot.YSort
 
                 task = task with { Target = target };
 
-                return task is Add add && add.Component is TickComponent tickComponent
-                    ? add with { Component = tickComponent with { Tick = Tick } }
-                    : task;
+                return withTick(task);
             }).ToArray()
         });
     }

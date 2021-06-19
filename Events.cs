@@ -87,12 +87,7 @@ public static class Events
                             ? addEntity.Target
                             : Guid.NewGuid().ToString();
 
-                        var entity = addEntity.Entity;
-                        foreach (var component in entity.Components)
-                        {
-                            entity = entity.With(component);
-                        }
-                        state = state.With(target, entity);
+                        state = state.With(target, addEntity.Entity);
                     }
                     break;
 
