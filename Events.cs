@@ -35,10 +35,11 @@ public record Remove : Task
 {
     public Type Type;
 
-    public Remove() { }
-
     public Remove(Type type)
         => (Type) = (type);
+
+    public Remove(Component component)
+        => (Type) = (component.GetType());
 }
 
 public record AddEntity : Task
