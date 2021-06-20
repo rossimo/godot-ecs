@@ -7,9 +7,9 @@ public record Speed : Component
     public float Value;
 }
 
-public record Move : Component
+public record Destination : Component
 {
-    public Position Destination;
+    public Position Position;
 }
 
 public record Collision : Component
@@ -34,7 +34,24 @@ public static class Physics
     {
         if (previous != state)
         {
-            var (enters, collisions) = Diff.Compare<EnterEvent, Collision>(previous, state);
+            var (enters, collisions, moves) = Diff.Compare<EnterEvent, Collision, Move>(previous, state);
+
+            foreach (var (id, move) in moves.Added.Concat(moves.Changed))
+            {
+                state = state.Without<Move>(id);
+
+                var (position, speed) = state[id].Get<Position, Speed>();
+                if (position == null) continue;
+
+                speed = speed ?? new Speed { Value = 1f };
+
+                var velocity = new Vector2(position.X, position.Y)
+                    .DirectionTo(new Vector2(move.Destination.X, move.Destination.Y))
+                    .Normalized() * speed.Value;
+
+                state = state.With(id, new Velocity { X = velocity.x, Y = velocity.y });
+                state = state.With(id, new Destination { Position = move.Destination });
+            }
 
             foreach (var (id, enter) in enters.Removed)
             {
@@ -197,23 +214,23 @@ public static class Physics
         foreach (var (id, velocity) in state.Get<Velocity>())
         {
             var entity = state[id];
-            var (move, position, speed) = entity.Get<Move, Position, Speed>();
+            var (destination, position, speed) = entity.Get<Destination, Position, Speed>();
             speed = speed ?? new Speed { Value = 1f };
 
             var physics = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
             if (physics == null) continue;
 
-            var travel = new Vector2(velocity.X, velocity.Y) * speed.Value * (delta / (30f / 1000f));
+            var travel = new Vector2(velocity.X, velocity.Y) * (delta / (30f / 1000f));
             var velocityDistance = travel.DistanceTo(new Vector2(0, 0));
             var moveDistance = new Vector2(position.X, position.Y)
-                .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
+                .DistanceTo(new Vector2(destination.Position.X, destination.Position.Y));
 
             var oldPosition = physics.Position;
 
             if (moveDistance < velocityDistance)
             {
-                physics.Position = new Vector2(move.Destination.X, move.Destination.Y);
-                state = state.Without<Move>(id);
+                physics.Position = new Vector2(destination.Position.X, destination.Position.Y);
+                state = state.Without<Destination>(id);
                 state = state.Without<Velocity>(id);
             }
             else

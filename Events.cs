@@ -60,27 +60,11 @@ public static class Events
     {
         foreach (var task in ev.Tasks)
         {
-            var target = id;
-
-            if (task.Target == Target.Other)
-            {
-                if (otherId?.Length > 0)
-                {
-                    target = otherId;
-                }
-                else
-                {
-                    continue;
-                }
-            }
-            else if (task.Target == Target.Self)
-            {
-                target = id;
-            }
-            else if (task.Target?.Length > 0)
-            {
-                target = task.Target;
-            }
+            var target = task.Target == Target.Other
+                ? otherId
+                : task.Target == null || task.Target == Target.Self
+                    ? id
+                    : task.Target;
 
             switch (task)
             {

@@ -86,6 +86,6 @@ public class Game : Godot.YSort
 
         Previous = State;
         Tick = Tick + 1;
-		GC.Collect();
+        GC.Collect();
     }
 }
