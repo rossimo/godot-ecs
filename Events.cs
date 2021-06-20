@@ -56,7 +56,7 @@ public record RemoveEntity : Task;
 
 public static class Events
 {
-    public static State System(int tick, State state, string id, string otherId, Event ev)
+    public static State System(State state, string id, string otherId, Event ev)
     {
         foreach (var task in ev.Tasks)
         {

@@ -31,12 +31,7 @@ public record Color : Component
     public float Blue;
 }
 
-public record TickComponent : Component
-{
-    public int Tick;
-}
-
-public record Flash : TickComponent
+public record Flash : Component
 {
     public Color Color;
 }

@@ -7,7 +7,6 @@ public class Game : Godot.YSort
 {
     public State State;
     private State Previous;
-    private int Tick;
 
     public override void _Ready()
     {
@@ -57,16 +56,7 @@ public class Game : Godot.YSort
 
     public void Event(Event ev, string id = null, string otherId = null)
     {
-        ev = ev with
-        {
-            Tasks = ev.Tasks.Select(task =>
-                task is Add add && add.Component is TickComponent tickComponent
-                    ? add with { Component = tickComponent with { Tick = Tick } }
-                    : task
-            ).ToArray()
-        };
-
-        State = Events.System(Tick, State, id, otherId?.Split("-").FirstOrDefault(), ev);
+        State = Events.System(State, id, otherId?.Split("-").FirstOrDefault(), ev);
     }
 
     public void _Event(string id, GodotWrapper ev)
@@ -85,7 +75,6 @@ public class Game : Godot.YSort
         State = Renderer.System(Previous, State, this);
 
         Previous = State;
-        Tick = Tick + 1;
         GC.Collect();
     }
 }
