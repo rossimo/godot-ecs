@@ -55,7 +55,7 @@ public class Game : Godot.YSort
         State = Input.System(State, this, @event);
     }
 
-    public void Event(string id, string otherId, Event ev)
+    public void Event(Event ev, string id = null, string otherId = null)
     {
         ev = ev with
         {
@@ -71,18 +71,18 @@ public class Game : Godot.YSort
 
     public void _Event(string id, GodotWrapper ev)
     {
-        Event(id, null, ev.Get<Event>());
+        Event(ev.Get<Event>(), id);
     }
 
     public void _Event(Node other, string id, GodotWrapper ev)
     {
-        Event(id, other.GetParent().Name, ev.Get<Event>());
+        Event(ev.Get<Event>(), id, other.GetParent().Name);
     }
 
     public override void _PhysicsProcess(float delta)
     {
-        Renderer.System(Previous, State, this);
         State = Physics.System(Previous, State, this, delta);
+        Renderer.System(Previous, State, this);
 
         Previous = State;
         Tick = Tick + 1;
