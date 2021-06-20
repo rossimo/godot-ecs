@@ -82,7 +82,7 @@ public class Game : Godot.YSort
     public override void _PhysicsProcess(float delta)
     {
         State = Physics.System(Previous, State, this, delta);
-        Renderer.System(Previous, State, this);
+        State = Renderer.System(Previous, State, this);
 
         Previous = State;
         Tick = Tick + 1;

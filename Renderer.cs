@@ -45,9 +45,9 @@ public record ClickEvent : Event;
 
 public class Renderer
 {
-    public static void System(State previous, State state, Game game)
+    public static State System(State previous, State state, Game game)
     {
-        if (previous == state) return;
+        if (previous == state) return state;
 
         var (sprites, scales, rotations, clicks, positions, flashes) =
             Diff.Compare<Sprite, Scale, Rotation, ClickEvent, Position, Flash>(previous, state);
@@ -152,17 +152,10 @@ public class Renderer
             });
         }
 
-        foreach (var (id, flash) in flashes.Removed)
-        {
-            var node = game.GetNodeOrNull<Node2D>(id);
-            var tween = game.GetNodeOrNull<Tween>($"{id}/modulate");
-            if (node == null || tween == null) continue;
-
-            tween.RemoveAll();
-        }
-
         foreach (var (id, flash) in flashes.Added.Concat(flashes.Changed))
         {
+            state = state.Without<Flash>(id);
+
             var entity = state[id];
             var position = entity.Get<Position>();
             position = position ?? new Position { X = 0, Y = 0 };
@@ -185,11 +178,9 @@ public class Renderer
                 .33f);
 
             tween.Start();
-
-            tween.Connect("tween_all_completed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(new Event(new Remove(flash)))
-            });
         }
+
+        return state;
     }
 }
 
