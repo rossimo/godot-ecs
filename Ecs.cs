@@ -51,18 +51,30 @@ namespace Ecs
         public Entity With<C>(C component) where C : Component
         {
             var existing = Get<C>();
-            var components = existing == null
-                ? new List<Component>(Components)
-                : Components.Where(other => !component.GetType().Equals(other.GetType())).ToList();
 
-            components.Add(component);
+            if (existing != component)
+            {
+                var components = existing == null
+                    ? new List<Component>(Components)
+                    : Components.Where(other => !component.GetType().Equals(other.GetType())).ToList();
 
-            return this with { Components = components };
+                components.Add(component);
+
+                return this with { Components = components };
+            }
+            else
+            {
+                return this;
+            }
         }
 
         public Entity Without<C>() where C : Component
         {
-            return this with { Components = Components.Where(other => !typeof(C).Equals(other.GetType())).ToList() };
+            var existing = Get<C>();
+
+            return existing == null
+                ? this
+                : this with { Components = Components.Where(other => !typeof(C).Equals(other.GetType())).ToList() };
         }
     }
 
