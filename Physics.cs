@@ -214,35 +214,34 @@ public static class Physics
         foreach (var (id, velocity) in state.Get<Velocity>())
         {
             var entity = state[id];
-            var (destination, position, speed) = entity.Get<Destination, Position, Speed>();
-            speed = speed ?? new Speed { Value = 1f };
+            var (destination, position) = entity.Get<Destination, Position>();
 
             var physics = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
             if (physics == null) continue;
 
             var travel = new Vector2(velocity.X, velocity.Y) * (delta / (30f / 1000f));
-            var velocityDistance = travel.DistanceTo(new Vector2(0, 0));
-            var moveDistance = new Vector2(position.X, position.Y)
-                .DistanceTo(new Vector2(destination.Position.X, destination.Position.Y));
 
-            var oldPosition = physics.Position;
+            if (destination != null)
+            {
+                var moveDistance = travel.DistanceTo(new Vector2(0, 0));
+                var remainingDistance = new Vector2(position.X, position.Y)
+                    .DistanceTo(new Vector2(destination.Position.X, destination.Position.Y));
 
-            if (moveDistance < velocityDistance)
-            {
-                physics.Position = new Vector2(destination.Position.X, destination.Position.Y);
-                state = state.Without<Destination>(id);
-                state = state.Without<Velocity>(id);
+                if (remainingDistance < moveDistance)
+                {
+                    physics.Position = new Vector2(destination.Position.X, destination.Position.Y);
+                    state = state.Without<Destination>(id);
+                    state = state.Without<Velocity>(id);
+                    continue;
+                }
             }
-            else
-            {
-                physics.MoveAndCollide(travel);
-            }
+
+            physics.MoveAndCollide(travel);
         }
 
-        foreach (var (id, collision) in state.Get<Collision>())
+        foreach (var (id, position) in state.Get<Position>())
         {
             var entity = state[id];
-            var position = entity.Get<Position>();
 
             var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
             if (node == null) continue;
