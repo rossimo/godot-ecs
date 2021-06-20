@@ -13,7 +13,7 @@ public class Game : Godot.YSort
         State = new State() {
             { "hero", new Entity(
                 new Player { },
-                new Speed { Value = 4f },
+                new Speed { Value = 5f },
                 new Inventory { },
                 new Position{ X = 50, Y = 50 },
                 new Scale { X = 3, Y = 3 },
@@ -36,7 +36,8 @@ public class Game : Godot.YSort
                     new AddEntity(Potion, "potion")
                 ),
                 new Scale { X = 2, Y = 2 },
-                new Sprite { Image = "res://resources/tiles/tile481.png" })}
+                new Sprite { Image = "res://resources/tiles/tile481.png" })},
+            { "input", new Entity() { }}
         };
 
         State.Log(null, State);
@@ -51,7 +52,21 @@ public class Game : Godot.YSort
 
     public override void _Input(InputEvent @event)
     {
-        State = Input.System(State, this, @event);
+        State = InputEvents.System(State, this, @event);
+    }
+
+    public override void _Process(float delta)
+    {
+        State = InputMonitor.System(Previous, State, this, delta);
+    }
+
+    public override void _PhysicsProcess(float delta)
+    {
+        State = Physics.System(Previous, State, this, delta);
+        State = Renderer.System(Previous, State, this);
+
+        Previous = State;
+        GC.Collect();
     }
 
     public void Event(Event ev, string id = null, string otherId = null)
@@ -67,14 +82,5 @@ public class Game : Godot.YSort
     public void _Event(Node other, string id, GodotWrapper ev)
     {
         Event(ev.Get<Event>(), id, other.GetParent().Name);
-    }
-
-    public override void _PhysicsProcess(float delta)
-    {
-        State = Physics.System(Previous, State, this, delta);
-        State = Renderer.System(Previous, State, this);
-
-        Previous = State;
-        GC.Collect();
     }
 }
