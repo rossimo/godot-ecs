@@ -77,10 +77,7 @@ public static class Events
                 case Remove remove:
                     {
                         var entity = state[target];
-                        state = state.With(target, entity with
-                        {
-                            Components = entity.Components.Where(component => !component.GetType().Equals(remove.Type))
-                        });
+                        state = state.With(target, entity.Without(remove.Type.Name));
                     }
                     break;
 
@@ -90,12 +87,7 @@ public static class Events
                             ? addEntity.Target
                             : Guid.NewGuid().ToString();
 
-                        var entity = addEntity.Entity;
-                        foreach (var component in entity.Components)
-                        {
-                            entity = entity.With(component);
-                        }
-                        state = state.With(target, entity);
+                        state = state.With(target, addEntity.Entity);
                     }
                     break;
 

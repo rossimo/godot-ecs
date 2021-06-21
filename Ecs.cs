@@ -9,19 +9,24 @@ namespace Ecs
 
     public record Entity
     {
-        public IEnumerable<Component> Components = new List<Component>();
+        private Dictionary<string, Component> Components = new Dictionary<string, Component>();
 
         public Entity() { }
 
         public Entity(IEnumerable<Component> components)
-            => (Components) = (components);
+            => (Components) = (components.ToDictionary(component => component.GetType().Name));
 
         public Entity(params Component[] components)
-            => (Components) = (components);
+            => (Components) = (components.ToDictionary(component => component.GetType().Name));
+
+        public Component Get(string component)
+        {
+            return Components.Get(component);
+        }
 
         public C Get<C>() where C : Component
         {
-            return Components.OfType<C>().FirstOrDefault();
+            return Get(typeof(C).Name) as C;
         }
 
         public (C1, C2) Get<C1, C2>()
@@ -48,17 +53,21 @@ namespace Ecs
             return (Get<C1>(), Get<C2>(), Get<C3>(), Get<C4>());
         }
 
+        public Type[] Types()
+        {
+            return Components.Values.Select(component => component.GetType()).ToArray();
+        }
+
         public Entity With<C>(C component) where C : Component
         {
             var existing = Get<C>();
 
             if (existing != component)
             {
-                var components = existing == null
-                    ? new List<Component>(Components)
-                    : Components.Where(other => !component.GetType().Equals(other.GetType())).ToList();
+                var key = component.GetType().Name;
+                var components = new Dictionary<string, Component>(Components);
 
-                components.Add(component);
+                components[key] = component;
 
                 return this with { Components = components };
             }
@@ -68,13 +77,21 @@ namespace Ecs
             }
         }
 
+        public Entity Without(string component)
+        {
+            if (Components.ContainsKey(component))
+            {
+                var components = new Dictionary<string, Component>(Components);
+                components.Remove(component);
+                return this with { Components = components };
+            }
+
+            return this;
+        }
+
         public Entity Without<C>() where C : Component
         {
-            var existing = Get<C>();
-
-            return existing == null
-                ? this
-                : this with { Components = Components.Where(other => !typeof(C).Equals(other.GetType())).ToList() };
+            return Without(typeof(C).Name);
         }
     }
 
@@ -115,9 +132,9 @@ namespace Ecs
             var set = new HashSet<Type>();
             foreach (var entity in Values)
             {
-                foreach (var component in entity.Components)
+                foreach (var type in entity.Types())
                 {
-                    set.Add(component.GetType());
+                    set.Add(type);
                 }
             }
             return set.ToArray();
@@ -142,6 +159,8 @@ namespace Ecs
 
         public static void Log(State Previous, State State)
         {
+            if (Previous == State) return;
+            
             var types = new List<Type>()
                 .Concat(Previous?.Types() ?? new Type[] { })
                 .Concat(State?.Types() ?? new Type[] { })
@@ -152,6 +171,7 @@ namespace Ecs
             {
                 diffs.Add(Diff.Compare(type, Previous, State));
             }
+
 
             IEnumerable<(string ID, string Message)> all = new List<(string, string)>();
             foreach (var (Added, Removed, Changed) in diffs)
@@ -164,7 +184,7 @@ namespace Ecs
 
             foreach (var entry in all.OrderBy(entry => entry.ID))
             {
-                Console.WriteLine(entry.Message);
+               Logger.Info(entry.Message);
             }
         }
     }
@@ -180,29 +200,23 @@ namespace Ecs
 
         public static Dictionary<K, V> With<K, V>(this Dictionary<K, V> dict, K key, V value)
         {
-            if (dict.ContainsKey(key))
-            {
-                var clone = new Dictionary<K, V>(dict);
-                clone[key] = value;
-                return clone;
-            }
-            else
-            {
-                return new Dictionary<K, V>(dict) { { key, value } };
-            }
+            var clone = new Dictionary<K, V>(dict);
+            clone[key] = value;
+            return clone;
         }
 
         public static IEnumerable<(string, IEnumerable<Component>)> Get(this Dictionary<string, Entity> entities, params Type[] types)
         {
             return entities.Where(entry =>
             {
-                var distinct = types.Distinct();
-                var existing = entry.Value.Components.Select(component => component.GetType()).Distinct();
+                var distinct = types.Select(type => type.Name).Distinct();
+                var existing = entry.Value.Types().Select(type => type.Name);
                 return existing.Intersect(distinct).Count() == types.Count();
             }).Select(entry =>
             {
                 var (id, entity) = entry;
-                return (id, entity.Components.SortByType(types));
+                var components = types.Select(type => entity.Get(type.Name));
+                return (id, components);
             });
         }
 
@@ -257,7 +271,7 @@ namespace Ecs
 
         public static void Dump(object obj)
         {
-            Console.WriteLine(JsonConvert.SerializeObject(obj, Formatting.Indented, new JsonSerializerSettings
+            Logger.Info(JsonConvert.SerializeObject(obj, Formatting.Indented, new JsonSerializerSettings
             {
                 TypeNameHandling = TypeNameHandling.Objects,
                 TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Simple,

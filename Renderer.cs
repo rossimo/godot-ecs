@@ -69,7 +69,7 @@ public class Renderer
             {
                 Name = id,
                 Texture = GD.Load<Texture>(component.Image),
-                Position = position == null ? new Vector2(0, 0) : new Vector2(position.X, position.Y)
+                Position = new Vector2(position.X, position.Y)
             };
             game.AddChild(node);
 
