@@ -202,7 +202,7 @@ namespace Ecs
 
         public static Dictionary<K, V> With<K, V>(this Dictionary<K, V> dict, K key, V value)
         {
-            if (dict.ContainsKey(key) && dict[key]?.Equals(value) == true)
+            if (dict.ContainsKey(key) && dict[key].Equals(value))
             {
                 return dict;
             }
@@ -212,7 +212,7 @@ namespace Ecs
             return clone;
         }
 
-        public static IEnumerable<(string, IEnumerable<Component>)> Get(this Dictionary<string, Entity> entities, params Type[] types)
+        public static IEnumerable<(string ID, IEnumerable<Component> Components)> Get(this Dictionary<string, Entity> entities, params Type[] types)
         {
             return entities.Where(entry =>
             {
@@ -227,19 +227,13 @@ namespace Ecs
             });
         }
 
-        public static Dictionary<string, Component> Get(this Dictionary<string, Entity> entities, Type type)
-        {
-            var types = new[] { type };
-            return entities.Get(types).ToDictionary(entry => entry.Item1, entry => entry.Item2.FirstOrDefault());
-        }
-
         public static IEnumerable<(string, C1)> Get<C1>(this Dictionary<string, Entity> entities)
             where C1 : Component
         {
             var types = new[] { typeof(C1) };
             return entities.Get(types).Select(entry =>
             {
-                return (entry.Item1, entry.Item2.FirstOrDefault() as C1);
+                return (entry.ID, entry.Components.FirstOrDefault() as C1);
             });
         }
 
@@ -250,8 +244,7 @@ namespace Ecs
             var types = new[] { typeof(C1), typeof(C2) };
             return entities.Get(types).Select(entry =>
             {
-                var sorted = entry.Item2.ToList();
-                return (entry.Item1, sorted[0] as C1, sorted[1] as C2);
+                return (entry.ID, entry.Components.ElementAt(0) as C1, entry.Components.ElementAt(1) as C2);
             });
         }
 
@@ -263,9 +256,14 @@ namespace Ecs
             var types = new[] { typeof(C1), typeof(C2), typeof(C3) };
             return entities.Get(types).Select(entry =>
             {
-                var sorted = entry.Item2.ToList();
-                return (entry.Item1, sorted[0] as C1, sorted[1] as C2, sorted[2] as C3);
+                return (entry.ID, entry.Components.ElementAt(0) as C1, entry.Components.ElementAt(1) as C2, entry.Components.ElementAt(2) as C3);
             });
+        }
+
+        public static Dictionary<string, Component> Get(this Dictionary<string, Entity> entities, Type type)
+        {
+            var types = new[] { type };
+            return entities.Get(types).ToDictionary(entry => entry.ID, entry => entry.Components.FirstOrDefault());
         }
 
         public static IEnumerable<C> SortByType<C>(this IEnumerable<C> values, IEnumerable<Type> types)
