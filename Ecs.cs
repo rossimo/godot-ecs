@@ -97,7 +97,7 @@ namespace Ecs
 
     public class State : Dictionary<string, Entity>
     {
-        public static IEnumerable<Type> LOGGING_IGNORE = new [] { typeof(Ticks) };
+        public static IEnumerable<Type> LOGGING_IGNORE = new[] { typeof(Ticks) };
 
         public State() : base()
         {
@@ -311,28 +311,27 @@ namespace Ecs
                     Changed: new List<(string ID, Component Component)>());
             }
 
-            var oldComponents = before?.Get(type) ?? new Dictionary<string, Component>();
-            var newComponents = after?.Get(type) ?? new Dictionary<string, Component>();
+            var oldComponents = before?.Get(type);
+            var newComponents = after?.Get(type);
 
-            var oldIds = oldComponents.Keys;
-            var newIds = newComponents.Keys;
+            var oldIds = oldComponents?.Keys;
+            var newIds = newComponents?.Keys;
 
-            var removedIds = oldIds.Except(newIds);
-            var addedIds = newIds.Except(oldIds);
-            var commonIds = newIds.Union(oldIds);
+            var removedIds = newIds == null ? oldIds : oldIds?.Except(newIds);
+            var addedIds = oldIds == null ? newIds : newIds.Except(oldIds);
 
-            var removed = oldComponents.Where(entry => removedIds.Contains(entry.Key));
-            var added = newComponents.Where(entry => addedIds.Contains(entry.Key));
-            var changed = newComponents.Where(newComponent =>
+            var removed = oldComponents?.Where(entry => removedIds?.Contains(entry.Key) == true);
+            var added = newComponents?.Where(entry => addedIds?.Contains(entry.Key) == true);
+            var changed = newComponents?.Where(newComponent =>
             {
                 var id = newComponent.Key;
-                return oldComponents.ContainsKey(id) && oldComponents[id] != newComponent.Value;
+                return oldComponents?.ContainsKey(id) == true && oldComponents[id] != newComponent.Value;
             });
 
             return new Result<Component>(
-                Added: added.ToList().Select(entry => (entry.Key, entry.Value)),
-                Removed: removed.ToList().Select(entry => (entry.Key, entry.Value)),
-                Changed: changed.ToList().Select(entry => (entry.Key, entry.Value)));
+                Added: added?.ToList().Select(entry => (entry.Key, entry.Value)) ?? new List<(string ID, Component Component)>(),
+                Removed: removed?.ToList().Select(entry => (entry.Key, entry.Value)) ?? new List<(string ID, Component Component)>(),
+                Changed: changed?.ToList().Select(entry => (entry.Key, entry.Value)) ?? new List<(string ID, Component Component)>());
         }
 
         public static Result<C1> Compare<C1>(State Current, State next)
