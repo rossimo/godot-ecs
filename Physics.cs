@@ -306,6 +306,6 @@ public class RectangleNode : Node2D
             new Vector2(Rect.Position.x, Rect.Position.y)
         }.Select(vert => vert - new Vector2(Rect.Size.x / 2, Rect.Size.y / 2)).ToArray();
 
-        //DrawPolyline(vertices, Color);
+        DrawPolyline(vertices, Color);
     }
 }
