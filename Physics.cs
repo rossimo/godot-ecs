@@ -1,6 +1,12 @@
 using Ecs;
+using System;
 using Godot;
 using System.Linq;
+
+public record Ticks : Component
+{
+    public uint Tick;
+}
 
 public record Speed : Component
 {
@@ -30,9 +36,18 @@ public record EnterEvent : Event
 
 public static class Physics
 {
+    public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_fps")}".ToFloat();
+
     public static State System(State previous, State state, Game game, float delta)
     {
-        if (previous != state)
+        var configChange = previous != state;
+
+        state = state.With("physics", new Ticks
+        {
+            Tick = state["physics"].Get<Ticks>().Tick + 1
+        });
+
+        if (configChange)
         {
             var (enters, collisions, moves) = Diff.Compare<EnterEvent, Collision, Move>(previous, state);
 
@@ -219,7 +234,7 @@ public static class Physics
             var physics = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
             if (physics == null) continue;
 
-            var travel = new Vector2(velocity.X, velocity.Y) * (delta / (30f / 1000f));
+            var travel = new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS);
 
             if (destination != null)
             {
@@ -263,8 +278,6 @@ public static class Physics
                     sprite.AddChild(tween);
                 }
 
-                tween.RemoveAll();
-
                 tween.InterpolateProperty(sprite, "position",
                     sprite.Position,
                     node.Position,
@@ -293,6 +306,6 @@ public class RectangleNode : Node2D
             new Vector2(Rect.Position.x, Rect.Position.y)
         }.Select(vert => vert - new Vector2(Rect.Size.x / 2, Rect.Size.y / 2)).ToArray();
 
-        DrawPolyline(vertices, Color);
+        //DrawPolyline(vertices, Color);
     }
 }

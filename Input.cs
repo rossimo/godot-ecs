@@ -33,7 +33,7 @@ public static class InputEvents
 
 public static class InputMonitor
 {
-    public static State System(State previous, State state, Game game, float delta)
+    public static State System(State previous, State state, Game game)
     {
         var mouse = state[InputEvents.ENTITY].Get<Mouse>();
         var players = state.Get<Player>();

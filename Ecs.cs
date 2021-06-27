@@ -159,8 +159,9 @@ namespace Ecs
 
         public static void Log(State Previous, State State)
         {
+            return;
             if (Previous == State) return;
-            
+
             var types = new List<Type>()
                 .Concat(Previous?.Types() ?? new Type[] { })
                 .Concat(State?.Types() ?? new Type[] { })
@@ -184,7 +185,7 @@ namespace Ecs
 
             foreach (var entry in all.OrderBy(entry => entry.ID))
             {
-               Logger.Info(entry.Message);
+                Logger.Info(entry.Message);
             }
         }
     }
@@ -200,6 +201,11 @@ namespace Ecs
 
         public static Dictionary<K, V> With<K, V>(this Dictionary<K, V> dict, K key, V value)
         {
+            if (dict.ContainsKey(key) && dict[key]?.Equals(value) == true)
+            {
+                return dict;
+            }
+
             var clone = new Dictionary<K, V>(dict);
             clone[key] = value;
             return clone;

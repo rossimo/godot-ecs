@@ -13,7 +13,7 @@ public class Game : Godot.YSort
         State = new State() {
             { "hero", new Entity(
                 new Player { },
-                new Speed { Value = 5f },
+                new Speed { Value = 2.5f },
                 new Inventory { },
                 new Position{ X = 50, Y = 50 },
                 new Scale { X = 3, Y = 3 },
@@ -37,7 +37,8 @@ public class Game : Godot.YSort
                 ),
                 new Scale { X = 2, Y = 2 },
                 new Sprite { Image = "res://resources/tiles/tile481.png" })},
-            { "input", new Entity() { }}
+            { "input", new Entity() { }},
+            { "physics", new Entity(new Ticks { Tick = 0 })}
         };
 
         State.Log(null, State);
@@ -57,7 +58,7 @@ public class Game : Godot.YSort
 
     public override void _Process(float delta)
     {
-        State = InputMonitor.System(Previous, State, this, delta);
+        State = InputMonitor.System(Previous, State, this);
     }
 
     public override void _PhysicsProcess(float delta)
