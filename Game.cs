@@ -41,7 +41,7 @@ public class Game : Godot.YSort
             { "physics", new Entity(new Ticks { Tick = 0 })}
         };
 
-        State.Log(null, State);
+        State.Log(null, State, State.LOGGING_IGNORE);
     }
 
     public static Entity Potion = new Entity(

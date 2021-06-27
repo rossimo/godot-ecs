@@ -97,6 +97,8 @@ namespace Ecs
 
     public class State : Dictionary<string, Entity>
     {
+        public static IEnumerable<Type> LOGGING_IGNORE = new [] { typeof(Ticks) };
+
         public State() : base()
         {
         }
@@ -113,7 +115,7 @@ namespace Ecs
         {
             var prev = this;
             var next = new State(Utils.With(prev, id, entity));
-            Log(prev, next);
+            Log(prev, next, State.LOGGING_IGNORE);
             return next;
         }
 
@@ -148,7 +150,7 @@ namespace Ecs
             {
                 next.Remove(id);
             }
-            Log(prev, next);
+            Log(prev, next, State.LOGGING_IGNORE);
             return next;
         }
 
@@ -157,22 +159,21 @@ namespace Ecs
             return With(id, this[id].Without<C>());
         }
 
-        public static void Log(State Previous, State State)
+        public static void Log(State Previous, State State, IEnumerable<Type> ignore = null)
         {
-            return;
             if (Previous == State) return;
 
             var types = new List<Type>()
                 .Concat(Previous?.Types() ?? new Type[] { })
                 .Concat(State?.Types() ?? new Type[] { })
-                .Distinct();
+                .Distinct()
+                .Where(type => ignore?.Contains(type) == false);
 
             var diffs = new List<Result<Component>>();
             foreach (var type in types)
             {
                 diffs.Add(Diff.Compare(type, Previous, State));
             }
-
 
             IEnumerable<(string ID, string Message)> all = new List<(string, string)>();
             foreach (var (Added, Removed, Changed) in diffs)
@@ -226,13 +227,10 @@ namespace Ecs
             });
         }
 
-        public static IEnumerable<(string ID, Component Component)> Get(this Dictionary<string, Entity> entities, Type type)
+        public static Dictionary<string, Component> Get(this Dictionary<string, Entity> entities, Type type)
         {
             var types = new[] { type };
-            return entities.Get(types).Select(entry =>
-            {
-                return (entry.Item1, entry.Item2.FirstOrDefault());
-            });
+            return entities.Get(types).ToDictionary(entry => entry.Item1, entry => entry.Item2.FirstOrDefault());
         }
 
         public static IEnumerable<(string, C1)> Get<C1>(this Dictionary<string, Entity> entities)
@@ -313,30 +311,28 @@ namespace Ecs
                     Changed: new List<(string ID, Component Component)>());
             }
 
-            var oldComponents = before?.Get(type) ?? new List<(string ID, Component Component)>();
-            var newComponents = after?.Get(type) ?? new List<(string ID, Component Component)>();
+            var oldComponents = before?.Get(type) ?? new Dictionary<string, Component>();
+            var newComponents = after?.Get(type) ?? new Dictionary<string, Component>();
 
-            var oldIds = oldComponents.Select(entry => entry.ID);
-            var newIds = newComponents.Select(entry => entry.ID);
+            var oldIds = oldComponents.Keys;
+            var newIds = newComponents.Keys;
 
             var removedIds = oldIds.Except(newIds);
             var addedIds = newIds.Except(oldIds);
             var commonIds = newIds.Union(oldIds);
 
-            var removed = oldComponents.Where(entry => removedIds.Contains(entry.ID));
-            var added = newComponents.Where(entry => addedIds.Contains(entry.ID));
+            var removed = oldComponents.Where(entry => removedIds.Contains(entry.Key));
+            var added = newComponents.Where(entry => addedIds.Contains(entry.Key));
             var changed = newComponents.Where(newComponent =>
             {
-                var id = newComponent.ID;
-                var changes = oldComponents.Where(entry =>
-                {
-                    return entry.ID == id && newComponent.Component != entry.Component;
-                });
-
-                return changes.Count() > 0;
+                var id = newComponent.Key;
+                return oldComponents.ContainsKey(id) && oldComponents[id] != newComponent.Value;
             });
 
-            return new Result<Component>(Added: added, Removed: removed, Changed: changed);
+            return new Result<Component>(
+                Added: added.ToList().Select(entry => (entry.Key, entry.Value)),
+                Removed: removed.ToList().Select(entry => (entry.Key, entry.Value)),
+                Changed: changed.ToList().Select(entry => (entry.Key, entry.Value)));
         }
 
         public static Result<C1> Compare<C1>(State Current, State next)
