@@ -129,6 +129,15 @@ namespace Ecs
             return state;
         }
 
+        public State With(string id, Func<Entity, Entity> transform)
+        {
+            var entity = this.ContainsKey(id)
+                ? this[id]
+                : new Entity();
+
+            return this.With(id, transform(entity));
+        }
+
         public Type[] Types()
         {
             var set = new HashSet<Type>();
@@ -198,6 +207,20 @@ namespace Ecs
             V val;
             dict.TryGetValue(key, out val);
             return val;
+        }
+
+        public static V[] With<V>(this V[] list, V value)
+        {
+            var clone = new List<V>(list);
+            clone.Add(value);
+            return clone.ToArray();
+        }
+
+        public static List<V> With<V>(this List<V> list, V value)
+        {
+            var clone = new List<V>(list);
+            clone.Add(value);
+            return clone;
         }
 
         public static Dictionary<K, V> With<K, V>(this Dictionary<K, V> dict, K key, V value)

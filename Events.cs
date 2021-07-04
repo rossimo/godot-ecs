@@ -54,51 +54,70 @@ public record AddEntity : Task
 
 public record RemoveEntity : Task;
 
+public record EventQueue : Component
+{
+    public (Event Event, string Source, string Target)[] Queue =
+        new (Event Event, string Source, string Target)[] { };
+
+    public EventQueue(params (Event Event, string Source, string Target)[] queue)
+        => (Queue) = (queue);
+}
+
 public static class Events
 {
-    public static State System(State state, string id, string otherId, Event ev)
+    public static string ENTITY = "events";
+
+    public static State System(State previous, State state)
     {
-        foreach (var task in ev.Tasks)
+        var queue = state[ENTITY].Get<EventQueue>()?.Queue;
+        if (queue == null) return state;
+
+        foreach (var queued in queue)
         {
-            var target = task.Target == Target.Other
-                ? otherId
-                : task.Target == null || task.Target == Target.Self
-                    ? id
-                    : task.Target;
+            var (@event, id, otherId) = queued;
 
-            switch (task)
+            foreach (var task in @event.Tasks)
             {
-                case Add add:
-                    {
-                        state = state.With(target, add.Component);
-                    }
-                    break;
+                var target = task.Target == Target.Other
+                    ? otherId
+                    : task.Target == null || task.Target == Target.Self
+                        ? id
+                        : task.Target;
 
-                case Remove remove:
-                    {
-                        var entity = state[target];
-                        state = state.With(target, entity.Without(remove.Type.Name));
-                    }
-                    break;
+                switch (task)
+                {
+                    case Add add:
+                        {
+                            state = state.With(target, add.Component);
+                        }
+                        break;
 
-                case AddEntity addEntity:
-                    {
-                        target = addEntity.Target?.Length > 0
-                            ? addEntity.Target
-                            : Guid.NewGuid().ToString();
+                    case Remove remove:
+                        {
+                            var entity = state[target];
+                            state = state.With(target, entity.Without(remove.Type.Name));
+                        }
+                        break;
 
-                        state = state.With(target, addEntity.Entity);
-                    }
-                    break;
+                    case AddEntity addEntity:
+                        {
+                            target = addEntity.Target?.Length > 0
+                                ? addEntity.Target
+                                : Guid.NewGuid().ToString();
 
-                case RemoveEntity removeEntity:
-                    {
-                        state = state.Without(target);
-                    }
-                    break;
+                            state = state.With(target, addEntity.Entity);
+                        }
+                        break;
+
+                    case RemoveEntity removeEntity:
+                        {
+                            state = state.Without(target);
+                        }
+                        break;
+                }
             }
         }
 
-        return state;
+        return state.Without<EventQueue>(ENTITY);
     }
 }

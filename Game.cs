@@ -8,8 +8,6 @@ public class Game : Godot.YSort
 {
     public State State;
     private State Previous;
-    private List<(Event Event, string Source, string Target)> EventQueue =
-        new List<(Event Event, string Source, string Target)>();
 
     public override void _Ready()
     {
@@ -40,6 +38,7 @@ public class Game : Godot.YSort
                 ),
                 new Scale { X = 2, Y = 2 },
                 new Sprite { Image = "res://resources/tiles/tile481.png" })},
+            { "events", new Entity(new EventQueue()) },
             { "input", new Entity() { }},
             { "physics", new Entity(new Ticks { Tick = 0 })}
         };
@@ -66,12 +65,7 @@ public class Game : Godot.YSort
 
     public override void _PhysicsProcess(float delta)
     {
-        foreach (var ev in EventQueue)
-        {
-            State = Events.System(State, ev.Source, ev.Target, ev.Event);
-        }
-        EventQueue.Clear();
-
+        State = Events.System(Previous, State);
         State = Physics.System(Previous, State, this, delta);
         State = Renderer.System(Previous, State, this);
 
@@ -79,13 +73,22 @@ public class Game : Godot.YSort
         GC.Collect();
     }
 
-    public void _Event(string source, GodotWrapper ev)
+    public void QueueEvent(Event @event, string source, string target)
     {
-        EventQueue.Add((ev.Get<Event>(), source, null));
+        var entry = (@event, source, target);
+        State = State.With(Events.ENTITY, entity => entity.With(new EventQueue()
+        {
+            Queue = entity.Get<EventQueue>()?.Queue.With(entry) ?? new[] { entry }
+        }));
     }
 
-    public void _Event(Node target, string source, GodotWrapper ev)
+    public void _Event(string source, GodotWrapper @event)
     {
-        EventQueue.Add((ev.Get<Event>(), source, target.GetParent().Name?.Split("-").FirstOrDefault()));
+        QueueEvent(@event.Get<Event>(), source, null);
+    }
+
+    public void _Event(Node target, string source, GodotWrapper @event)
+    {
+        QueueEvent(@event.Get<Event>(), source, target.GetParent().Name?.Split("-").FirstOrDefault());
     }
 }
