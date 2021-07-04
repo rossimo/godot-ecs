@@ -38,8 +38,8 @@ public class Game : Godot.YSort
                 ),
                 new Scale { X = 2, Y = 2 },
                 new Sprite { Image = "res://resources/tiles/tile481.png" })},
-            { "events", new Entity(new EventQueue()) },
-            { "input", new Entity() { }},
+            { "events", new Entity() },
+            { "input", new Entity() },
             { "physics", new Entity(new Ticks { Tick = 0 })}
         };
 
@@ -75,10 +75,10 @@ public class Game : Godot.YSort
 
     public void QueueEvent(Event @event, string source, string target)
     {
-        var entry = (@event, source, target);
+        var entry = (source, target, @event);
         State = State.With(Events.ENTITY, entity => entity.With(new EventQueue()
         {
-            Queue = entity.Get<EventQueue>()?.Queue.With(entry) ?? new[] { entry }
+            Events = entity.Get<EventQueue>()?.Events.With(entry) ?? new[] { entry }
         }));
     }
 

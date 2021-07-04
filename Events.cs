@@ -10,7 +10,7 @@ public static class Target
 
 public record Task
 {
-    public string Target = null;
+    public string Target;
 }
 
 public record Event : Component
@@ -19,6 +19,11 @@ public record Event : Component
 
     public Event(params Task[] tasks)
         => (Tasks) = (tasks);
+
+    public override string ToString()
+    {
+        return $"{this.GetType().Name} {{ {nameof(Tasks)} = [\n    {String.Join(",\n    ", (object[])Tasks).Trim()}\n] }}";
+    }
 }
 
 public record Add : Task
@@ -56,11 +61,16 @@ public record RemoveEntity : Task;
 
 public record EventQueue : Component
 {
-    public (Event Event, string Source, string Target)[] Queue =
-        new (Event Event, string Source, string Target)[] { };
+    public (string Source, string Target, Event Event)[] Events =
+        new (string Source, string Target, Event Event)[] { };
 
-    public EventQueue(params (Event Event, string Source, string Target)[] queue)
-        => (Queue) = (queue);
+    public EventQueue(params (string Source, string Target, Event Event)[] queue)
+        => (Events) = (queue);
+
+    public override string ToString()
+    {
+        return $"{this.GetType().Name} {{ {Utils.Log(nameof(Events), Events)} }}";
+    }
 }
 
 public static class Events
@@ -69,12 +79,12 @@ public static class Events
 
     public static State System(State previous, State state)
     {
-        var queue = state[ENTITY].Get<EventQueue>()?.Queue;
+        var queue = state[ENTITY].Get<EventQueue>()?.Events;
         if (queue == null) return state;
 
         foreach (var queued in queue)
         {
-            var (@event, id, otherId) = queued;
+            var (id, otherId, @event) = queued;
 
             foreach (var task in @event.Tasks)
             {

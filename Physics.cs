@@ -32,6 +32,11 @@ public record EnterEvent : Event
 {
     public EnterEvent(params Task[] tasks)
         => (Tasks) = (tasks);
+
+    public override string ToString()
+    {
+        return $"{this.GetType().Name} {{ {Utils.Log(nameof(Tasks), Tasks)} }}";
+    }
 }
 
 public static class Physics
@@ -155,24 +160,14 @@ public static class Physics
 
             foreach (var (id, body) in collisions.Removed)
             {
-                var enter = state.Get(id)?.Get<EnterEvent>();
-
                 var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
                 if (node == null) continue;
 
-                if (enter == null)
+                var collision = node.GetNodeOrNull<Node2D>("collision");
+                if (collision != null)
                 {
-                    game.RemoveChild(node);
-                    node.QueueFree();
-                }
-                else
-                {
-                    var collision = node.GetNodeOrNull<Node2D>("collision");
-                    if (collision != null)
-                    {
-                        node.RemoveChild(collision);
-                        collision.QueueFree();
-                    }
+                    node.RemoveChild(collision);
+                    collision.QueueFree();
                 }
             }
 

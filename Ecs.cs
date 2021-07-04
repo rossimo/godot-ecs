@@ -208,6 +208,28 @@ namespace Ecs
 
     public static class Utils
     {
+        private static string SPACER = "    ";
+        private static int DEPTH = 0;
+
+        public static string Log<V>(string name, IEnumerable<V> list)
+        {
+            var indent = String.Join("", Enumerable.Range(0, DEPTH + 1).Select(i => SPACER));
+
+            DEPTH++;
+            var root = $"\n{indent}{String.Join(",\n" + indent, (V[])list).Trim()}{indent}\n";
+            DEPTH--;
+
+            var trimmedRoot = list.Count() > 0
+                ? root
+                : root.Trim();
+
+            var suffix = list.Count() > 0
+                ? String.Join("", Enumerable.Range(0, DEPTH).Select(i => SPACER))
+                : "";
+
+            return $"{name} = [{trimmedRoot}{suffix}]";
+        }
+
         public static V Get<K, V>(this Dictionary<K, V> dict, K key)
         {
             V val;
