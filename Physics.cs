@@ -18,19 +18,19 @@ public record Destination : Component
     public Position Position;
 }
 
-public record Collision : Component
-{
-}
-
 public record Velocity : Component
 {
     public float X;
     public float Y;
 }
 
-public record EnterEvent : Event
+public record Collision : Component;
+
+public record Area : Component;
+
+public record AreaEnterEvent : Event
 {
-    public EnterEvent(params Task[] tasks)
+    public AreaEnterEvent(params Task[] tasks)
         => (Tasks) = (tasks);
 
     public override string ToString()
@@ -54,7 +54,18 @@ public static class Physics
 
         if (configChange)
         {
-            var (enters, collisions, moves) = Diff.Compare<EnterEvent, Collision, Move>(previous, state);
+            var (areas, areaEnterEvents, collisions, moves) = Diff.Compare<Area, AreaEnterEvent, Collision, Move>(previous, state);
+
+            var needPhysics = areas.Added.Select(entry => entry.ID)
+                .Concat(areas.Changed.Select(entry => entry.ID))
+                .Concat(collisions.Added.Select(entry => entry.ID))
+                .Concat(collisions.Changed.Select(entry => entry.ID))
+                .Distinct();
+
+            var notNeedPhysics = areas.Removed.Select(entry => entry.ID)
+                .Concat(collisions.Removed.Select(entry => entry.ID))
+                .Distinct()
+                .Where(id => !needPhysics.Contains(id));
 
             foreach (var (id, move) in moves.Added.Concat(moves.Changed))
             {
@@ -73,46 +84,46 @@ public static class Physics
                 state = state.With(id, new Destination { Position = move.Destination });
             }
 
-            foreach (var (id, enter) in enters.Removed)
+            foreach (var id in notNeedPhysics)
             {
-                var collision = state.Get(id)?.Get<Collision>();
+                var physics = game.GetNodeOrNull<Node2D>($"{id}-physics");
+                if (physics == null) continue;
 
-                var node = game.GetNodeOrNull<Node2D>($"{id}-physics");
-                if (node == null) continue;
-
-                if (collision == null)
-                {
-                    game.RemoveChild(node);
-                    node.QueueFree();
-                }
-                else
-                {
-                    var area = node.GetNodeOrNull<Area2D>("area");
-                    if (area != null)
-                    {
-                        node.RemoveChild(area);
-                        area.QueueFree();
-                    }
-                }
+                game.RemoveChild(physics);
+                physics.QueueFree();
             }
 
-            foreach (var (id, enter) in enters.Added.Concat(enters.Changed))
+            foreach (var id in needPhysics)
             {
-                var entity = state[id];
-                var (sprite, position, scale) = entity.Get<Sprite, Position, Scale>();
-                position = position ?? new Position { X = 0, Y = 0 };
-                scale = scale ?? new Scale { X = 1, Y = 1 };
+                var physics = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+                if (physics != null) continue;
 
-                var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
-                if (node == null)
+                var position = state[id].Get<Position>() ?? new Position { X = 0, Y = 0 };
+
+                game.AddChild(new KinematicBody2D()
                 {
-                    node = new KinematicBody2D()
-                    {
-                        Name = $"{id}-physics",
-                        Position = new Vector2(position.X, position.Y)
-                    };
-                    game.AddChild(node);
-                }
+                    Name = $"{id}-physics",
+                    Position = new Vector2(position.X, position.Y)
+                });
+            }
+
+            foreach (var (id, enter) in areas.Removed)
+            {
+                var physics = game.GetNodeOrNull<Node2D>($"{id}-physics");
+                var area = physics?.GetNodeOrNull<Area2D>("area");
+                if (area == null) continue;
+
+                physics.RemoveChild(area);
+                area.QueueFree();
+            }
+
+            foreach (var (id, component) in areas.Added.Concat(areas.Changed))
+            {
+                var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+                if (node == null) continue;
+
+                var (sprite, scale) = state[id].Get<Sprite, Scale>();
+                scale = scale ?? new Scale { X = 1, Y = 1 };
 
                 var area = node.GetNodeOrNull<Node2D>("area");
                 if (area != null)
@@ -147,23 +158,39 @@ public static class Physics
                         Color = new Godot.Color(0, 0, 1)
                     });
                 }
-
-                if (area.IsConnected("area_entered", game, nameof(game._Event)))
-                {
-                    area.Disconnect("area_entered", game, nameof(game._Event));
-                }
-
-                area.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(enter)
-            });
             }
 
-            foreach (var (id, body) in collisions.Removed)
+            foreach (var (id, ev) in areaEnterEvents.Removed)
             {
-                var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+                var node = game.GetNodeOrNull<Node2D>($"{id}-physics/area");
                 if (node == null) continue;
 
-                var collision = node.GetNodeOrNull<Node2D>("collision");
+                if (node.IsConnected("area_entered", game, nameof(game._Event)))
+                {
+                    node.Disconnect("area_entered", game, nameof(game._Event));
+                }
+            }
+
+            foreach (var (id, ev) in areaEnterEvents.Added.Concat(areaEnterEvents.Changed))
+            {
+                var node = game.GetNodeOrNull<Node2D>($"{id}-physics/area");
+                if (node == null) continue;
+
+                if (node.IsConnected("area_entered", game, nameof(game._Event)))
+                {
+                    node.Disconnect("area_entered", game, nameof(game._Event));
+                }
+
+                node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
+                    id, new GodotWrapper(ev)
+                });
+            }
+
+            foreach (var (id, component) in collisions.Removed)
+            {
+                var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+                var collision = node?.GetNodeOrNull<Node2D>("collision");
+
                 if (collision != null)
                 {
                     node.RemoveChild(collision);
@@ -171,23 +198,14 @@ public static class Physics
                 }
             }
 
-            foreach (var (id, body) in collisions.Changed.Concat(collisions.Added))
+            foreach (var (id, component) in collisions.Changed.Concat(collisions.Added))
             {
                 var entity = state[id];
+                var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+                if (node == null) continue;
+
                 var (sprite, scale) = entity.Get<Sprite, Scale>();
                 scale = scale ?? new Scale { X = 1, Y = 1 };
-
-                var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
-                var position = entity.Get<Position>() ?? new Position { X = 0, Y = 0 };
-                if (node == null)
-                {
-                    node = new KinematicBody2D()
-                    {
-                        Name = $"{id}-physics",
-                        Position = new Vector2(position.X, position.Y)
-                    };
-                    game.AddChild(node);
-                }
 
                 var collision = node.GetNodeOrNull<Node2D>("collision");
                 if (collision != null)
