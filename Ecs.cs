@@ -122,11 +122,17 @@ namespace Ecs
         public State With(string id, params Component[] components)
         {
             var state = this;
+
+            var entity = this.ContainsKey(id)
+                ? this[id]
+                : new Entity();
+
             foreach (var component in components)
             {
-                state = state.With(id, state[id].With(component));
+                entity = entity.With(component);
             }
-            return state;
+
+            return state.With(id, entity);
         }
 
         public State With(string id, Func<Entity, Entity> transform)
