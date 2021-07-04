@@ -45,9 +45,11 @@ public static class InputMonitor
             foreach (var (id, player) in players)
             {
                 var position = state[id].Get<Position>();
-                var source = new Vector2(position.X, position.Y);
-                var velocity = source.DirectionTo(new Vector2(target));
-                state = state.With(id, new Move { Destination = new Position { X = target.x, Y = target.y } });
+                var destination = new Position { X = target.x, Y = target.y };
+                if (position != destination)
+                {
+                    state = state.With(id, new Move { Destination = destination });
+                }
             }
         }
 
