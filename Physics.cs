@@ -235,6 +235,7 @@ public static class Physics
             if (physics == null) continue;
 
             var travel = new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS);
+            var withinReach = false;
 
             if (destination != null)
             {
@@ -242,16 +243,21 @@ public static class Physics
                 var remainingDistance = new Vector2(position.X, position.Y)
                     .DistanceTo(new Vector2(destination.Position.X, destination.Position.Y));
 
-                if (remainingDistance < moveDistance)
-                {
-                    physics.Position = new Vector2(destination.Position.X, destination.Position.Y);
-                    state = state.Without<Destination>(id);
-                    state = state.Without<Velocity>(id);
-                    continue;
-                }
+                withinReach = remainingDistance < moveDistance;
             }
 
-            physics.MoveAndCollide(travel);
+            var collided = physics.MoveAndCollide(travel);
+
+            if (withinReach)
+            {
+                state = state.Without<Destination>(id);
+                state = state.Without<Velocity>(id);
+
+                if (collided == null)
+                {
+                    physics.Position = new Vector2(destination.Position.X, destination.Position.Y);
+                }
+            }
         }
 
         foreach (var (id, position) in state.Get<Position>())
@@ -261,7 +267,7 @@ public static class Physics
             var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
             if (node == null) continue;
 
-            if (position == null || position.X != node.Position.x || position.Y != node.Position.y)
+            if (position?.X != node.Position.x || position?.Y != node.Position.y)
             {
                 state = state.With(id, new Position { X = node.Position.x, Y = node.Position.y });
 
