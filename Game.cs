@@ -2,11 +2,14 @@ using Ecs;
 using Godot;
 using System;
 using System.Linq;
+using System.Collections.Generic;
 
 public class Game : Godot.YSort
 {
     public State State;
     private State Previous;
+    private List<(Event Event, string Source, string Target)> EventQueue =
+        new List<(Event Event, string Source, string Target)>();
 
     public override void _Ready()
     {
@@ -63,6 +66,12 @@ public class Game : Godot.YSort
 
     public override void _PhysicsProcess(float delta)
     {
+        foreach (var ev in EventQueue)
+        {
+            State = Events.System(State, ev.Source, ev.Target, ev.Event);
+        }
+        EventQueue.Clear();
+
         State = Physics.System(Previous, State, this, delta);
         State = Renderer.System(Previous, State, this);
 
@@ -70,18 +79,13 @@ public class Game : Godot.YSort
         GC.Collect();
     }
 
-    public void Event(Event ev, string id = null, string otherId = null)
+    public void _Event(string source, GodotWrapper ev)
     {
-        State = Events.System(State, id, otherId?.Split("-").FirstOrDefault(), ev);
+        EventQueue.Add((ev.Get<Event>(), source, null));
     }
 
-    public void _Event(string id, GodotWrapper ev)
+    public void _Event(Node target, string source, GodotWrapper ev)
     {
-        Event(ev.Get<Event>(), id);
-    }
-
-    public void _Event(Node other, string id, GodotWrapper ev)
-    {
-        Event(ev.Get<Event>(), id, other.GetParent().Name);
+        EventQueue.Add((ev.Get<Event>(), source, target.GetParent().Name?.Split("-").FirstOrDefault()));
     }
 }
