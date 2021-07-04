@@ -26,6 +26,17 @@ public record Velocity : Component
 
 public record Collision : Component;
 
+public record CollisionEvent : Event
+{
+    public CollisionEvent(params Task[] tasks)
+        => (Tasks) = (tasks);
+
+    public override string ToString()
+    {
+        return $"{this.GetType().Name} {{ {Utils.Log(nameof(Tasks), Tasks)} }}";
+    }
+}
+
 public record Area : Component;
 
 public record AreaEnterEvent : Event
@@ -261,14 +272,43 @@ public static class Physics
 
             var collided = physics.MoveAndCollide(travel);
 
-            if (withinReach)
+            if (withinReach || collided != null)
             {
                 state = state.Without<Destination>(id);
                 state = state.Without<Velocity>(id);
 
+
                 if (collided == null)
                 {
                     physics.Position = new Vector2(destination.Position.X, destination.Position.Y);
+                }
+                else
+                {
+                    var collideId = (collided.Collider as Node).Name.Split("-").First();
+
+                    var ev = state[id].Get<CollisionEvent>();
+                    if (ev != null)
+                    {
+                        var queue = (id, collideId, ev as Event);
+                        state = state.With(Events.ENTITY, entity => entity.With(new EventQueue()
+                        {
+                            Events = entity.Get<EventQueue>()?.Events.With(queue) ?? new[] { queue }
+                        }));
+                    }
+
+                    var otherEv = state.ContainsKey(collideId)
+                        ? state[collideId].Get<CollisionEvent>()
+                        : null;
+
+                    if (otherEv != null)
+                    {
+                        var queue = (collideId, id, otherEv as Event);
+
+                        state = state.With(Events.ENTITY, entity => entity.With(new EventQueue()
+                        {
+                            Events = entity.Get<EventQueue>()?.Events.With(queue) ?? new[] { queue }
+                        }));
+                    }
                 }
             }
         }

@@ -244,13 +244,6 @@ namespace Ecs
             return clone.ToArray();
         }
 
-        public static List<V> With<V>(this List<V> list, V value)
-        {
-            var clone = new List<V>(list);
-            clone.Add(value);
-            return clone;
-        }
-
         public static Dictionary<K, V> With<K, V>(this Dictionary<K, V> dict, K key, V value)
         {
             if (dict.ContainsKey(key) && dict[key].Equals(value))

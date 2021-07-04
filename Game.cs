@@ -24,7 +24,8 @@ public class Game : Godot.YSort
             { "fire", new Entity(
                 new Position { X = 400, Y = 200 },
                 new Area(),
-                new AreaEnterEvent(
+                new Collision(),
+                new CollisionEvent(
                     new Add(new Flash { Color = new Color { Red = 2f, Green = 2f, Blue = 0f } }),
                     new Add(new Flash { Color = new Color { Red = 1f, Green = 0f, Blue = 0f } }, Target.Other)
                 ),
