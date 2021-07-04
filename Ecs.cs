@@ -194,7 +194,7 @@ namespace Ecs
             foreach (var (Added, Removed, Changed) in diffs)
             {
                 all = all
-                    .Concat(Removed.Select(entry => (entry.ID, $"- {entry}")))
+                    .Concat(Removed.Select(entry => (entry.ID, $"- {(entry.ID, entry.Component.GetType().Name)}")))
                     .Concat(Added.Select(entry => (entry.ID, $"+ {entry}")))
                     .Concat(Changed.Select(entry => (entry.ID, $"~ {entry}")));
             }
