@@ -6,7 +6,7 @@ using System.Linq;
 public class Game : Godot.YSort
 {
     public State State;
-    private State Previous;
+    private State Previous = new State();
 
     public override void _Ready()
     {
@@ -45,7 +45,7 @@ public class Game : Godot.YSort
             { "physics", new Entity(new Ticks { Tick = 0 })}
         };
 
-        Logger.Log(null, State, State.LOGGING_IGNORE);
+        Logger.Log(new State(), State, State.LOGGING_IGNORE);
     }
 
     public static Entity Potion = new Entity(

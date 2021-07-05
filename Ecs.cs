@@ -23,6 +23,21 @@ namespace Ecs
             return Components.Get(component);
         }
 
+        public Component Get(Type type)
+        {
+            return Get(type.Name);
+        }
+
+        public bool Has(Type type)
+        {
+            return Components.ContainsKey(type.Name);
+        }
+
+        public bool Has<C>() where C : Component
+        {
+            return Has(typeof(C));
+        }
+
         public C Get<C>() where C : Component
         {
             return Get(typeof(C).Name) as C;
@@ -224,12 +239,16 @@ namespace Ecs
 
         public static IEnumerable<(string ID, IEnumerable<Component> Components)> Get(this Dictionary<string, Entity> entities, params Type[] types)
         {
-            var distinct = types.Select(type => type.Name).Distinct();
-
             return entities.Where(entry =>
             {
-                var existing = entry.Value.Types().Select(type => type.Name);
-                return existing.Intersect(distinct).Count() == types.Count();
+                foreach (var type in types)
+                {
+                    if (!entry.Value.Has(type))
+                    {
+                        return false;
+                    }
+                }
+                return true;
             }).Select(entry =>
             {
                 var (id, entity) = entry;
@@ -244,7 +263,7 @@ namespace Ecs
             var types = new[] { typeof(C1) };
             return entities.Get(types).Select(entry =>
             {
-                return (entry.ID, entry.Components.FirstOrDefault() as C1);
+                return (entry.ID, entry.Components.ElementAt(0) as C1);
             });
         }
 
@@ -271,13 +290,8 @@ namespace Ecs
 
         public static Dictionary<string, Component> Get(this Dictionary<string, Entity> entities, Type type)
         {
-            var types = new[] { type };
-            return entities.Get(types).ToDictionary(entry => entry.ID, entry => entry.Components.FirstOrDefault());
-        }
-
-        public static IEnumerable<C> SortByType<C>(this IEnumerable<C> values, IEnumerable<Type> types)
-        {
-            return types.Select(type => values.SingleOrDefault(value => value.GetType().Equals(type)));
+            return entities.Where(entry => entry.Value.Has(type))
+                .ToDictionary(entry => entry.Key, entry => entry.Value.Get(type));
         }
     }
 
@@ -303,32 +317,25 @@ namespace Ecs
             if (before == after)
             {
                 return new Result<Component>(
-                    Added: new List<(string ID, Component Component)>(),
-                    Removed: new List<(string ID, Component Component)>(),
-                    Changed: new List<(string ID, Component Component)>());
+                    Added: new (string ID, Component Component)[] { },
+                    Removed: new (string ID, Component Component)[] { },
+                    Changed: new (string ID, Component Component)[] { });
             }
 
-            var oldComponents = before?.Get(type);
-            var newComponents = after?.Get(type);
+            var oldComponents = before.Get(type);
+            var newComponents = after.Get(type);
 
-            var oldIds = oldComponents?.Keys.ToHashSet();
-            var newIds = newComponents?.Keys.ToHashSet();
-
-            var removedIds = newIds == null ? oldIds : oldIds?.Except(newIds);
-            var addedIds = oldIds == null ? newIds : newIds.Except(oldIds);
-
-            var removed = oldComponents?.Where(entry => removedIds?.Contains(entry.Key) == true);
-            var added = newComponents?.Where(entry => addedIds?.Contains(entry.Key) == true);
-            var changed = newComponents?.Where(newComponent =>
+            var oldIds = oldComponents.Keys.ToHashSet();
+            var newIds = newComponents.Keys;
+            var changeIds = newIds.Where(id =>
             {
-                var id = newComponent.Key;
-                return oldComponents?.ContainsKey(id) == true && oldComponents[id] != newComponent.Value;
+                return oldIds.Contains(id) == true && oldComponents[id] != newComponents[id];
             });
 
             return new Result<Component>(
-                Added: added?.Select(entry => (entry.Key, entry.Value)) ?? new List<(string ID, Component Component)>(),
-                Removed: removed?.Select(entry => (entry.Key, entry.Value)) ?? new List<(string ID, Component Component)>(),
-                Changed: changed?.Select(entry => (entry.Key, entry.Value)) ?? new List<(string ID, Component Component)>());
+                Added: newIds.Except(oldIds).Select(id => (id, newComponents[id])),
+                Removed: oldIds.Except(newIds).Select(id => (id, oldComponents[id])),
+                Changed: changeIds.Select(id => (id, newComponents[id])));
         }
 
         public static Result<C1> Compare<C1>(State Current, State next)
