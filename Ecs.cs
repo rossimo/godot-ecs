@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using Newtonsoft.Json;
 using System.Collections.Generic;
 
 namespace Ecs
@@ -115,7 +114,7 @@ namespace Ecs
         {
             var prev = this;
             var next = new State(Utils.With(prev, id, entity));
-            Log(prev, next, State.LOGGING_IGNORE);
+            Logger.Log(prev, next, State.LOGGING_IGNORE);
             return next;
         }
 
@@ -165,44 +164,13 @@ namespace Ecs
             {
                 next.Remove(id);
             }
-            Log(prev, next, State.LOGGING_IGNORE);
+            Logger.Log(prev, next, State.LOGGING_IGNORE);
             return next;
         }
 
         public State Without<C>(string id) where C : Component
         {
             return With(id, this[id].Without<C>());
-        }
-
-        public static void Log(State Previous, State State, IEnumerable<Type> ignore = null)
-        {
-            if (Previous == State) return;
-
-            var types = new List<Type>()
-                .Concat(Previous?.Types() ?? new Type[] { })
-                .Concat(State?.Types() ?? new Type[] { })
-                .Distinct()
-                .Where(type => ignore?.Contains(type) == false);
-
-            var diffs = new List<Result<Component>>();
-            foreach (var type in types)
-            {
-                diffs.Add(Diff.Compare(type, Previous, State));
-            }
-
-            IEnumerable<(string ID, string Message)> all = new List<(string, string)>();
-            foreach (var (Added, Removed, Changed) in diffs)
-            {
-                all = all
-                    .Concat(Removed.Select(entry => (entry.ID, $"- {(entry.ID, entry.Component.GetType().Name)}")))
-                    .Concat(Added.Select(entry => (entry.ID, $"+ {entry}")))
-                    .Concat(Changed.Select(entry => (entry.ID, $"~ {entry}")));
-            }
-
-            foreach (var entry in all.OrderBy(entry => entry.ID))
-            {
-                Logger.Info(entry.Message);
-            }
         }
     }
 
@@ -314,16 +282,6 @@ namespace Ecs
         {
             return types.Select(type => values.SingleOrDefault(value => value.GetType().Equals(type)));
         }
-
-        public static void Dump(object obj)
-        {
-            Logger.Info(JsonConvert.SerializeObject(obj, Formatting.Indented, new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.Objects,
-                TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Simple,
-                ReferenceLoopHandling = ReferenceLoopHandling.Serialize
-            }));
-        }
     }
 
     public record Result<C>(
@@ -356,8 +314,8 @@ namespace Ecs
             var oldComponents = before?.Get(type);
             var newComponents = after?.Get(type);
 
-            var oldIds = oldComponents?.Keys;
-            var newIds = newComponents?.Keys;
+            var oldIds = oldComponents?.Keys.ToHashSet();
+            var newIds = newComponents?.Keys.ToHashSet();
 
             var removedIds = newIds == null ? oldIds : oldIds?.Except(newIds);
             var addedIds = oldIds == null ? newIds : newIds.Except(oldIds);
