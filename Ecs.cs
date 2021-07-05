@@ -52,9 +52,9 @@ namespace Ecs
             return (Get<C1>(), Get<C2>(), Get<C3>(), Get<C4>());
         }
 
-        public Type[] Types()
+        public IEnumerable<Type> Types()
         {
-            return Components.Values.Select(component => component.GetType()).ToArray();
+            return Components.Values.Select(component => component.GetType());
         }
 
         public Entity With<C>(C component) where C : Component
@@ -143,7 +143,7 @@ namespace Ecs
             return this.With(id, transform(entity));
         }
 
-        public Type[] Types()
+        public IEnumerable<Type> Types()
         {
             var set = new HashSet<Type>();
             foreach (var entity in Values)
@@ -153,7 +153,7 @@ namespace Ecs
                     set.Add(type);
                 }
             }
-            return set.ToArray();
+            return set;
         }
 
         public State Without(string id)
@@ -207,9 +207,7 @@ namespace Ecs
 
         public static V[] With<V>(this V[] list, V value)
         {
-            var clone = new List<V>(list);
-            clone.Add(value);
-            return clone.ToArray();
+            return list.Concat(new[] { value }).ToArray();
         }
 
         public static Dictionary<K, V> With<K, V>(this Dictionary<K, V> dict, K key, V value)
@@ -226,9 +224,10 @@ namespace Ecs
 
         public static IEnumerable<(string ID, IEnumerable<Component> Components)> Get(this Dictionary<string, Entity> entities, params Type[] types)
         {
+            var distinct = types.Select(type => type.Name).Distinct();
+
             return entities.Where(entry =>
             {
-                var distinct = types.Select(type => type.Name).Distinct();
                 var existing = entry.Value.Types().Select(type => type.Name);
                 return existing.Intersect(distinct).Count() == types.Count();
             }).Select(entry =>
@@ -253,8 +252,7 @@ namespace Ecs
             where C1 : Component
             where C2 : Component
         {
-            var types = new[] { typeof(C1), typeof(C2) };
-            return entities.Get(types).Select(entry =>
+            return entities.Get(typeof(C1), typeof(C2)).Select(entry =>
             {
                 return (entry.ID, entry.Components.ElementAt(0) as C1, entry.Components.ElementAt(1) as C2);
             });
@@ -265,8 +263,7 @@ namespace Ecs
             where C2 : Component
             where C3 : Component
         {
-            var types = new[] { typeof(C1), typeof(C2), typeof(C3) };
-            return entities.Get(types).Select(entry =>
+            return entities.Get(typeof(C1), typeof(C2), typeof(C3)).Select(entry =>
             {
                 return (entry.ID, entry.Components.ElementAt(0) as C1, entry.Components.ElementAt(1) as C2, entry.Components.ElementAt(2) as C3);
             });
@@ -329,9 +326,9 @@ namespace Ecs
             });
 
             return new Result<Component>(
-                Added: added?.ToList().Select(entry => (entry.Key, entry.Value)) ?? new List<(string ID, Component Component)>(),
-                Removed: removed?.ToList().Select(entry => (entry.Key, entry.Value)) ?? new List<(string ID, Component Component)>(),
-                Changed: changed?.ToList().Select(entry => (entry.Key, entry.Value)) ?? new List<(string ID, Component Component)>());
+                Added: added?.Select(entry => (entry.Key, entry.Value)) ?? new List<(string ID, Component Component)>(),
+                Removed: removed?.Select(entry => (entry.Key, entry.Value)) ?? new List<(string ID, Component Component)>(),
+                Changed: changed?.Select(entry => (entry.Key, entry.Value)) ?? new List<(string ID, Component Component)>());
         }
 
         public static Result<C1> Compare<C1>(State Current, State next)

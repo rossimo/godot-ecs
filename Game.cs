@@ -70,7 +70,6 @@ public class Game : Godot.YSort
         State = Renderer.System(Previous, State, this);
 
         Previous = State;
-        GC.Collect();
     }
 
     public void QueueEvent(Event @event, string source, string target)
