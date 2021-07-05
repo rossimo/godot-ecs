@@ -48,7 +48,7 @@ public static class Physics
 
     public static ulong MillisToTicks(ulong millis)
     {
-        return Convert.ToUInt64(Convert.ToSingle(millis) / 1000f * PHYSICS_FPS);
+        return Convert.ToUInt64((Convert.ToSingle(millis) / 1000f) * PHYSICS_FPS);
     }
 
     public static State System(State previous, State state, Game game, float delta)
@@ -62,16 +62,19 @@ public static class Physics
 
         if (configChange)
         {
-            var (areas, areaEnterEvents, collisions, moves) = Diff.Compare<Area, AreaEnterEvent, Collision, Move>(previous, state);
+            var (areas, areaEnterEvents, collisions, positions, moves) = Diff.Compare<Area, AreaEnterEvent, Collision, Position, Move>(previous, state);
 
             var needPhysics = areas.Added.Select(entry => entry.ID)
                 .Concat(areas.Changed.Select(entry => entry.ID))
+                .Concat(positions.Added.Select(entry => entry.ID))
+                .Concat(positions.Changed.Select(entry => entry.ID))
                 .Concat(collisions.Added.Select(entry => entry.ID))
                 .Concat(collisions.Changed.Select(entry => entry.ID))
                 .Distinct();
 
             var notNeedPhysics = areas.Removed.Select(entry => entry.ID)
                 .Concat(collisions.Removed.Select(entry => entry.ID))
+                .Concat(positions.Removed.Select(entry => entry.ID))
                 .Distinct()
                 .Where(id => !needPhysics.Contains(id));
 
