@@ -5,7 +5,8 @@ public record Player() : Component;
 
 public record Mouse : Component
 {
-    public bool Pressed;
+    public bool LeftPressed;
+    public bool RightPressed;
 }
 
 public record Move : Component
@@ -23,7 +24,24 @@ public static class InputEvents
         {
             case InputEventMouseButton mouseButton:
                 {
-                    state = state.With(InputEvents.ENTITY, new Mouse { Pressed = mouseButton.IsPressed() });
+                    var mouse = state[ENTITY].Get<Mouse>();
+
+                    if ((mouseButton.ButtonIndex & (int)ButtonList.MaskLeft) != 0)
+                    {
+                        state = state.With(InputEvents.ENTITY, new Mouse
+                        {
+                            LeftPressed = mouseButton.IsPressed(),
+                            RightPressed = mouse?.RightPressed == true
+                        });
+                    }
+                    else if ((mouseButton.ButtonIndex & (int)ButtonList.MaskRight) != 0)
+                    {
+                        state = state.With(InputEvents.ENTITY, new Mouse
+                        {
+                            LeftPressed = mouse?.LeftPressed == true,
+                            RightPressed = mouseButton.IsPressed()
+                        });
+                    }
                 }
                 break;
         }
@@ -38,7 +56,7 @@ public static class InputMonitor
         var mouse = state[InputEvents.ENTITY].Get<Mouse>();
         var players = state.Get<Player>();
 
-        if (mouse?.Pressed == true)
+        if (mouse?.RightPressed == true)
         {
             var target = game.ToLocal(game.GetViewport().GetMousePosition());
 
