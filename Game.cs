@@ -15,7 +15,7 @@ public class Game : Godot.YSort
                 new Player(),
                 new Speed { Value = 2.5f },
                 new Inventory { },
-                new Position{ X = 50, Y = 50 },
+                new Position { X = 50, Y = 50 },
                 new Scale { X = 3, Y = 3 },
                 new Area(),
                 new Sprite { Image = "res://resources/tiles/tile072.png" },
@@ -69,6 +69,7 @@ public class Game : Godot.YSort
     public override void _PhysicsProcess(float delta)
     {
         State = Events.System(Previous, State);
+        State = Combat.System(Previous, State);
         State = Physics.System(Previous, State, this, delta);
         State = Renderer.System(Previous, State, this);
 

@@ -5,7 +5,7 @@ using System.Linq;
 
 public record Ticks : Component
 {
-    public uint Tick;
+    public ulong Tick;
 }
 
 public record Speed : Component
@@ -28,8 +28,7 @@ public record Collision : Component;
 
 public record CollisionEvent : Event
 {
-    public CollisionEvent(params Task[] tasks)
-        => (Tasks) = (tasks);
+    public CollisionEvent(params Task[] tasks) => (Tasks) = (tasks);
 
     public override string ToString() => base.ToString();
 }
@@ -38,8 +37,7 @@ public record Area : Component;
 
 public record AreaEnterEvent : Event
 {
-    public AreaEnterEvent(params Task[] tasks)
-        => (Tasks) = (tasks);
+    public AreaEnterEvent(params Task[] tasks) => (Tasks) = (tasks);
 
     public override string ToString() => base.ToString();
 }
@@ -47,6 +45,11 @@ public record AreaEnterEvent : Event
 public static class Physics
 {
     public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_fps")}".ToFloat();
+
+    public static ulong MillisToTicks(ulong millis)
+    {
+        return Convert.ToUInt64(Convert.ToSingle(millis) / 1000f * PHYSICS_FPS);
+    }
 
     public static State System(State previous, State state, Game game, float delta)
     {
