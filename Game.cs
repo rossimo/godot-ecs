@@ -12,7 +12,7 @@ public class Game : Godot.YSort
     {
         State = new State() {
             { "hero", new Entity(
-                new Player { },
+                new Player(),
                 new Speed { Value = 2.5f },
                 new Inventory { },
                 new Position{ X = 50, Y = 50 },
@@ -40,7 +40,7 @@ public class Game : Godot.YSort
                 ),
                 new Scale { X = 2, Y = 2 },
                 new Sprite { Image = "res://resources/tiles/tile481.png" })},
-            { "events", new Entity() },
+            { "events", new Entity(new EventQueue()) },
             { "input", new Entity() },
             { "physics", new Entity(new Ticks { Tick = 0 })}
         };
@@ -81,7 +81,7 @@ public class Game : Godot.YSort
         var entry = (source, target, @event);
         State = State.With(Events.ENTITY, entity => entity.With(new EventQueue()
         {
-            Events = entity.Get<EventQueue>()?.Events.With(entry) ?? new[] { entry }
+            Events = entity.Get<EventQueue>().Events.With(entry)
         }));
     }
 

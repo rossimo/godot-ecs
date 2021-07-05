@@ -31,10 +31,7 @@ public record CollisionEvent : Event
     public CollisionEvent(params Task[] tasks)
         => (Tasks) = (tasks);
 
-    public override string ToString()
-    {
-        return $"{this.GetType().Name} {{ {Utils.Log(nameof(Tasks), Tasks)} }}";
-    }
+    public override string ToString() => base.ToString();
 }
 
 public record Area : Component;
@@ -44,10 +41,7 @@ public record AreaEnterEvent : Event
     public AreaEnterEvent(params Task[] tasks)
         => (Tasks) = (tasks);
 
-    public override string ToString()
-    {
-        return $"{this.GetType().Name} {{ {Utils.Log(nameof(Tasks), Tasks)} }}";
-    }
+    public override string ToString() => base.ToString();
 }
 
 public static class Physics
@@ -277,7 +271,6 @@ public static class Physics
                 state = state.Without<Destination>(id);
                 state = state.Without<Velocity>(id);
 
-
                 if (collided == null)
                 {
                     physics.Position = new Vector2(destination.Position.X, destination.Position.Y);
@@ -292,21 +285,20 @@ public static class Physics
                         var queue = (id, collideId, ev as Event);
                         state = state.With(Events.ENTITY, entity => entity.With(new EventQueue()
                         {
-                            Events = entity.Get<EventQueue>()?.Events.With(queue) ?? new[] { queue }
+                            Events = entity.Get<EventQueue>().Events.With(queue)
                         }));
                     }
 
                     var otherEv = state.ContainsKey(collideId)
                         ? state[collideId].Get<CollisionEvent>()
                         : null;
-
                     if (otherEv != null)
                     {
                         var queue = (collideId, id, otherEv as Event);
 
                         state = state.With(Events.ENTITY, entity => entity.With(new EventQueue()
                         {
-                            Events = entity.Get<EventQueue>()?.Events.With(queue) ?? new[] { queue }
+                            Events = entity.Get<EventQueue>().Events.With(queue)
                         }));
                     }
                 }

@@ -22,7 +22,7 @@ public record Event : Component
 
     public override string ToString()
     {
-        return $"{this.GetType().Name} {{ {nameof(Tasks)} = [\n    {String.Join(",\n    ", (object[])Tasks).Trim()}\n] }}";
+        return $"{this.GetType().Name} {{ {Utils.Log(nameof(Tasks), Tasks)} }}";
     }
 }
 
@@ -79,8 +79,8 @@ public static class Events
 
     public static State System(State previous, State state)
     {
-        var queue = state[ENTITY].Get<EventQueue>()?.Events;
-        if (queue == null) return state;
+        var queue = state[ENTITY].Get<EventQueue>().Events;
+        if (queue?.Count() == 0) return state;
 
         foreach (var queued in queue)
         {
@@ -128,6 +128,6 @@ public static class Events
             }
         }
 
-        return state.Without<EventQueue>(ENTITY);
+        return state = state.With(Events.ENTITY, new EventQueue());
     }
 }
