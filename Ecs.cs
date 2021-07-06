@@ -326,11 +326,8 @@ namespace Ecs
             var newComponents = after.Get(type);
 
             var oldIds = oldComponents.Keys.ToHashSet();
-            var newIds = newComponents.Keys;
-            var changeIds = newIds.Where(id =>
-            {
-                return oldIds.Contains(id) == true && oldComponents[id] != newComponents[id];
-            });
+            var newIds = newComponents.Keys.ToHashSet();
+            var changeIds = newIds.Intersect(oldIds).Where(id => oldComponents[id] != newComponents[id]);
 
             return new Result<Component>(
                 Added: newIds.Except(oldIds).Select(id => (id, newComponents[id])),

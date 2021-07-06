@@ -18,8 +18,8 @@ public static class Logger
                 if (Previous == State) return;
 
                 var types = new List<Type>()
-                    .Concat(Previous?.Types() ?? new Type[] { })
-                    .Concat(State?.Types() ?? new Type[] { })
+                    .Concat(Previous.Types())
+                    .Concat(State.Types())
                     .Distinct()
                     .Where(type => ignore?.Contains(type) == false);
 
@@ -52,6 +52,6 @@ public static class Logger
 
     public static void Log(State Previous, State State, IEnumerable<Type> ignore = null)
     {
-        Queue.Add((Previous, State, ignore));
+        //Queue.Add((Previous, State, ignore));
     }
 }
