@@ -52,6 +52,6 @@ public static class Logger
 
     public static void Log(State Previous, State State, IEnumerable<Type> ignore = null)
     {
-        //Queue.Add((Previous, State, ignore));
+        Queue.Add((Previous, State, ignore));
     }
 }
