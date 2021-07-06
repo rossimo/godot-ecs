@@ -109,26 +109,74 @@ namespace Ecs
         }
     }
 
-    public class State : Dictionary<string, Entity>
+    public class State
     {
+        private Dictionary<string, Entity> Entities = new Dictionary<string, Entity>();
+
         public static IEnumerable<Type> LOGGING_IGNORE = new[] { typeof(Ticks) };
 
-        public State() : base()
+        public State()
         {
         }
 
-        public State(State state) : base(state)
+        public State(State state)
         {
+            Entities = new Dictionary<string, Entity>(state.Entities);
         }
 
-        public State(Dictionary<string, Entity> state) : base(state)
+        public State(Dictionary<string, Entity> entities)
         {
+            Entities = new Dictionary<string, Entity>(entities);
+        }
+
+        public Entity this[string id]
+        {
+            get => Entities[id];
+            set => Entities[id] = value;
+        }
+
+        public Entity Get(string key)
+        {
+            Entity val;
+            Entities.TryGetValue(key, out val);
+            return val;
+        }
+
+        public IEnumerable<(string, C1)> Get<C1>()
+            where C1 : Component
+        {
+            return Entities.Get<C1>();
+        }
+
+        public IEnumerable<(string, C1, C2)> Get<C1, C2>()
+            where C1 : Component
+            where C2 : Component
+        {
+            return Entities.Get<C1, C2>();
+        }
+
+        public IEnumerable<(string, C1, C2, C3)> Get<C1, C2, C3>()
+            where C1 : Component
+            where C2 : Component
+            where C3 : Component
+        {
+            return Entities.Get<C1, C2, C3>();
+        }
+
+        public Dictionary<string, Component> Get(Type type)
+        {
+            return Entities.Get(type);
+        }
+
+        public Boolean ContainsKey(string key)
+        {
+            return Entities.ContainsKey(key);
         }
 
         public State With(string id, Entity entity)
         {
             var prev = this;
-            var next = new State(Utils.With(prev, id, entity));
+            var next = new State(Utils.With(this.Entities, id, entity));
             Logger.Log(prev, next, State.LOGGING_IGNORE);
             return next;
         }
@@ -137,8 +185,8 @@ namespace Ecs
         {
             var state = this;
 
-            var entity = this.ContainsKey(id)
-                ? this[id]
+            var entity = this.Entities.ContainsKey(id)
+                ? this.Entities[id]
                 : new Entity();
 
             foreach (var component in components)
@@ -151,8 +199,8 @@ namespace Ecs
 
         public State With(string id, Func<Entity, Entity> transform)
         {
-            var entity = this.ContainsKey(id)
-                ? this[id]
+            var entity = this.Entities.ContainsKey(id)
+                ? this.Entities[id]
                 : new Entity();
 
             return this.With(id, transform(entity));
@@ -161,7 +209,7 @@ namespace Ecs
         public IEnumerable<Type> Types()
         {
             var set = new HashSet<Type>();
-            foreach (var entity in Values)
+            foreach (var entity in Entities.Values)
             {
                 foreach (var type in entity.Types())
                 {
@@ -175,9 +223,9 @@ namespace Ecs
         {
             var prev = this;
             var next = new State(prev);
-            if (next.ContainsKey(id))
+            if (next.Entities.ContainsKey(id))
             {
-                next.Remove(id);
+                next.Entities.Remove(id);
             }
             Logger.Log(prev, next, State.LOGGING_IGNORE);
             return next;
@@ -185,7 +233,7 @@ namespace Ecs
 
         public State Without<C>(string id) where C : Component
         {
-            return With(id, this[id].Without<C>());
+            return With(id, this.Entities[id].Without<C>());
         }
     }
 

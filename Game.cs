@@ -10,8 +10,8 @@ public class Game : Godot.YSort
 
     public override void _Ready()
     {
-        State = new State() {
-            { "hero", new Entity(
+        State = new State()
+            .With("hero", new Entity(
                 new Player(),
                 new Speed { Value = 2.5f },
                 new Inventory { },
@@ -19,9 +19,9 @@ public class Game : Godot.YSort
                 new Scale { X = 3, Y = 3 },
                 new Area(),
                 new Sprite { Image = "res://resources/tiles/tile072.png" },
-                new Collision())},
-            { "potion", Potion },
-            { "fire", new Entity(
+                new Collision()))
+            .With("potion", Potion)
+            .With("fire", new Entity(
                 new Position { X = 400, Y = 200 },
                 new Area(),
                 new Collision(),
@@ -30,8 +30,8 @@ public class Game : Godot.YSort
                     new Add(new Flash { Color = new Color { Red = 1f, Green = 0f, Blue = 0f } }, Target.Other)
                 ),
                 new Scale { X = 2, Y = 2 },
-                new Sprite { Image = "res://resources/tiles/tile495.png" })},
-            { "button", new Entity(
+                new Sprite { Image = "res://resources/tiles/tile495.png" }))
+            .With("button", new Entity(
                 new Position { X = 300, Y = 300 },
                 new Area(),
                 new AreaEnterEvent(
@@ -39,11 +39,10 @@ public class Game : Godot.YSort
                     new AddEntity(Potion, "potion")
                 ),
                 new Scale { X = 2, Y = 2 },
-                new Sprite { Image = "res://resources/tiles/tile481.png" })},
-            { "events", new Entity(new EventQueue()) },
-            { "input", new Entity() },
-            { "physics", new Entity(new Ticks { Tick = 0 })}
-        };
+                new Sprite { Image = "res://resources/tiles/tile481.png" }))
+            .With("events", new Entity(new EventQueue()))
+            .With("input", new Entity())
+            .With("physics", new Entity(new Ticks { Tick = 0 }));
 
         Logger.Log(new State(), State, State.LOGGING_IGNORE);
     }
