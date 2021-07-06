@@ -173,12 +173,14 @@ namespace Ecs
 
         public State Without(string id)
         {
+            if (!ContainsKey(id))
+            {
+                return this;
+            }
+
             var prev = this;
             var next = new State(prev);
-            if (next.ContainsKey(id))
-            {
-                next.Remove(id);
-            }
+            next.Remove(id);
             Logger.Log(prev, next, State.LOGGING_IGNORE);
             return next;
         }
