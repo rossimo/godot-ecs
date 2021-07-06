@@ -328,7 +328,7 @@ namespace Ecs
             var newComponents = after.Get(type);
 
             var oldIds = oldComponents.Keys.ToHashSet();
-            var newIds = newComponents.Keys.ToHashSet();
+            var newIds = newComponents.Keys;
             var changeIds = newIds.Intersect(oldIds).Where(id => oldComponents[id] != newComponents[id]);
 
             return new Result<Component>(
@@ -348,9 +348,12 @@ namespace Ecs
             where C1 : Component
             where C2 : Component
         {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            return (changes1, changes2);
+            var task1 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C1>>(() => Compare(typeof(C1), Current, next).To<C1>());
+            var task2 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C2>>(() => Compare(typeof(C2), Current, next).To<C2>());
+            System.Threading.Tasks.Task.WaitAll(task1, task2);
+            return (task1.Result, task2.Result);
         }
 
         public static (Result<C1>, Result<C2>, Result<C3>) Compare<C1, C2, C3>(State Current, State next)
@@ -358,10 +361,14 @@ namespace Ecs
             where C2 : Component
             where C3 : Component
         {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            return (changes1, changes2, changes3);
+            var task1 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C1>>(() => Compare(typeof(C1), Current, next).To<C1>());
+            var task2 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C2>>(() => Compare(typeof(C2), Current, next).To<C2>());
+            var task3 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C3>>(() => Compare(typeof(C3), Current, next).To<C3>());
+            System.Threading.Tasks.Task.WaitAll(task1, task2, task3);
+            return (task1.Result, task2.Result, task3.Result);
         }
 
         public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>) Compare<C1, C2, C3, C4>(State Current, State next)
@@ -370,11 +377,16 @@ namespace Ecs
             where C3 : Component
             where C4 : Component
         {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
-            return (changes1, changes2, changes3, changes4);
+            var task1 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C1>>(() => Compare(typeof(C1), Current, next).To<C1>());
+            var task2 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C2>>(() => Compare(typeof(C2), Current, next).To<C2>());
+            var task3 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C3>>(() => Compare(typeof(C3), Current, next).To<C3>());
+            var task4 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C4>>(() => Compare(typeof(C4), Current, next).To<C4>());
+            System.Threading.Tasks.Task.WaitAll(task1, task2, task3, task4);
+            return (task1.Result, task2.Result, task3.Result, task4.Result);
         }
 
         public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>) Compare<C1, C2, C3, C4, C5>(State Current, State next)
@@ -384,12 +396,18 @@ namespace Ecs
             where C4 : Component
             where C5 : Component
         {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
-            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
-            return (changes1, changes2, changes3, changes4, changes5);
+            var task1 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C1>>(() => Compare(typeof(C1), Current, next).To<C1>());
+            var task2 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C2>>(() => Compare(typeof(C2), Current, next).To<C2>());
+            var task3 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C3>>(() => Compare(typeof(C3), Current, next).To<C3>());
+            var task4 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C4>>(() => Compare(typeof(C4), Current, next).To<C4>());
+            var task5 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C5>>(() => Compare(typeof(C5), Current, next).To<C5>());
+            System.Threading.Tasks.Task.WaitAll(task1, task2, task3, task4, task5);
+            return (task1.Result, task2.Result, task3.Result, task4.Result, task5.Result);
         }
 
         public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>, Result<C6>) Compare<C1, C2, C3, C4, C5, C6>(State Current, State next)
@@ -400,13 +418,20 @@ namespace Ecs
             where C5 : Component
             where C6 : Component
         {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
-            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
-            var changes6 = Compare(typeof(C6), Current, next).To<C6>();
-            return (changes1, changes2, changes3, changes4, changes5, changes6);
+            var task1 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C1>>(() => Compare(typeof(C1), Current, next).To<C1>());
+            var task2 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C2>>(() => Compare(typeof(C2), Current, next).To<C2>());
+            var task3 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C3>>(() => Compare(typeof(C3), Current, next).To<C3>());
+            var task4 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C4>>(() => Compare(typeof(C4), Current, next).To<C4>());
+            var task5 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C5>>(() => Compare(typeof(C5), Current, next).To<C5>());
+            var task6 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C6>>(() => Compare(typeof(C6), Current, next).To<C6>());
+            System.Threading.Tasks.Task.WaitAll(task1, task2, task3, task4, task5, task6);
+            return (task1.Result, task2.Result, task3.Result, task4.Result, task5.Result, task6.Result);
         }
 
         public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>, Result<C6>, Result<C7>) Compare<C1, C2, C3, C4, C5, C6, C7>(State Current, State next)
@@ -418,58 +443,22 @@ namespace Ecs
             where C6 : Component
             where C7 : Component
         {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
-            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
-            var changes6 = Compare(typeof(C6), Current, next).To<C6>();
-            var changes7 = Compare(typeof(C7), Current, next).To<C7>();
-            return (changes1, changes2, changes3, changes4, changes5, changes6, changes7);
-        }
-
-        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>, Result<C6>, Result<C7>, Result<C8>) Compare<C1, C2, C3, C4, C5, C6, C7, C8>(State Current, State next)
-            where C1 : Component
-            where C2 : Component
-            where C3 : Component
-            where C4 : Component
-            where C5 : Component
-            where C6 : Component
-            where C7 : Component
-            where C8 : Component
-        {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
-            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
-            var changes6 = Compare(typeof(C6), Current, next).To<C6>();
-            var changes7 = Compare(typeof(C7), Current, next).To<C7>();
-            var changes8 = Compare(typeof(C8), Current, next).To<C8>();
-            return (changes1, changes2, changes3, changes4, changes5, changes6, changes7, changes8);
-        }
-
-        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>, Result<C6>, Result<C7>, Result<C8>, Result<C9>) Compare<C1, C2, C3, C4, C5, C6, C7, C8, C9>(State Current, State next)
-            where C1 : Component
-            where C2 : Component
-            where C3 : Component
-            where C4 : Component
-            where C5 : Component
-            where C6 : Component
-            where C7 : Component
-            where C8 : Component
-            where C9 : Component
-        {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
-            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
-            var changes6 = Compare(typeof(C6), Current, next).To<C6>();
-            var changes7 = Compare(typeof(C7), Current, next).To<C7>();
-            var changes8 = Compare(typeof(C8), Current, next).To<C8>();
-            var changes9 = Compare(typeof(C9), Current, next).To<C9>();
-            return (changes1, changes2, changes3, changes4, changes5, changes6, changes7, changes8, changes9);
+            var task1 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C1>>(() => Compare(typeof(C1), Current, next).To<C1>());
+            var task2 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C2>>(() => Compare(typeof(C2), Current, next).To<C2>());
+            var task3 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C3>>(() => Compare(typeof(C3), Current, next).To<C3>());
+            var task4 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C4>>(() => Compare(typeof(C4), Current, next).To<C4>());
+            var task5 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C5>>(() => Compare(typeof(C5), Current, next).To<C5>());
+            var task6 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C6>>(() => Compare(typeof(C6), Current, next).To<C6>());
+            var task7 = System.Threading.Tasks.Task.Factory
+                .StartNew<Result<C7>>(() => Compare(typeof(C7), Current, next).To<C7>());
+            System.Threading.Tasks.Task.WaitAll(task1, task2, task3, task4, task5, task6, task7);
+            return (task1.Result, task2.Result, task3.Result, task4.Result, task5.Result, task6.Result, task7.Result);
         }
     }
 }
