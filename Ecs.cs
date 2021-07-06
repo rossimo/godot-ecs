@@ -8,7 +8,7 @@ namespace Ecs
 
     public record Entity
     {
-        private Dictionary<string, Component> Components = new Dictionary<string, Component>();
+        public Dictionary<string, Component> Components = new Dictionary<string, Component>();
 
         public Entity() { }
 
@@ -18,9 +18,9 @@ namespace Ecs
         public Entity(params Component[] components)
             => (Components) = (components.ToDictionary(component => component.GetType().Name));
 
-        public Component Get(string component)
+        public Component Get(string componentId)
         {
-            return Components.Get(component);
+            return Components.Get(componentId);
         }
 
         public Component Get(Type type)
@@ -28,9 +28,14 @@ namespace Ecs
             return Get(type.Name);
         }
 
+        public bool Has(string type)
+        {
+            return Components.ContainsKey(type);
+        }
+
         public bool Has(Type type)
         {
-            return Components.ContainsKey(type.Name);
+            return Has(type.Name);
         }
 
         public bool Has<C>() where C : Component
@@ -58,30 +63,16 @@ namespace Ecs
             return (Get<C1>(), Get<C2>(), Get<C3>());
         }
 
-        public (C1, C2, C3, C4) Get<C1, C2, C3, C4>()
-            where C1 : Component
-            where C2 : Component
-            where C3 : Component
-            where C4 : Component
-        {
-            return (Get<C1>(), Get<C2>(), Get<C3>(), Get<C4>());
-        }
-
-        public IEnumerable<Type> Types()
-        {
-            return Components.Values.Select(component => component.GetType());
-        }
-
         public Entity With<C>(C component) where C : Component
         {
             var existing = Get<C>();
 
             if (existing != component)
             {
-                var key = component.GetType().Name;
+                var componentId = component.GetType().Name;
                 var components = new Dictionary<string, Component>(Components);
 
-                components[key] = component;
+                components[componentId] = component;
 
                 return this with { Components = components };
             }
@@ -91,149 +82,196 @@ namespace Ecs
             }
         }
 
-        public Entity Without(string component)
+        public Entity Without(string componentId)
         {
-            if (Components.ContainsKey(component))
+            if (Components.ContainsKey(componentId))
             {
                 var components = new Dictionary<string, Component>(Components);
-                components.Remove(component);
+                components.Remove(componentId);
                 return this with { Components = components };
             }
 
             return this;
         }
-
-        public Entity Without<C>() where C : Component
-        {
-            return Without(typeof(C).Name);
-        }
     }
 
     public class State
     {
-        private Dictionary<string, Entity> Entities = new Dictionary<string, Entity>();
+        public Dictionary<string, Dictionary<string, Component>> Components = new Dictionary<string, Dictionary<string, Component>>();
 
-        public static IEnumerable<Type> LOGGING_IGNORE = new[] { typeof(Ticks) };
+        public static IEnumerable<string> LOGGING_IGNORE = new[] { typeof(Ticks).Name };
 
         public State()
         {
+            Components.Add(typeof(Position).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Player).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Speed).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(MouseLeft).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(MouseRight).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Move).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(ExpirationEvent).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Event).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Add).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Remove).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(AddEntity).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Ticks).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Destination).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Velocity).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Collision).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(CollisionEvent).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Area).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(AreaEnterEvent).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Sprite).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Rotation).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Scale).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Color).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Flash).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(ClickEvent).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(Inventory).Name, new Dictionary<string, Component>());
+            Components.Add(typeof(EventQueue).Name, new Dictionary<string, Component>());
         }
 
         public State(State state)
         {
-            Entities = new Dictionary<string, Entity>(state.Entities);
+            Components = new Dictionary<string, Dictionary<string, Component>>();
+            foreach (var componentId in state.Components.Keys)
+            {
+                Components[componentId] = new Dictionary<string, Component>(state.Components[componentId]);
+            }
         }
 
-        public State(Dictionary<string, Entity> entities)
+        public State(Dictionary<string, Dictionary<string, Component>> components)
         {
-            Entities = new Dictionary<string, Entity>(entities);
+            Components = new Dictionary<string, Dictionary<string, Component>>();
+            foreach (var componentId in components.Keys)
+            {
+                Components[componentId] = new Dictionary<string, Component>(components[componentId]);
+            }
         }
 
-        public Entity this[string id]
+        public Entity this[string entityId]
         {
-            get => Entities[id];
-            set => Entities[id] = value;
+            get => Get(entityId);
+            set => Set(entityId, value);
         }
 
-        public Entity Get(string key)
+        public Entity Get(string entityId)
         {
-            Entity val;
-            Entities.TryGetValue(key, out val);
-            return val;
+            var entity = new Entity();
+            foreach (var component in Components.Values)
+            {
+                if (component.ContainsKey(entityId))
+                {
+                    entity = entity.With<Component>(component.Get(entityId));
+                }
+            }
+            return entity;
+        }
+
+        public Entity Set(string entityId, Entity entity)
+        {
+            foreach (var componentId in Components.Keys)
+            {
+                if (entity.Has(componentId))
+                {
+                    Components[componentId][entityId] = entity.Get(componentId);
+                }
+                else
+                {
+                    Components[componentId].Remove(entityId);
+                }
+            }
+            return entity;
         }
 
         public IEnumerable<(string, C1)> Get<C1>()
             where C1 : Component
         {
-            return Entities.Get<C1>();
+            return GetComponent(typeof(C1).Name).Select(entry => (entry.Key, entry.Value as C1));
         }
 
-        public IEnumerable<(string, C1, C2)> Get<C1, C2>()
-            where C1 : Component
-            where C2 : Component
+        public Dictionary<string, Component> GetComponent(string componentId)
         {
-            return Entities.Get<C1, C2>();
+            return Components[componentId];
         }
 
-        public IEnumerable<(string, C1, C2, C3)> Get<C1, C2, C3>()
-            where C1 : Component
-            where C2 : Component
-            where C3 : Component
+        public Boolean ContainsKey(string entityId)
         {
-            return Entities.Get<C1, C2, C3>();
-        }
-
-        public Dictionary<string, Component> Get(Type type)
-        {
-            return Entities.Get(type);
-        }
-
-        public Boolean ContainsKey(string key)
-        {
-            return Entities.ContainsKey(key);
-        }
-
-        public State With(string id, Entity entity)
-        {
-            var prev = this;
-            var next = new State(Utils.With(this.Entities, id, entity));
-            Logger.Log(prev, next, State.LOGGING_IGNORE);
-            return next;
-        }
-
-        public State With(string id, params Component[] components)
-        {
-            var state = this;
-
-            var entity = this.Entities.ContainsKey(id)
-                ? this.Entities[id]
-                : new Entity();
-
-            foreach (var component in components)
+            foreach (var component in Components.Values)
             {
-                entity = entity.With(component);
-            }
-
-            return state.With(id, entity);
-        }
-
-        public State With(string id, Func<Entity, Entity> transform)
-        {
-            var entity = this.Entities.ContainsKey(id)
-                ? this.Entities[id]
-                : new Entity();
-
-            return this.With(id, transform(entity));
-        }
-
-        public IEnumerable<Type> Types()
-        {
-            var set = new HashSet<Type>();
-            foreach (var entity in Entities.Values)
-            {
-                foreach (var type in entity.Types())
+                if (component.ContainsKey(entityId))
                 {
-                    set.Add(type);
+                    return true;
                 }
             }
-            return set;
+
+            return false;
         }
 
-        public State Without(string id)
+        public State With(string entityId, Entity entity)
         {
             var prev = this;
-            var next = new State(prev);
-            if (next.Entities.ContainsKey(id))
+            var state = this;
+            foreach (var component in entity.Components.Values)
             {
-                next.Entities.Remove(id);
+                state = state.With(entityId, component);
             }
-            Logger.Log(prev, next, State.LOGGING_IGNORE);
-            return next;
+            return state;
         }
 
-        public State Without<C>(string id) where C : Component
+        public State With(string entityId, Component component)
         {
-            return With(id, this.Entities[id].Without<C>());
+            var componentId = component.GetType().Name;
+
+            if (this.Components.ContainsKey(componentId) &&
+                this.Components[componentId].ContainsKey(entityId) &&
+                this.Components[componentId][entityId] == component)
+            {
+                return this;
+            }
+
+            var prev = this;
+            var state = new State(this);
+
+            state.Components[componentId][entityId] = component;
+
+            Logger.Log(prev, state, State.LOGGING_IGNORE);
+            return state;
+        }
+
+        public State With(string entityId, Func<Entity, Entity> transform)
+        {
+            return this.With(entityId, transform(this.Get(entityId)));
+        }
+
+        public State Without(string entityId)
+        {
+            var prev = this;
+            var state = this;
+            foreach (var componentId in state.Components.Keys)
+            {
+                state = state.Without(componentId, entityId);
+            }
+            return state;
+        }
+
+        public State Without<C>(string entityId) where C : Component
+        {
+            return this.Without(typeof(C).Name, entityId);
+        }
+
+        public State Without(string componentId, string entityId)
+        {
+            if (!this.Components[componentId].ContainsKey(entityId))
+            {
+                return this;
+            }
+
+            var prev = this;
+            var state = new State(this);
+            state.Components[componentId].Remove(entityId);
+            Logger.Log(prev, state, State.LOGGING_IGNORE);
+            return state;
         }
     }
 
@@ -272,75 +310,6 @@ namespace Ecs
         {
             return list.Concat(new[] { value }).ToArray();
         }
-
-        public static Dictionary<K, V> With<K, V>(this Dictionary<K, V> dict, K key, V value)
-        {
-            if (dict.ContainsKey(key) && dict[key].Equals(value))
-            {
-                return dict;
-            }
-
-            var clone = new Dictionary<K, V>(dict);
-            clone[key] = value;
-            return clone;
-        }
-
-        public static IEnumerable<(string ID, IEnumerable<Component> Components)> Get(this Dictionary<string, Entity> entities, params Type[] types)
-        {
-            return entities.Where(entry =>
-            {
-                foreach (var type in types)
-                {
-                    if (!entry.Value.Has(type))
-                    {
-                        return false;
-                    }
-                }
-                return true;
-            }).Select(entry =>
-            {
-                var (id, entity) = entry;
-                var components = types.Select(type => entity.Get(type.Name));
-                return (id, components);
-            });
-        }
-
-        public static IEnumerable<(string, C1)> Get<C1>(this Dictionary<string, Entity> entities)
-            where C1 : Component
-        {
-            var types = new[] { typeof(C1) };
-            return entities.Get(types).Select(entry =>
-            {
-                return (entry.ID, entry.Components.ElementAt(0) as C1);
-            });
-        }
-
-        public static IEnumerable<(string, C1, C2)> Get<C1, C2>(this Dictionary<string, Entity> entities)
-            where C1 : Component
-            where C2 : Component
-        {
-            return entities.Get(typeof(C1), typeof(C2)).Select(entry =>
-            {
-                return (entry.ID, entry.Components.ElementAt(0) as C1, entry.Components.ElementAt(1) as C2);
-            });
-        }
-
-        public static IEnumerable<(string, C1, C2, C3)> Get<C1, C2, C3>(this Dictionary<string, Entity> entities)
-            where C1 : Component
-            where C2 : Component
-            where C3 : Component
-        {
-            return entities.Get(typeof(C1), typeof(C2), typeof(C3)).Select(entry =>
-            {
-                return (entry.ID, entry.Components.ElementAt(0) as C1, entry.Components.ElementAt(1) as C2, entry.Components.ElementAt(2) as C3);
-            });
-        }
-
-        public static Dictionary<string, Component> Get(this Dictionary<string, Entity> entities, Type type)
-        {
-            return entities.Where(entry => entry.Value.Has(type))
-                .ToDictionary(entry => entry.Key, entry => entry.Value.Get(type));
-        }
     }
 
     public record Result<C>(
@@ -360,7 +329,7 @@ namespace Ecs
 
     public class Diff
     {
-        public static Result<Component> Compare(Type type, State before, State after)
+        public static Result<Component> Compare(string type, State before, State after)
         {
             if (before == after)
             {
@@ -370,20 +339,22 @@ namespace Ecs
                     Changed: new (string ID, Component Component)[] { });
             }
 
-            var oldComponents = before.Get(type);
-            var newComponents = after.Get(type);
+            var oldComponents = before.GetComponent(type);
+            var newComponents = after.GetComponent(type);
 
             var oldIds = oldComponents.Keys.ToHashSet();
-            var newIds = newComponents.Keys;
-            var changeIds = newIds.Where(id =>
-            {
-                return oldIds.Contains(id) == true && oldComponents[id] != newComponents[id];
-            });
+            var newIds = newComponents.Keys.ToHashSet();
+            var changeIds = newIds.Intersect(oldIds).Where(id => oldComponents[id] != newComponents[id]);
 
             return new Result<Component>(
                 Added: newIds.Except(oldIds).Select(id => (id, newComponents[id])),
                 Removed: oldIds.Except(newIds).Select(id => (id, oldComponents[id])),
                 Changed: changeIds.Select(id => (id, newComponents[id])));
+        }
+
+        public static Result<Component> Compare(Type type, State before, State after)
+        {
+            return Compare(type.Name, before, after);
         }
 
         public static Result<C1> Compare<C1>(State Current, State next)

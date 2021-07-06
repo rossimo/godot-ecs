@@ -59,7 +59,7 @@ public static class InputMonitor
     {
         var tick = state["physics"].Get<Ticks>().Tick;
 
-        var mouseLeft = Diff.Compare<MouseLeft>(previous, state);
+        var mouseLeft = state[ENTITY].Get<MouseLeft>();
         var mouseRight = state[ENTITY].Get<MouseRight>();
 
         var playerId = state.Get<Player>().FirstOrDefault().Item1;
@@ -77,20 +77,17 @@ public static class InputMonitor
             }
         }
 
-        foreach (var (id, component) in mouseLeft.Added.Concat(mouseLeft.Changed))
+        if (mouseLeft?.Pressed == true)
         {
-            if (component.Pressed)
+            var direction = new Vector2(position.X, position.Y).DirectionTo(mousePosition).Normalized() * 10f;
+            if (direction.x != 0 && direction.y != 0)
             {
-                var direction = new Vector2(position.X, position.Y).DirectionTo(mousePosition).Normalized() * 10f;
-                if (direction.x != 0 && direction.y != 0)
-                {
-                    state = state.With("projectile-" + Guid.NewGuid().ToString(), new Entity(
-                       player.Get<Position>(),
-                       new Sprite { Image = "res://resources/tiles/tile663.png" },
-                       new Velocity { X = direction.x, Y = direction.y },
-                       new ExpirationEvent(new RemoveEntity()) with { Tick = Physics.MillisToTicks(1 * 1000) + tick }
-                    ));
-                }
+                state = state.With("projectile-" + Guid.NewGuid().ToString(), new Entity(
+                   player.Get<Position>(),
+                   new Sprite { Image = "res://resources/tiles/tile663.png" },
+                   new Velocity { X = direction.x, Y = direction.y },
+                   new ExpirationEvent(new RemoveEntity()) with { Tick = Physics.MillisToTicks(1 * 1000) + tick }
+                ));
             }
         }
 

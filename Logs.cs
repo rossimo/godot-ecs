@@ -7,8 +7,8 @@ using Ecs;
 
 public static class Logger
 {
-    public static BlockingCollection<(State Previous, State Next, IEnumerable<Type> ignore)> Queue =
-            new BlockingCollection<(Ecs.State Previous, Ecs.State Next, IEnumerable<Type> ignore)>();
+    public static BlockingCollection<(State Previous, State Next, IEnumerable<string> ignore)> Queue =
+            new BlockingCollection<(Ecs.State Previous, Ecs.State Next, IEnumerable<string> ignore)>();
 
     public static Thread LogThread = new Thread(new ThreadStart(() =>
         {
@@ -17,9 +17,9 @@ public static class Logger
                 var (Previous, State, ignore) = Queue.Take();
                 if (Previous == State) return;
 
-                var types = new List<Type>()
-                    .Concat(Previous?.Types() ?? new Type[] { })
-                    .Concat(State?.Types() ?? new Type[] { })
+                var types = new List<string>()
+                    .Concat(Previous.Components.Keys)
+                    .Concat(State.Components.Keys)
                     .Distinct()
                     .Where(type => ignore?.Contains(type) == false);
 
@@ -50,8 +50,8 @@ public static class Logger
         LogThread.Start();
     }
 
-    public static void Log(State Previous, State State, IEnumerable<Type> ignore = null)
+    public static void Log(State Previous, State State, IEnumerable<string> ignore = null)
     {
-        Queue.Add((Previous, State, ignore));
+        //Queue.Add((Previous, State, ignore));
     }
 }

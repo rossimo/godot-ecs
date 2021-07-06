@@ -62,7 +62,8 @@ public static class Physics
 
         if (configChange)
         {
-            var (areas, areaEnterEvents, collisions, positions, moves) = Diff.Compare<Area, AreaEnterEvent, Collision, Position, Move>(previous, state);
+            var (areas, areaEnterEvents, collisions, positions, moves) = 
+                Diff.Compare<Area, AreaEnterEvent, Collision, Position, Move>(previous, state);
 
             var needPhysics = areas.Added.Select(entry => entry.ID)
                 .Concat(areas.Changed.Select(entry => entry.ID))
