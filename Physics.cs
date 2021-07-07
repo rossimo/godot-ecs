@@ -57,7 +57,7 @@ public static class Physics
 
         state = state.With("physics", new Ticks
         {
-            Tick = state["physics"].Get<Ticks>().Tick + 1
+            Tick = (state.Components["Ticks"]["physics"] as Ticks).Tick + 1
         });
 
         if (configChange)

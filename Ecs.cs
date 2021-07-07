@@ -133,20 +133,12 @@ namespace Ecs
 
         public State(State state)
         {
-            Components = new Dictionary<string, Dictionary<string, Component>>();
-            foreach (var componentId in state.Components.Keys)
-            {
-                Components[componentId] = new Dictionary<string, Component>(state.Components[componentId]);
-            }
+            Components = new Dictionary<string, Dictionary<string, Component>>(state.Components);
         }
 
         public State(Dictionary<string, Dictionary<string, Component>> components)
         {
-            Components = new Dictionary<string, Dictionary<string, Component>>();
-            foreach (var componentId in components.Keys)
-            {
-                Components[componentId] = new Dictionary<string, Component>(components[componentId]);
-            }
+            Components = new Dictionary<string, Dictionary<string, Component>>(components);
         }
 
         public Entity this[string entityId]
@@ -233,6 +225,7 @@ namespace Ecs
             var prev = this;
             var state = new State(this);
 
+            state.Components[componentId] = new Dictionary<string, Component>(state.Components[componentId]);
             state.Components[componentId][entityId] = component;
 
             Logger.Log(prev, state, State.LOGGING_IGNORE);
@@ -269,6 +262,7 @@ namespace Ecs
 
             var prev = this;
             var state = new State(this);
+            state.Components[componentId] = new Dictionary<string, Component>(state.Components[componentId]);
             state.Components[componentId].Remove(entityId);
             Logger.Log(prev, state, State.LOGGING_IGNORE);
             return state;
@@ -343,7 +337,7 @@ namespace Ecs
             var newComponents = after.GetComponent(type);
 
             var oldIds = oldComponents.Keys.ToHashSet();
-            var newIds = newComponents.Keys.ToHashSet();
+            var newIds = newComponents.Keys;
             var changeIds = newIds.Intersect(oldIds).Where(id => oldComponents[id] != newComponents[id]);
 
             return new Result<Component>(
