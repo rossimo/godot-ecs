@@ -103,32 +103,6 @@ namespace Ecs
 
         public State()
         {
-            Components.Add(typeof(Position).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Player).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Speed).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(MouseLeft).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(MouseRight).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Move).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(ExpirationEvent).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Event).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Add).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Remove).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(AddEntity).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Ticks).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Destination).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Velocity).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Collision).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(CollisionEvent).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Area).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(AreaEnterEvent).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Sprite).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Rotation).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Scale).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Color).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Flash).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(ClickEvent).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(Inventory).Name, new Dictionary<string, Component>());
-            Components.Add(typeof(EventQueue).Name, new Dictionary<string, Component>());
         }
 
         public State(State state)
@@ -136,15 +110,10 @@ namespace Ecs
             Components = new Dictionary<string, Dictionary<string, Component>>(state.Components);
         }
 
-        public State(Dictionary<string, Dictionary<string, Component>> components)
-        {
-            Components = new Dictionary<string, Dictionary<string, Component>>(components);
-        }
-
         public Entity this[string entityId]
         {
             get => Get(entityId);
-            set => Set(entityId, value);
+            set => throw new Exception("Not supported");
         }
 
         public Entity Get(string entityId)
@@ -160,22 +129,6 @@ namespace Ecs
             return entity;
         }
 
-        public Entity Set(string entityId, Entity entity)
-        {
-            foreach (var componentId in Components.Keys)
-            {
-                if (entity.Has(componentId))
-                {
-                    Components[componentId][entityId] = entity.Get(componentId);
-                }
-                else
-                {
-                    Components[componentId].Remove(entityId);
-                }
-            }
-            return entity;
-        }
-
         public IEnumerable<(string, C1)> Get<C1>()
             where C1 : Component
         {
@@ -184,6 +137,10 @@ namespace Ecs
 
         public Dictionary<string, Component> GetComponent(string componentId)
         {
+            if (!Components.ContainsKey(componentId))
+            {
+                return new Dictionary<string, Component>();
+            }
             return Components[componentId];
         }
 
@@ -224,6 +181,11 @@ namespace Ecs
 
             var prev = this;
             var state = new State(this);
+            if (!state.Components.ContainsKey(componentId))
+            {
+                state.Components = new Dictionary<string, Dictionary<string, Component>>(state.Components);
+                state.Components.Add(componentId, new Dictionary<string, Component>());
+            }
 
             state.Components[componentId] = new Dictionary<string, Component>(state.Components[componentId]);
             state.Components[componentId][entityId] = component;
@@ -264,6 +226,11 @@ namespace Ecs
             var state = new State(this);
             state.Components[componentId] = new Dictionary<string, Component>(state.Components[componentId]);
             state.Components[componentId].Remove(entityId);
+
+            if (state.Components[componentId].Count() == 0)
+            {
+                state.Components.Remove(componentId);
+            }
             Logger.Log(prev, state, State.LOGGING_IGNORE);
             return state;
         }
@@ -325,7 +292,7 @@ namespace Ecs
     {
         public static Result<Component> Compare(string type, State before, State after)
         {
-            if (before == after || before.Components[type] == after.Components[type])
+            if (before == after || before.GetComponent(type) == after.GetComponent(type))
             {
                 return new Result<Component>(
                     Added: new (string ID, Component Component)[] { },
