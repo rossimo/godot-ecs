@@ -325,7 +325,7 @@ namespace Ecs
     {
         public static Result<Component> Compare(string type, State before, State after)
         {
-            if (before == after)
+            if (before == after || before.Components[type] == after.Components[type])
             {
                 return new Result<Component>(
                     Added: new (string ID, Component Component)[] { },
@@ -337,7 +337,7 @@ namespace Ecs
             var newComponents = after.GetComponent(type);
 
             var oldIds = oldComponents.Keys.ToHashSet();
-            var newIds = newComponents.Keys;
+            var newIds = newComponents.Keys.ToHashSet();
             var changeIds = newIds.Intersect(oldIds).Where(id => oldComponents[id] != newComponents[id]);
 
             return new Result<Component>(
