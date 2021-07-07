@@ -49,12 +49,12 @@ public record Remove : Task
 
 public record AddEntity : Task
 {
-    public Entity Entity;
+    public Component[] Components;
 
     public AddEntity() { }
 
-    public AddEntity(Entity entity, string target = null)
-        => (Entity, Target) = (entity, target);
+    public AddEntity(Component[] components, string target = null)
+        => (Components, Target) = (components, target);
 }
 
 public record RemoveEntity : Task;
@@ -79,7 +79,7 @@ public static class Events
 
     public static State System(State previous, State state)
     {
-        var queue = state[ENTITY].Get<EventQueue>().Events;
+        var queue = state.Get<EventQueue>(ENTITY).Events;
         if (queue?.Count() == 0) return state;
 
         foreach (var queued in queue)
@@ -104,8 +104,7 @@ public static class Events
 
                     case Remove remove:
                         {
-                            var entity = state[target];
-                            state = state.With(target, entity.Without(remove.Type.Name));
+                            state = state.Without(remove.Type.Name, target);
                         }
                         break;
 
@@ -115,7 +114,7 @@ public static class Events
                                 ? addEntity.Target
                                 : Guid.NewGuid().ToString();
 
-                            state = state.With(target, addEntity.Entity);
+                            state = state.With(target, addEntity.Components);
                         }
                         break;
 

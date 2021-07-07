@@ -21,14 +21,13 @@ public static class Items
             {
                 case AddItem addItem:
                     {
-                        var entity = state[target];
-                        var inventory = entity.Get<Inventory>();
+                        var inventory = state.Get<Inventory>(target);
                         if (inventory != null)
                         {
-                            state = state.With(target, entity.With(new Inventory
+                            state = state.With(target, new Inventory
                             {
                                 Items = inventory.Items.Concat(new[] { addItem.Item }).ToArray()
-                            }));
+                            });
                         }
                     }
                     break;

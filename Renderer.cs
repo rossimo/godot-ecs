@@ -58,8 +58,7 @@ public class Renderer
 
         foreach (var (id, component) in sprites.Added)
         {
-            var entity = state[id];
-            var position = entity.Get<Position>();
+            var position = state.Get<Position>(id);
             position = position ?? new Position { X = 0, Y = 0 };
 
             var node = game.GetNodeOrNull<ClickableSprite>(id);
@@ -151,8 +150,7 @@ public class Renderer
         {
             state = state.Without<Flash>(id);
 
-            var entity = state[id];
-            var position = entity.Get<Position>();
+            var position = state.Get<Position>(id);
             position = position ?? new Position { X = 0, Y = 0 };
 
             var node = game.GetNodeOrNull<Node2D>(id);

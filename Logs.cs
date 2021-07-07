@@ -18,8 +18,8 @@ public static class Logger
                 if (Previous == State) return;
 
                 var types = new List<string>()
-                    .Concat(Previous.Components.Keys)
-                    .Concat(State.Components.Keys)
+                    .Concat(Previous.Types())
+                    .Concat(State.Types())
                     .Distinct()
                     .Where(type => ignore?.Contains(type) == false);
 
@@ -47,11 +47,11 @@ public static class Logger
 
     static Logger()
     {
-        //LogThread.Start();
+        LogThread.Start();
     }
 
     public static void Log(State Previous, State State, IEnumerable<string> ignore = null)
     {
-        //Queue.Add((Previous, State, ignore));
+        Queue.Add((Previous, State, ignore));
     }
 }

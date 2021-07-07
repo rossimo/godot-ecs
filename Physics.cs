@@ -57,7 +57,7 @@ public static class Physics
 
         state = state.With("physics", new Ticks
         {
-            Tick = (state.Components["Ticks"]["physics"] as Ticks).Tick + 1
+            Tick = (state.Get<Ticks>("physics")?.Tick  ?? 0) + 1
         });
 
         if (configChange)
@@ -83,7 +83,7 @@ public static class Physics
             {
                 state = state.Without<Move>(id);
 
-                var (position, speed) = state[id].Get<Position, Speed>();
+                var (position, speed) = state.Get<Position, Speed>(id);
                 if (position == null) continue;
 
                 speed = speed ?? new Speed { Value = 1f };
@@ -110,7 +110,7 @@ public static class Physics
                 var physics = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
                 if (physics != null) continue;
 
-                var position = state[id].Get<Position>() ?? new Position { X = 0, Y = 0 };
+                var position = state.Get<Position>(id) ?? new Position { X = 0, Y = 0 };
 
                 game.AddChild(new KinematicBody2D()
                 {
@@ -134,7 +134,7 @@ public static class Physics
                 var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
                 if (node == null) continue;
 
-                var (sprite, scale) = state[id].Get<Sprite, Scale>();
+                var (sprite, scale) = state.Get<Sprite, Scale>(id);
                 scale = scale ?? new Scale { X = 1, Y = 1 };
 
                 var area = node.GetNodeOrNull<Node2D>("area");
@@ -212,11 +212,10 @@ public static class Physics
 
             foreach (var (id, component) in collisions.Changed.Concat(collisions.Added))
             {
-                var entity = state[id];
                 var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
                 if (node == null) continue;
 
-                var (sprite, scale) = entity.Get<Sprite, Scale>();
+                var (sprite, scale) = state.Get<Sprite, Scale>(id);
                 scale = scale ?? new Scale { X = 1, Y = 1 };
 
                 var collision = node.GetNodeOrNull<Node2D>("collision");
@@ -253,8 +252,7 @@ public static class Physics
 
         foreach (var (id, velocity) in state.Get<Velocity>())
         {
-            var entity = state[id];
-            var (destination, position) = entity.Get<Destination, Position>();
+            var (destination, position) = state.Get<Destination, Position>(id);
 
             var physics = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
             if (physics == null) continue;
@@ -286,27 +284,27 @@ public static class Physics
                 {
                     var collideId = (collided.Collider as Node).Name.Split("-").First();
 
-                    var ev = state[id].Get<CollisionEvent>();
+                    var ev = state.Get<CollisionEvent>(id);
                     if (ev != null)
                     {
                         var queue = (id, collideId, ev as Event);
-                        state = state.With(Events.ENTITY, entity => entity.With(new EventQueue()
+                        state = state.With(Events.ENTITY, new EventQueue()
                         {
-                            Events = entity.Get<EventQueue>().Events.With(queue)
-                        }));
+                            Events = state.Get<EventQueue>(Events.ENTITY).Events.With(queue)
+                        });
                     }
 
                     var otherEv = state.ContainsKey(collideId)
-                        ? state[collideId].Get<CollisionEvent>()
+                        ? state.Get<CollisionEvent>(collideId)
                         : null;
                     if (otherEv != null)
                     {
                         var queue = (collideId, id, otherEv as Event);
 
-                        state = state.With(Events.ENTITY, entity => entity.With(new EventQueue()
+                        state = state.With(Events.ENTITY, new EventQueue()
                         {
-                            Events = entity.Get<EventQueue>().Events.With(queue)
-                        }));
+                            Events = state.Get<EventQueue>(Events.ENTITY).Events.With(queue)
+                        });
                     }
                 }
             }
@@ -314,8 +312,6 @@ public static class Physics
 
         foreach (var (id, position) in state.Get<Position>())
         {
-            var entity = state[id];
-
             var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
             if (node == null) continue;
 

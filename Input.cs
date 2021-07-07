@@ -57,15 +57,14 @@ public static class InputMonitor
 
     public static State System(State previous, State state, Game game)
     {
-        var tick = state["physics"].Get<Ticks>().Tick;
+        var tick = state.Get<Ticks>("physics").Tick;
 
-        var mouseLeft = state[ENTITY].Get<MouseLeft>();
-        var mouseRight = state[ENTITY].Get<MouseRight>();
+        var mouseLeft = state.Get<MouseLeft>(ENTITY);
+        var mouseRight = state.Get<MouseRight>(ENTITY);
 
         var playerId = state.Get<Player>().FirstOrDefault().Item1;
-        var player = state[playerId];
 
-        var position = player.Get<Position>();
+        var position = state.Get<Position>(playerId);
         var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());
 
         if (mouseRight?.Pressed == true)
@@ -82,12 +81,12 @@ public static class InputMonitor
             var direction = new Vector2(position.X, position.Y).DirectionTo(mousePosition).Normalized() * 10f;
             if (direction.x != 0 && direction.y != 0)
             {
-                state = state.With("projectile-" + Guid.NewGuid().ToString(), new Entity(
-                   player.Get<Position>(),
+                state = state.With("projectile-" + Guid.NewGuid().ToString(), 
+                   state.Get<Position>(playerId),
                    new Sprite { Image = "res://resources/tiles/tile663.png" },
                    new Velocity { X = direction.x, Y = direction.y },
                    new ExpirationEvent(new RemoveEntity()) with { Tick = Physics.MillisToTicks(1 * 1000) + tick }
-                ));
+                );
             }
         }
 

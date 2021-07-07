@@ -16,7 +16,7 @@ public static class Combat
 {
     public static State System(State previous, State state)
     {
-        var tick = state["physics"].Get<Ticks>().Tick;
+        var tick = state.Get<Ticks>("physics").Tick;
 
         foreach (var (id, ev) in state.Get<ExpirationEvent>())
         {
@@ -26,10 +26,10 @@ public static class Combat
 
                 state = state.Without<ExpirationEvent>(id);
 
-                state = state.With(Events.ENTITY, entity => entity.With(new EventQueue()
+                state = state.With(Events.ENTITY, new EventQueue()
                 {
-                    Events = entity.Get<EventQueue>().Events.With(queued)
-                }));
+                    Events = state.Get<EventQueue>(Events.ENTITY).Events.With(queued)
+                });
             }
         }
 
