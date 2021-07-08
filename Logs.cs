@@ -50,8 +50,8 @@ public static class Logger
         LogThread.Start();
     }
 
-    public static void Log(State Previous, State State, IEnumerable<string> ignore = null)
+    public static void Log(State Previous, State State, IEnumerable<int> ignore = null)
     {
-        //Queue.Add((Previous, State, ignore));
+        Queue.Add((Previous, State, ignore));
     }
 }

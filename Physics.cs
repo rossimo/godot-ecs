@@ -341,26 +341,6 @@ public static class Physics
             if (position.X != node.Position.x || position.Y != node.Position.y)
             {
                 state = state.With(id, new Position { X = node.Position.x, Y = node.Position.y });
-
-                var sprite = game.GetNodeOrNull<Godot.Sprite>($"{id}");
-                if (sprite == null) continue;
-
-                var tween = sprite.GetNodeOrNull<Tween>("move");
-                if (tween == null)
-                {
-                    tween = new Tween()
-                    {
-                        Name = "move"
-                    };
-                    sprite.AddChild(tween);
-                }
-
-                tween.InterpolateProperty(sprite, "position",
-                    sprite.Position,
-                    node.Position,
-                    delta);
-
-                tween.Start();
             }
         }
 

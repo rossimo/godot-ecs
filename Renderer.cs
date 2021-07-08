@@ -7,6 +7,10 @@ public record Sprite : Component
     public string Image;
 }
 
+public record LowRenderPriority : Component
+{
+}
+
 public record Position : Component
 {
     public float X;
@@ -40,7 +44,7 @@ public record ClickEvent : Event;
 
 public class Renderer
 {
-    public static State System(State previous, State state, Game game)
+    public static State System(State previous, State state, Game game, float delta)
     {
         if (previous == state) return state;
 
@@ -171,6 +175,40 @@ public class Renderer
                 .33f);
 
             tween.Start();
+        }
+
+        foreach (var (id, position) in positions.Changed)
+        {
+            var node = game.GetNodeOrNull<Node2D>($"{id}");
+            if (node == null) continue;
+
+            if (position.X != node.Position.x || position.Y != node.Position.y)
+            {
+                var lowPriority = state.Get<LowRenderPriority>(id);
+                if (lowPriority == null || (lowPriority != null && Godot.Engine.GetFramesPerSecond() >= 60f))
+                {
+                    var tween = node.GetNodeOrNull<Tween>("move");
+                    if (tween == null)
+                    {
+                        tween = new Tween()
+                        {
+                            Name = "move"
+                        };
+                        node.AddChild(tween);
+                    }
+
+                    tween.InterpolateProperty(node, "position",
+                        node.Position,
+                        new Vector2(position.X, position.Y),
+                        delta);
+
+                    tween.Start();
+                }
+                else
+                {
+                    node.Position = new Vector2(position.X, position.Y);
+                }
+            }
         }
 
         return state;

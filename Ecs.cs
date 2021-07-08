@@ -10,7 +10,7 @@ namespace Ecs
     {
         private Dictionary<int, Dictionary<int, Component>> Components = new Dictionary<int, Dictionary<int, Component>>();
 
-        public static IEnumerable<string> LOGGING_IGNORE = new[] { typeof(Ticks).Name };
+        public static IEnumerable<int> LOGGING_IGNORE = new[] { typeof(Ticks).Name.GetHashCode() };
 
         public State()
         {
