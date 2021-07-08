@@ -46,18 +46,7 @@ namespace Ecs
             where C1 : Component
             where C2 : Component
         {
-            var id1 = typeof(C1).Name.GetHashCode();
-            var c1 = Components.ContainsKey(id1) &&
-                Components[id1].ContainsKey(entityId)
-                ? Components[id1][entityId] as C1
-                : null;
-
-            var id2 = typeof(C2).Name.GetHashCode();
-            var c2 = Components.ContainsKey(id2) &&
-                Components[id2].ContainsKey(entityId)
-                ? Components[id2][entityId] as C2
-                : null;
-            return (c1, c2);
+            return (Get<C1>(entityId), Get<C2>(entityId));
         }
 
         public Dictionary<int, Component> GetComponent(int componentId)
@@ -88,7 +77,7 @@ namespace Ecs
             var state = this;
             foreach (var component in components)
             {
-                var componentId = component.GetType().Name.GetHashCode();;
+                var componentId = component.GetType().Name.GetHashCode();
 
                 if (Components.ContainsKey(componentId) &&
                     Components[componentId].ContainsKey(entityId) &&
