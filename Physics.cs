@@ -2,6 +2,7 @@ using Ecs;
 using System;
 using Godot;
 using System.Linq;
+using System.Collections.Generic;
 
 public record Ticks : Component
 {
@@ -62,6 +63,24 @@ public static class Physics
             Tick = (state.Get<Ticks>(ENTITY)?.Tick ?? 0) + 1
         });
 
+        var physicsNodes = new Dictionary<int, KinematicBody2D>();
+        Func<int, KinematicBody2D> getPhysicsNode = (int id) =>
+        {
+            if (physicsNodes.ContainsKey(id))
+            {
+                return physicsNodes[id];
+            }
+            else
+            {
+                var node = game.GetNodeOrNull<KinematicBody2D>(id + "-physics");
+                if (node != null)
+                {
+                    physicsNodes[id] = node;
+                }
+                return node;
+            }
+        };
+
         if (configChange)
         {
             var (areas, areaEnterEvents, collisions, positions, moves) =
@@ -100,7 +119,7 @@ public static class Physics
 
             foreach (var id in notNeedPhysics)
             {
-                var physics = game.GetNodeOrNull<Node2D>($"{id}-physics");
+                var physics = game.GetNodeOrNull<Node2D>(id + "-physics");
                 if (physics == null) continue;
 
                 game.RemoveChild(physics);
@@ -109,21 +128,23 @@ public static class Physics
 
             foreach (var id in needPhysics)
             {
-                var physics = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+                var physics = getPhysicsNode(id);
                 if (physics != null) continue;
 
                 var position = state.Get<Position>(id) ?? new Position { X = 0, Y = 0 };
 
-                game.AddChild(new KinematicBody2D()
+                var node = new KinematicBody2D()
                 {
-                    Name = $"{id}-physics",
+                    Name = id + "-physics",
                     Position = new Vector2(position.X, position.Y)
-                });
+                };
+                physicsNodes.Add(id, node);
+                game.AddChild(node);
             }
 
             foreach (var (id, enter) in areas.Removed)
             {
-                var physics = game.GetNodeOrNull<Node2D>($"{id}-physics");
+                var physics = game.GetNodeOrNull<Node2D>(id + "-physics");
                 var area = physics?.GetNodeOrNull<Area2D>("area");
                 if (area == null) continue;
 
@@ -133,7 +154,7 @@ public static class Physics
 
             foreach (var (id, component) in areas.Added.Concat(areas.Changed))
             {
-                var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+                var node = getPhysicsNode(id);
                 if (node == null) continue;
 
                 var (sprite, scale) = state.Get<Sprite, Scale>(id);
@@ -202,7 +223,7 @@ public static class Physics
 
             foreach (var (id, component) in collisions.Removed)
             {
-                var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+                var node = getPhysicsNode(id);
                 var collision = node?.GetNodeOrNull<Node2D>("collision");
 
                 if (collision != null)
@@ -214,7 +235,7 @@ public static class Physics
 
             foreach (var (id, component) in collisions.Changed.Concat(collisions.Added))
             {
-                var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+                var node = getPhysicsNode(id);
                 if (node == null) continue;
 
                 var (sprite, scale) = state.Get<Sprite, Scale>(id);
@@ -256,7 +277,7 @@ public static class Physics
         {
             var (destination, position) = state.Get<Destination, Position>(id);
 
-            var physics = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+            var physics = getPhysicsNode(id);
             if (physics == null) continue;
 
             var travel = new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS);
@@ -314,10 +335,10 @@ public static class Physics
 
         foreach (var (id, position) in state.Get<Position>())
         {
-            var node = game.GetNodeOrNull<KinematicBody2D>($"{id}-physics");
+            var node = getPhysicsNode(id);
             if (node == null) continue;
 
-            if (position?.X != node.Position.x || position?.Y != node.Position.y)
+            if (position.X != node.Position.x || position.Y != node.Position.y)
             {
                 state = state.With(id, new Position { X = node.Position.x, Y = node.Position.y });
 
