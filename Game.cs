@@ -11,7 +11,7 @@ public class Game : Godot.YSort
     public override void _Ready()
     {
         State = new State()
-            .With("hero",
+            .With(10,
                 new Player(),
                 new Speed { Value = 2.5f },
                 new Inventory { },
@@ -20,8 +20,8 @@ public class Game : Godot.YSort
                 new Area(),
                 new Sprite { Image = "res://resources/tiles/tile072.png" },
                 new Collision())
-            .With("potion", Potion)
-            .With("fire",
+            .With(11, Potion)
+            .With(12,
                 new Position { X = 400, Y = 200 },
                 new Area(),
                 new Collision(),
@@ -31,18 +31,18 @@ public class Game : Godot.YSort
                 ),
                 new Scale { X = 2, Y = 2 },
                 new Sprite { Image = "res://resources/tiles/tile495.png" })
-            .With("button",
+            .With(13,
                 new Position { X = 300, Y = 300 },
                 new Area(),
                 new AreaEnterEvent(
                     new Add(new Flash { Color = new Color { Red = 0.1f, Green = 0.1f, Blue = 0.1f } }),
-                    new AddEntity(Potion, "potion")
+                    new AddEntity(Potion, 11)
                 ),
                 new Scale { X = 2, Y = 2 },
                 new Sprite { Image = "res://resources/tiles/tile481.png" })
-            .With("events", new EventQueue())
-            .With("input")
-            .With("physics", new Ticks { Tick = 0 });
+            .With(Events.ENTITY, new EventQueue())
+            .With(InputEvents.ENTITY)
+            .With(Physics.ENTITY, new Ticks { Tick = 0 });
 
         Logger.Log(new State(), State, State.LOGGING_IGNORE);
     }
@@ -72,7 +72,7 @@ public class Game : Godot.YSort
         Previous = State;
     }
 
-    public void QueueEvent(Event @event, string source, string target)
+    public void QueueEvent(Event @event, int source, int target)
     {
         var entry = (source, target, @event);
         State = State.With(Events.ENTITY, new EventQueue()
@@ -83,11 +83,13 @@ public class Game : Godot.YSort
 
     public void _Event(string source, GodotWrapper @event)
     {
-        QueueEvent(@event.Get<Event>(), source, null);
+        QueueEvent(@event.Get<Event>(), Convert.ToInt32(source.Split("-").FirstOrDefault()), -2);
     }
 
     public void _Event(Node target, string source, GodotWrapper @event)
     {
-        QueueEvent(@event.Get<Event>(), source, target.GetParent().Name?.Split("-").FirstOrDefault());
+        QueueEvent(@event.Get<Event>(), 
+            Convert.ToInt32(source.Split("-").FirstOrDefault()), 
+            Convert.ToInt32(target.GetParent().Name?.Split("-").FirstOrDefault()));
     }
 }

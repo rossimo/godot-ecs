@@ -13,7 +13,7 @@ public record AddItem : Task
 
 public static class Items
 {
-    public static State System(int tick, State state, string target, Task[] tasks)
+    public static State System(int tick, State state, int target, Task[] tasks)
     {
         foreach (var task in tasks)
         {

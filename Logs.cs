@@ -29,7 +29,7 @@ public static class Logger
                     diffs.Add(Diff.Compare(type, Previous, State));
                 }
 
-                IEnumerable<(string ID, string Message)> all = new List<(string, string)>();
+                IEnumerable<(int ID, string Message)> all = new List<(int, string)>();
                 foreach (var (Added, Removed, Changed) in diffs)
                 {
                     all = all
@@ -52,6 +52,6 @@ public static class Logger
 
     public static void Log(State Previous, State State, IEnumerable<string> ignore = null)
     {
-        Queue.Add((Previous, State, ignore));
+        //Queue.Add((Previous, State, ignore));
     }
 }

@@ -8,7 +8,7 @@ namespace Ecs
 
     public class State
     {
-        private Dictionary<string, Dictionary<string, Component>> Components = new Dictionary<string, Dictionary<string, Component>>();
+        private Dictionary<string, Dictionary<int, Component>> Components = new Dictionary<string, Dictionary<int, Component>>();
 
         public static IEnumerable<string> LOGGING_IGNORE = new[] { typeof(Ticks).Name };
 
@@ -18,7 +18,7 @@ namespace Ecs
 
         public State(State state)
         {
-            Components = new Dictionary<string, Dictionary<string, Component>>(state.Components);
+            Components = new Dictionary<string, Dictionary<int, Component>>(state.Components);
         }
 
         public IEnumerable<string> Types()
@@ -26,13 +26,13 @@ namespace Ecs
             return Components.Keys;
         }
 
-        public IEnumerable<(string, C1)> Get<C1>()
+        public IEnumerable<(int, C1)> Get<C1>()
             where C1 : Component
         {
             return GetComponent(typeof(C1).Name).Select(entry => (entry.Key, entry.Value as C1));
         }
 
-        public C1 Get<C1>(string entityId)
+        public C1 Get<C1>(int entityId)
             where C1 : Component
         {
             var componentId = typeof(C1).Name;
@@ -42,7 +42,7 @@ namespace Ecs
                 : null;
         }
 
-        public (C1, C2) Get<C1, C2>(string entityId)
+        public (C1, C2) Get<C1, C2>(int entityId)
             where C1 : Component
             where C2 : Component
         {
@@ -60,16 +60,16 @@ namespace Ecs
             return (c1, c2);
         }
 
-        public Dictionary<string, Component> GetComponent(string componentId)
+        public Dictionary<int, Component> GetComponent(string componentId)
         {
             if (!Components.ContainsKey(componentId))
             {
-                return new Dictionary<string, Component>();
+                return new Dictionary<int, Component>();
             }
             return Components[componentId];
         }
 
-        public Boolean ContainsKey(string entityId)
+        public Boolean ContainsKey(int entityId)
         {
             foreach (var component in Components.Values)
             {
@@ -82,7 +82,7 @@ namespace Ecs
             return false;
         }
 
-        public State With(string entityId, params Component[] components)
+        public State With(int entityId, params Component[] components)
         {
             var prev = this;
             var state = this;
@@ -100,8 +100,8 @@ namespace Ecs
                 state = new State(state);
 
                 state.Components[componentId] = state.Components.ContainsKey(componentId)
-                    ? new Dictionary<string, Component>(state.Components[componentId])
-                    : new Dictionary<string, Component>();
+                    ? new Dictionary<int, Component>(state.Components[componentId])
+                    : new Dictionary<int, Component>(1);
                 state.Components[componentId][entityId] = component;
             }
             Logger.Log(prev, state, State.LOGGING_IGNORE);
@@ -109,7 +109,7 @@ namespace Ecs
             return state;
         }
 
-        public State Without(string entityId)
+        public State Without(int entityId)
         {
             var prev = this;
             var state = this;
@@ -120,12 +120,12 @@ namespace Ecs
             return state;
         }
 
-        public State Without<C>(string entityId) where C : Component
+        public State Without<C>(int entityId) where C : Component
         {
             return this.Without(typeof(C).Name, entityId);
         }
 
-        public State Without(string componentId, string entityId)
+        public State Without(string componentId, int entityId)
         {
             if (!Components.ContainsKey(componentId) ||
                 !Components[componentId].ContainsKey(entityId))
@@ -135,7 +135,7 @@ namespace Ecs
 
             var prev = this;
             var state = new State(this);
-            state.Components[componentId] = new Dictionary<string, Component>(state.Components[componentId]);
+            state.Components[componentId] = new Dictionary<int, Component>(state.Components[componentId]);
             state.Components[componentId].Remove(entityId);
 
             if (state.Components[componentId].Count() == 0)
@@ -171,13 +171,6 @@ namespace Ecs
             return $"{name} = [{trimmedRoot}{suffix}]";
         }
 
-        public static V Get<K, V>(this Dictionary<K, V> dict, K key)
-        {
-            V val;
-            dict.TryGetValue(key, out val);
-            return val;
-        }
-
         public static V[] With<V>(this V[] list, V value)
         {
             return list.Concat(new[] { value }).ToArray();
@@ -185,9 +178,9 @@ namespace Ecs
     }
 
     public record Result<C>(
-        IEnumerable<(string ID, C Component)> Added,
-        IEnumerable<(string ID, C Component)> Removed,
-        IEnumerable<(string ID, C Component)> Changed)
+        IEnumerable<(int ID, C Component)> Added,
+        IEnumerable<(int ID, C Component)> Removed,
+        IEnumerable<(int ID, C Component)> Changed)
         where C : Component
     {
         public Result<D> To<D>() where D : Component
@@ -206,9 +199,9 @@ namespace Ecs
             if (before == after || before.GetComponent(type) == after.GetComponent(type))
             {
                 return new Result<Component>(
-                    Added: new (string ID, Component Component)[] { },
-                    Removed: new (string ID, Component Component)[] { },
-                    Changed: new (string ID, Component Component)[] { });
+                    Added: new (int ID, Component Component)[] { },
+                    Removed: new (int ID, Component Component)[] { },
+                    Changed: new (int ID, Component Component)[] { });
             }
 
             var oldComponents = before.GetComponent(type);

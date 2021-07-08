@@ -44,6 +44,8 @@ public record AreaEnterEvent : Event
 
 public static class Physics
 {
+    public static int ENTITY = 1;
+
     public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_fps")}".ToFloat();
 
     public static ulong MillisToTicks(ulong millis)
@@ -55,14 +57,14 @@ public static class Physics
     {
         var configChange = previous != state;
 
-        state = state.With("physics", new Ticks
+        state = state.With(ENTITY, new Ticks
         {
-            Tick = (state.Get<Ticks>("physics")?.Tick  ?? 0) + 1
+            Tick = (state.Get<Ticks>(ENTITY)?.Tick ?? 0) + 1
         });
 
         if (configChange)
         {
-            var (areas, areaEnterEvents, collisions, positions, moves) = 
+            var (areas, areaEnterEvents, collisions, positions, moves) =
                 Diff.Compare<Area, AreaEnterEvent, Collision, Position, Move>(previous, state);
 
             var needPhysics = areas.Added.Select(entry => entry.ID)
@@ -282,7 +284,7 @@ public static class Physics
                 }
                 else
                 {
-                    var collideId = (collided.Collider as Node).Name.Split("-").First();
+                    var collideId = Convert.ToInt32((collided.Collider as Node).Name.Split("-").First());
 
                     var ev = state.Get<CollisionEvent>(id);
                     if (ev != null)

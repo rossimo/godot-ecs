@@ -49,7 +49,7 @@ public class Renderer
 
         foreach (var (id, sprite) in sprites.Removed)
         {
-            var node = game.GetNodeOrNull<Node2D>(id);
+            var node = game.GetNodeOrNull<Node2D>($"{id}");
             if (node == null) continue;
 
             game.RemoveChild(node);
@@ -61,12 +61,12 @@ public class Renderer
             var position = state.Get<Position>(id);
             position = position ?? new Position { X = 0, Y = 0 };
 
-            var node = game.GetNodeOrNull<ClickableSprite>(id);
+            var node = game.GetNodeOrNull<ClickableSprite>($"{id}");
             if (node != null) continue;
 
             node = new ClickableSprite()
             {
-                Name = id,
+                Name = $"{id}",
                 Texture = GD.Load<Texture>(component.Image),
                 Position = new Vector2(position.X, position.Y)
             };
@@ -87,7 +87,7 @@ public class Renderer
 
         foreach (var (id, component) in sprites.Changed)
         {
-            var node = game.GetNodeOrNull<ClickableSprite>(id);
+            var node = game.GetNodeOrNull<ClickableSprite>($"{id}");
             if (node == null) continue;
 
             node.Texture = GD.Load<Texture>(component.Image);
@@ -95,35 +95,35 @@ public class Renderer
 
         foreach (var (id, scale) in scales.Removed)
         {
-            var node = game.GetNodeOrNull<Node2D>(id);
+            var node = game.GetNodeOrNull<Node2D>($"{id}");
             if (node == null) continue;
             node.Scale = new Vector2(1, 1);
         }
 
         foreach (var (id, scale) in scales.Added.Concat(scales.Changed))
         {
-            var node = game.GetNodeOrNull<Node2D>(id);
+            var node = game.GetNodeOrNull<Node2D>($"{id}");
             if (node == null) continue;
             node.Scale = new Vector2(scale.X, scale.Y);
         }
 
         foreach (var (id, rotation) in rotations.Removed)
         {
-            var node = game.GetNodeOrNull<Node2D>(id);
+            var node = game.GetNodeOrNull<Node2D>($"{id}");
             if (node == null) continue;
             node.RotationDegrees = 0;
         }
 
         foreach (var (id, rotation) in rotations.Added.Concat(rotations.Changed))
         {
-            var node = game.GetNodeOrNull<Node2D>(id);
+            var node = game.GetNodeOrNull<Node2D>($"{id}");
             if (node == null) continue;
             node.RotationDegrees = rotation.Degrees;
         }
 
         foreach (var (id, click) in clicks.Removed)
         {
-            var node = game.GetNodeOrNull<Node2D>(id);
+            var node = game.GetNodeOrNull<Node2D>($"{id}");
             if (node == null) continue;
 
             if (node.IsConnected("pressed", game, nameof(game._Event)))
@@ -134,7 +134,7 @@ public class Renderer
 
         foreach (var (id, click) in clicks.Added.Concat(clicks.Changed))
         {
-            var node = game.GetNodeOrNull<Node2D>(id);
+            var node = game.GetNodeOrNull<Node2D>($"{id}");
             if (node == null) continue;
 
             if (node.IsConnected("pressed", game, nameof(game._Event)))
@@ -153,7 +153,7 @@ public class Renderer
             var position = state.Get<Position>(id);
             position = position ?? new Position { X = 0, Y = 0 };
 
-            var node = game.GetNodeOrNull<Node2D>(id);
+            var node = game.GetNodeOrNull<Node2D>($"{id}");
             var tween = game.GetNodeOrNull<Tween>($"{id}/modulate");
 
             if (node == null) continue;

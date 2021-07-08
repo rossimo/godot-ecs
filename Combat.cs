@@ -16,13 +16,13 @@ public static class Combat
 {
     public static State System(State previous, State state)
     {
-        var tick = state.Get<Ticks>("physics").Tick;
+        var tick = state.Get<Ticks>(Physics.ENTITY).Tick;
 
         foreach (var (id, ev) in state.Get<ExpirationEvent>())
         {
             if (ev.Tick <= tick)
             {
-                var queued = (id, null as string, ev);
+                var queued = (id, -3, ev);
 
                 state = state.Without<ExpirationEvent>(id);
 

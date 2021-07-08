@@ -2,15 +2,16 @@ using Ecs;
 using System;
 using System.Linq;
 
+
 public static class Target
 {
-    public static string Other = "__OTHER";
-    public static string Self = "__SELF";
+    public static int Other = -1;
+    public static int Self = -2;
 }
 
 public record Task
 {
-    public string Target;
+    public int Target = -2;
 }
 
 public record Event : Component
@@ -32,7 +33,7 @@ public record Add : Task
 
     public Add() { }
 
-    public Add(Component component, string target = null)
+    public Add(Component component, int target = -2)
         => (Component, Target) = (component, target);
 }
 
@@ -53,7 +54,7 @@ public record AddEntity : Task
 
     public AddEntity() { }
 
-    public AddEntity(Component[] components, string target = null)
+    public AddEntity(Component[] components, int target = -2)
         => (Components, Target) = (components, target);
 }
 
@@ -61,10 +62,10 @@ public record RemoveEntity : Task;
 
 public record EventQueue : Component
 {
-    public (string Source, string Target, Event Event)[] Events =
-        new (string Source, string Target, Event Event)[] { };
+    public (int Source, int Target, Event Event)[] Events =
+        new (int Source, int Target, Event Event)[] { };
 
-    public EventQueue(params (string Source, string Target, Event Event)[] queue)
+    public EventQueue(params (int Source, int Target, Event Event)[] queue)
         => (Events) = (queue);
 
     public override string ToString()
@@ -75,7 +76,7 @@ public record EventQueue : Component
 
 public static class Events
 {
-    public static string ENTITY = "events";
+    public static int ENTITY = 2;
 
     public static State System(State previous, State state)
     {
@@ -90,7 +91,7 @@ public static class Events
             {
                 var target = task.Target == Target.Other
                     ? otherId
-                    : task.Target == null || task.Target == Target.Self
+                    : task.Target == Target.Self
                         ? id
                         : task.Target;
 
@@ -110,10 +111,6 @@ public static class Events
 
                     case AddEntity addEntity:
                         {
-                            target = addEntity.Target?.Length > 0
-                                ? addEntity.Target
-                                : Guid.NewGuid().ToString();
-
                             state = state.With(target, addEntity.Components);
                         }
                         break;
