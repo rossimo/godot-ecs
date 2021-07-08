@@ -15,7 +15,7 @@ public static class Logger
             while (true)
             {
                 var (Previous, State, ignore) = Queue.Take();
-                if (Previous == State) return;
+                if (Previous == State) continue;
 
                 var types = new List<string>()
                     .Concat(Previous.Types())
