@@ -331,16 +331,10 @@ public static class Physics
                     }
                 }
             }
-        }
 
-        foreach (var (id, position) in state.Get<Position>())
-        {
-            var node = getPhysicsNode(id);
-            if (node == null) continue;
-
-            if (position.X != node.Position.x || position.Y != node.Position.y)
+            if (position.X != physics.Position.x || position.Y != physics.Position.y)
             {
-                state = state.With(id, new Position { X = node.Position.x, Y = node.Position.y });
+                state = state.With(id, new Position { X = physics.Position.x, Y = physics.Position.y });
             }
         }
 

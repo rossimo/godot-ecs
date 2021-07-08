@@ -185,7 +185,7 @@ public class Renderer
             if (position.X != node.Position.x || position.Y != node.Position.y)
             {
                 var lowPriority = state.Get<LowRenderPriority>(id);
-                if (lowPriority == null || (lowPriority != null && Godot.Engine.GetFramesPerSecond() >= 60f))
+                if (lowPriority == null || Godot.Engine.GetFramesPerSecond() >= 60f)
                 {
                     var tween = node.GetNodeOrNull<Tween>("move");
                     if (tween == null)
