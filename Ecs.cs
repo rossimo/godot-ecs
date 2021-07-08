@@ -8,7 +8,7 @@ namespace Ecs
 
     public class State
     {
-        private Dictionary<string, Dictionary<int, Component>> Components = new Dictionary<string, Dictionary<int, Component>>();
+        private Dictionary<int, Dictionary<int, Component>> Components = new Dictionary<int, Dictionary<int, Component>>();
 
         public static IEnumerable<string> LOGGING_IGNORE = new[] { typeof(Ticks).Name };
 
@@ -18,10 +18,10 @@ namespace Ecs
 
         public State(State state)
         {
-            Components = new Dictionary<string, Dictionary<int, Component>>(state.Components);
+            Components = new Dictionary<int, Dictionary<int, Component>>(state.Components);
         }
 
-        public IEnumerable<string> Types()
+        public IEnumerable<int> Types()
         {
             return Components.Keys;
         }
@@ -29,13 +29,13 @@ namespace Ecs
         public IEnumerable<(int, C1)> Get<C1>()
             where C1 : Component
         {
-            return GetComponent(typeof(C1).Name).Select(entry => (entry.Key, entry.Value as C1));
+            return GetComponent(typeof(C1).Name.GetHashCode()).Select(entry => (entry.Key, entry.Value as C1));
         }
 
         public C1 Get<C1>(int entityId)
             where C1 : Component
         {
-            var componentId = typeof(C1).Name;
+            var componentId = typeof(C1).Name.GetHashCode();
             return Components.ContainsKey(componentId) &&
                 Components[componentId].ContainsKey(entityId)
                 ? Components[componentId][entityId] as C1
@@ -46,13 +46,13 @@ namespace Ecs
             where C1 : Component
             where C2 : Component
         {
-            var id1 = typeof(C1).Name;
+            var id1 = typeof(C1).Name.GetHashCode();
             var c1 = Components.ContainsKey(id1) &&
                 Components[id1].ContainsKey(entityId)
                 ? Components[id1][entityId] as C1
                 : null;
 
-            var id2 = typeof(C2).Name;
+            var id2 = typeof(C2).Name.GetHashCode();
             var c2 = Components.ContainsKey(id2) &&
                 Components[id2].ContainsKey(entityId)
                 ? Components[id2][entityId] as C2
@@ -60,7 +60,7 @@ namespace Ecs
             return (c1, c2);
         }
 
-        public Dictionary<int, Component> GetComponent(string componentId)
+        public Dictionary<int, Component> GetComponent(int componentId)
         {
             if (!Components.ContainsKey(componentId))
             {
@@ -88,7 +88,7 @@ namespace Ecs
             var state = this;
             foreach (var component in components)
             {
-                var componentId = component.GetType().Name;
+                var componentId = component.GetType().Name.GetHashCode();;
 
                 if (Components.ContainsKey(componentId) &&
                     Components[componentId].ContainsKey(entityId) &&
@@ -115,17 +115,17 @@ namespace Ecs
             var state = this;
             foreach (var componentId in state.Components.Keys)
             {
-                state = state.Without(componentId, entityId);
+                state = state.Without(componentId.GetHashCode(), entityId);
             }
             return state;
         }
 
         public State Without<C>(int entityId) where C : Component
         {
-            return this.Without(typeof(C).Name, entityId);
+            return this.Without(typeof(C).Name.GetHashCode(), entityId);
         }
 
-        public State Without(string componentId, int entityId)
+        public State Without(int componentId, int entityId)
         {
             if (!Components.ContainsKey(componentId) ||
                 !Components[componentId].ContainsKey(entityId))
@@ -194,7 +194,7 @@ namespace Ecs
 
     public class Diff
     {
-        public static Result<Component> Compare(string type, State before, State after)
+        public static Result<Component> Compare(int type, State before, State after)
         {
             if (before == after || before.GetComponent(type) == after.GetComponent(type))
             {
@@ -219,7 +219,7 @@ namespace Ecs
 
         public static Result<Component> Compare(Type type, State before, State after)
         {
-            return Compare(type.Name, before, after);
+            return Compare(type.Name.GetHashCode(), before, after);
         }
 
         public static Result<C1> Compare<C1>(State Current, State next)

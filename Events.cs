@@ -105,7 +105,7 @@ public static class Events
 
                     case Remove remove:
                         {
-                            state = state.Without(remove.Type.Name, target);
+                            state = state.Without(remove.Type.Name.GetHashCode(), target);
                         }
                         break;
 
