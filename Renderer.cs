@@ -107,7 +107,7 @@ public class Renderer
             var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
 
-            // node.Texture = GD.Load<Texture>(component.Image);
+            node.Texture = GD.Load<Texture>(component.Image);
         }
 
         foreach (var (id, scale) in scales.Removed)

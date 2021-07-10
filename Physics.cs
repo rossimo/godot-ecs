@@ -75,8 +75,8 @@ public static class Physics
 
         if (configChange)
         {
-            var (areas, areaEnterEvents, collisions, positions, moves) =
-                Diff.Compare<Area, AreaEnterEvent, Collision, Position, Move>(previous, state);
+            var (areas, areaEnterEvents, collisions, positions, moves, physics) =
+                Diff.Compare<Area, AreaEnterEvent, Collision, Position, Move, PhysicsNode>(previous, state);
 
             var needPhysics = areas.Added.Select(entry => entry.ID)
                 .Concat(areas.Changed.Select(entry => entry.ID))
@@ -89,6 +89,7 @@ public static class Physics
             var notNeedPhysics = areas.Removed.Select(entry => entry.ID)
                 .Concat(collisions.Removed.Select(entry => entry.ID))
                 .Concat(positions.Removed.Select(entry => entry.ID))
+                .Concat(physics.Removed.Select(entry => entry.ID))
                 .Distinct()
                 .Where(id => !needPhysics.Contains(id));
 
@@ -111,11 +112,11 @@ public static class Physics
 
             foreach (var id in notNeedPhysics)
             {
-                var existing = state.Get<PhysicsNode>(id);
-                if (existing?.Node == null) continue;
+                var node = game.GetNodeOrNull<KinematicBody2D>(id + "-physics");
+                if (node == null) continue;
 
-                game.RemoveChild(existing.Node);
-                existing.Node.QueueFree();
+                game.RemoveChild(node);
+                node.QueueFree();
 
                 state = state.Without<PhysicsNode>(id);
             }
@@ -143,11 +144,11 @@ public static class Physics
 
             foreach (var (id, enter) in areas.Removed)
             {
-                var physics = game.GetNodeOrNull<Node2D>(id + "-physics");
-                var area = physics?.GetNodeOrNull<Area2D>("area");
+                var node = game.GetNodeOrNull<Node2D>(id + "-physics");
+                var area = node?.GetNodeOrNull<Area2D>("area");
                 if (area == null) continue;
 
-                physics.RemoveChild(area);
+                node.RemoveChild(area);
                 area.QueueFree();
             }
 
@@ -196,26 +197,28 @@ public static class Physics
 
             foreach (var (id, ev) in areaEnterEvents.Removed)
             {
-                var node = game.GetNodeOrNull<Node2D>($"{id}-physics/area");
-                if (node == null) continue;
+                var node = state.Get<PhysicsNode>(id)?.Node;
+                var area = node?.GetNodeOrNull<Node2D>("area");
+                if (area == null) continue;
 
-                if (node.IsConnected("area_entered", game, nameof(game._Event)))
+                if (area.IsConnected("area_entered", game, nameof(game._Event)))
                 {
-                    node.Disconnect("area_entered", game, nameof(game._Event));
+                    area.Disconnect("area_entered", game, nameof(game._Event));
                 }
             }
 
             foreach (var (id, ev) in areaEnterEvents.Added.Concat(areaEnterEvents.Changed))
             {
-                var node = game.GetNodeOrNull<Node2D>($"{id}-physics/area");
-                if (node == null) continue;
+                var node = state.Get<PhysicsNode>(id)?.Node;
+                var area = node?.GetNodeOrNull<Node2D>("area");
+                if (area == null) continue;
 
-                if (node.IsConnected("area_entered", game, nameof(game._Event)))
+                if (area.IsConnected("area_entered", game, nameof(game._Event)))
                 {
-                    node.Disconnect("area_entered", game, nameof(game._Event));
+                    area.Disconnect("area_entered", game, nameof(game._Event));
                 }
 
-                node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
+                area.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
                     id, new GodotWrapper(ev)
                 });
             }
