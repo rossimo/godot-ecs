@@ -104,10 +104,18 @@ public class Renderer
 
         foreach (var (id, component) in sprites.Changed)
         {
-            var node = state.Get<Sprite>(id)?.Node;
+            var node = game.GetNodeOrNull<ClickableSprite>($"{id}");
             if (node == null) continue;
 
             node.Texture = GD.Load<Texture>(component.Image);
+
+            if (node != component.Node)
+            {
+                state = state.With(id, component with
+                {
+                    Node = node
+                });
+            }
         }
 
         foreach (var (id, scale) in scales.Removed)
