@@ -26,27 +26,46 @@ namespace Ecs
             return Components.Keys;
         }
 
+        public IEnumerable<(int, C1)> GetAll<C1>(int componentId)
+            where C1 : Component
+        {
+            return GetComponent(componentId).Select(entry => (entry.Key, entry.Value as C1));
+        }
+
         public IEnumerable<(int, C1)> Get<C1>()
             where C1 : Component
         {
-            return GetComponent(typeof(C1).Name.GetHashCode()).Select(entry => (entry.Key, entry.Value as C1));
+            return GetAll<C1>(typeof(C1).Name.GetHashCode());
         }
 
-        public C1 Get<C1>(int entityId)
+        public C1 Get<C1>(int componentId, int entityId)
             where C1 : Component
         {
-            var componentId = typeof(C1).Name.GetHashCode();
             return Components.ContainsKey(componentId) &&
                 Components[componentId].ContainsKey(entityId)
                 ? Components[componentId][entityId] as C1
                 : null;
         }
 
+        public C1 Get<C1>(int entityId)
+            where C1 : Component
+        {
+            var componentId = typeof(C1).Name.GetHashCode();
+            return Get<C1>(componentId, entityId);
+        }
+
+        public (C1, C2) Get<C1, C2>(int componentId1, int componentId2, int entityId)
+            where C1 : Component
+            where C2 : Component
+        {
+            return (Get<C1>(componentId1, entityId), Get<C2>(componentId2, entityId));
+        }
+
         public (C1, C2) Get<C1, C2>(int entityId)
             where C1 : Component
             where C2 : Component
         {
-            return (Get<C1>(entityId), Get<C2>(entityId));
+            return (Get<C1>(typeof(C1).Name.GetHashCode(), entityId), Get<C2>(typeof(C2).Name.GetHashCode(), entityId));
         }
 
         public Dictionary<int, Component> GetComponent(int componentId)
@@ -79,9 +98,9 @@ namespace Ecs
             {
                 var componentId = component.GetType().Name.GetHashCode();
 
-                if (Components.ContainsKey(componentId) &&
-                    Components[componentId].ContainsKey(entityId) &&
-                    Components[componentId][entityId] == component)
+                if (state.Components.ContainsKey(componentId) &&
+                    state.Components[componentId].ContainsKey(entityId) &&
+                    state.Components[componentId][entityId] == component)
                 {
                     continue;
                 }
@@ -94,6 +113,30 @@ namespace Ecs
                 state.Components[componentId][entityId] = component;
             }
             Logger.Log(prev, state, State.LOGGING_IGNORE);
+
+            return state;
+        }
+
+        public State Batch<C>(Dictionary<int, C> update)
+            where C : Component
+        {
+            var componentId = typeof(C).Name.GetHashCode();
+
+            var state = new State(this);
+
+            if (!state.Components.ContainsKey(componentId))
+            {
+                state.Components[componentId] = new Dictionary<int, Component>(1);
+            }
+            else
+            {
+                state.Components[componentId] = new Dictionary<int, Component>(state.Components[componentId]);
+            }
+
+            foreach (var entry in update)
+            {
+                state.Components[componentId][entry.Key] = entry.Value;
+            }
 
             return state;
         }
@@ -183,9 +226,9 @@ namespace Ecs
 
     public class Diff
     {
-        public static Result<Component> Compare(int type, State before, State after)
+        public static Result<Component> Compare(int componentId, State before, State after)
         {
-            if (before == after || before.GetComponent(type) == after.GetComponent(type))
+            if (before == after || before.GetComponent(componentId) == after.GetComponent(componentId))
             {
                 return new Result<Component>(
                     Added: new (int ID, Component Component)[] { },
@@ -193,8 +236,8 @@ namespace Ecs
                     Changed: new (int ID, Component Component)[] { });
             }
 
-            var oldComponents = before.GetComponent(type);
-            var newComponents = after.GetComponent(type);
+            var oldComponents = before.GetComponent(componentId);
+            var newComponents = after.GetComponent(componentId);
 
             var oldIds = oldComponents.Keys.ToHashSet();
             var newIds = newComponents.Keys.ToHashSet();

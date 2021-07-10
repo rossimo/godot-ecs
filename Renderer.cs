@@ -1,10 +1,12 @@
 using Ecs;
 using Godot;
 using System.Linq;
+using System.Collections.Generic;
 
 public record Sprite : Component
 {
     public string Image;
+    public ClickableSprite Node;
 }
 
 public record LowRenderPriority : Component
@@ -44,6 +46,9 @@ public record ClickEvent : Event;
 
 public class Renderer
 {
+    public static int SPRITE = typeof(Sprite).Name.GetHashCode();
+    public static int LOW_PRIORITY = typeof(LowRenderPriority).Name.GetHashCode();
+
     public static State System(State previous, State state, Game game, float delta)
     {
         if (previous == state) return state;
@@ -53,7 +58,7 @@ public class Renderer
 
         foreach (var (id, sprite) in sprites.Removed)
         {
-            var node = game.GetNodeOrNull<Node2D>($"{id}");
+            var node = sprite.Node;
             if (node == null) continue;
 
             game.RemoveChild(node);
@@ -87,47 +92,55 @@ public class Renderer
                 Name = "modulate"
             };
             node.AddChild(modulate);
+
+            if (component.Node != node)
+            {
+                state = state.With(id, component with
+                {
+                    Node = node
+                });
+            }
         }
 
         foreach (var (id, component) in sprites.Changed)
         {
-            var node = game.GetNodeOrNull<ClickableSprite>($"{id}");
+            var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
 
-            node.Texture = GD.Load<Texture>(component.Image);
+            // node.Texture = GD.Load<Texture>(component.Image);
         }
 
         foreach (var (id, scale) in scales.Removed)
         {
-            var node = game.GetNodeOrNull<Node2D>($"{id}");
+            var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
             node.Scale = new Vector2(1, 1);
         }
 
         foreach (var (id, scale) in scales.Added.Concat(scales.Changed))
         {
-            var node = game.GetNodeOrNull<Node2D>($"{id}");
+            var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
             node.Scale = new Vector2(scale.X, scale.Y);
         }
 
         foreach (var (id, rotation) in rotations.Removed)
         {
-            var node = game.GetNodeOrNull<Node2D>($"{id}");
+            var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
             node.RotationDegrees = 0;
         }
 
         foreach (var (id, rotation) in rotations.Added.Concat(rotations.Changed))
         {
-            var node = game.GetNodeOrNull<Node2D>($"{id}");
+            var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
             node.RotationDegrees = rotation.Degrees;
         }
 
         foreach (var (id, click) in clicks.Removed)
         {
-            var node = game.GetNodeOrNull<Node2D>($"{id}");
+            var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
 
             if (node.IsConnected("pressed", game, nameof(game._Event)))
@@ -138,7 +151,7 @@ public class Renderer
 
         foreach (var (id, click) in clicks.Added.Concat(clicks.Changed))
         {
-            var node = game.GetNodeOrNull<Node2D>($"{id}");
+            var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
 
             if (node.IsConnected("pressed", game, nameof(game._Event)))
@@ -157,7 +170,7 @@ public class Renderer
             var position = state.Get<Position>(id);
             position = position ?? new Position { X = 0, Y = 0 };
 
-            var node = game.GetNodeOrNull<Node2D>($"{id}");
+            var node = state.Get<Sprite>(id)?.Node;
             var tween = game.GetNodeOrNull<Tween>($"{id}/modulate");
 
             if (node == null) continue;
@@ -179,13 +192,13 @@ public class Renderer
 
         foreach (var (id, position) in positions.Changed)
         {
-            var node = game.GetNodeOrNull<Node2D>($"{id}");
+            var (sprite, lowPriority) = state.Get<Sprite, LowRenderPriority>(SPRITE, LOW_PRIORITY, id);
+            var node = sprite?.Node;
             if (node == null) continue;
 
             if (position.X != node.Position.x || position.Y != node.Position.y)
             {
-                var lowPriority = state.Get<LowRenderPriority>(id);
-                if (lowPriority == null || Godot.Engine.GetFramesPerSecond() >= 60f)
+                if (lowPriority == null)
                 {
                     var tween = node.GetNodeOrNull<Tween>("move");
                     if (tween == null)

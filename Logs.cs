@@ -47,11 +47,11 @@ public static class Logger
 
     static Logger()
     {
-        LogThread.Start();
+        // LogThread.Start();
     }
 
     public static void Log(State Previous, State State, IEnumerable<int> ignore = null)
     {
-        Queue.Add((Previous, State, ignore));
+        // Queue.Add((Previous, State, ignore));
     }
 }

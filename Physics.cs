@@ -43,6 +43,11 @@ public record AreaEnterEvent : Event
     public override string ToString() => base.ToString();
 }
 
+public record PhysicsNode : Component
+{
+    public KinematicBody2D Node;
+}
+
 public static class Physics
 {
     public static int ENTITY = 1;
@@ -54,6 +59,11 @@ public static class Physics
         return Convert.ToUInt64((Convert.ToSingle(millis) / 1000f) * PHYSICS_FPS);
     }
 
+    public static int VELOCITY = typeof(Velocity).Name.GetHashCode();
+    public static int DESTINATION = typeof(Destination).Name.GetHashCode();
+    public static int POSITION = typeof(Position).Name.GetHashCode();
+    public static int PHYSICS_NODE = typeof(PhysicsNode).Name.GetHashCode();
+
     public static State System(State previous, State state, Game game, float delta)
     {
         var configChange = previous != state;
@@ -62,24 +72,6 @@ public static class Physics
         {
             Tick = (state.Get<Ticks>(ENTITY)?.Tick ?? 0) + 1
         });
-
-        var physicsNodes = new Dictionary<int, KinematicBody2D>();
-        Func<int, KinematicBody2D> getPhysicsNode = (int id) =>
-        {
-            if (physicsNodes.ContainsKey(id))
-            {
-                return physicsNodes[id];
-            }
-            else
-            {
-                var node = game.GetNodeOrNull<KinematicBody2D>(id + "-physics");
-                if (node != null)
-                {
-                    physicsNodes[id] = node;
-                }
-                return node;
-            }
-        };
 
         if (configChange)
         {
@@ -119,17 +111,19 @@ public static class Physics
 
             foreach (var id in notNeedPhysics)
             {
-                var physics = game.GetNodeOrNull<Node2D>(id + "-physics");
-                if (physics == null) continue;
+                var existing = state.Get<PhysicsNode>(id);
+                if (existing?.Node == null) continue;
 
-                game.RemoveChild(physics);
-                physics.QueueFree();
+                game.RemoveChild(existing.Node);
+                existing.Node.QueueFree();
+
+                state = state.Without<PhysicsNode>(id);
             }
 
             foreach (var id in needPhysics)
             {
-                var physics = getPhysicsNode(id);
-                if (physics != null) continue;
+                var existing = state.Get<PhysicsNode>(id);
+                if (existing?.Node != null) continue;
 
                 var position = state.Get<Position>(id) ?? new Position { X = 0, Y = 0 };
 
@@ -138,7 +132,12 @@ public static class Physics
                     Name = id + "-physics",
                     Position = new Vector2(position.X, position.Y)
                 };
-                physicsNodes.Add(id, node);
+
+                state = state.With(id, new PhysicsNode()
+                {
+                    Node = node
+                });
+
                 game.AddChild(node);
             }
 
@@ -154,7 +153,7 @@ public static class Physics
 
             foreach (var (id, component) in areas.Added.Concat(areas.Changed))
             {
-                var node = getPhysicsNode(id);
+                var node = state.Get<PhysicsNode>(id)?.Node;
                 if (node == null) continue;
 
                 var (sprite, scale) = state.Get<Sprite, Scale>(id);
@@ -223,7 +222,7 @@ public static class Physics
 
             foreach (var (id, component) in collisions.Removed)
             {
-                var node = getPhysicsNode(id);
+                var node = state.Get<PhysicsNode>(id)?.Node;
                 var collision = node?.GetNodeOrNull<Node2D>("collision");
 
                 if (collision != null)
@@ -235,7 +234,7 @@ public static class Physics
 
             foreach (var (id, component) in collisions.Changed.Concat(collisions.Added))
             {
-                var node = getPhysicsNode(id);
+                var node = state.Get<PhysicsNode>(id)?.Node;
                 if (node == null) continue;
 
                 var (sprite, scale) = state.Get<Sprite, Scale>(id);
@@ -273,11 +272,13 @@ public static class Physics
             }
         }
 
-        foreach (var (id, velocity) in state.Get<Velocity>())
-        {
-            var (destination, position) = state.Get<Destination, Position>(id);
+        var positionBatch = new Dictionary<int, Position>();
 
-            var physics = getPhysicsNode(id);
+        foreach (var (id, velocity) in state.GetAll<Velocity>(VELOCITY))
+        {
+            var (destination, position) = state.Get<Destination, Position>(DESTINATION, POSITION, id);
+
+            var physics = state.Get<PhysicsNode>(PHYSICS_NODE, id)?.Node;
             if (physics == null) continue;
 
             var travel = new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS);
@@ -332,11 +333,13 @@ public static class Physics
                 }
             }
 
-            if (position.X != physics.Position.x || position.Y != physics.Position.y)
+            if (position?.X != physics.Position.x || position?.Y != physics.Position.y)
             {
-                state = state.With(id, new Position { X = physics.Position.x, Y = physics.Position.y });
+                positionBatch.Add(id, new Position { X = physics.Position.x, Y = physics.Position.y });
             }
         }
+
+        state = state.Batch<Position>(positionBatch);
 
         return state;
     }
