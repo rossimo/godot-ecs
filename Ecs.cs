@@ -32,11 +32,6 @@ namespace Ecs
             return GetComponent(componentId).Select(entry => (entry.Key, entry.Value as C1));
         }
 
-        public IEnumerable<(int, C1)> Get<C1>()
-            where C1 : Component
-        {
-            return GetAll<C1>(typeof(C1).Name.GetHashCode());
-        }
 
         public C1 Get<C1>(int componentId, int entityId)
             where C1 : Component
@@ -45,27 +40,6 @@ namespace Ecs
                 Components[componentId].ContainsKey(entityId)
                 ? Components[componentId][entityId] as C1
                 : null;
-        }
-
-        public C1 Get<C1>(int entityId)
-            where C1 : Component
-        {
-            var componentId = typeof(C1).Name.GetHashCode();
-            return Get<C1>(componentId, entityId);
-        }
-
-        public (C1, C2) Get<C1, C2>(int componentId1, int componentId2, int entityId)
-            where C1 : Component
-            where C2 : Component
-        {
-            return (Get<C1>(componentId1, entityId), Get<C2>(componentId2, entityId));
-        }
-
-        public (C1, C2) Get<C1, C2>(int entityId)
-            where C1 : Component
-            where C2 : Component
-        {
-            return (Get<C1>(typeof(C1).Name.GetHashCode(), entityId), Get<C2>(typeof(C2).Name.GetHashCode(), entityId));
         }
 
         public Dictionary<int, Component> GetComponent(int componentId)

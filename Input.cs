@@ -59,14 +59,14 @@ public static class InputMonitor
 
     public static State System(State previous, State state, Game game)
     {
-        var tick = state.Get<Ticks>(Physics.ENTITY).Tick;
+        var tick = state.Ticks(Physics.ENTITY).Tick;
 
-        var mouseLeft = state.Get<MouseLeft>(ENTITY);
-        var mouseRight = state.Get<MouseRight>(ENTITY);
+        var mouseLeft = state.MouseLeft(ENTITY);
+        var mouseRight = state.MouseRight(ENTITY);
 
-        var playerId = state.Get<Player>().FirstOrDefault().Item1;
+        var playerId = state.Player().FirstOrDefault().Item1;
 
-        var position = state.Get<Position>(playerId);
+        var position = state.Position(playerId);
         var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());
 
         if (mouseRight?.Pressed == true)
@@ -84,7 +84,7 @@ public static class InputMonitor
             if (direction.x != 0 && direction.y != 0)
             {
                 state = state.With(rnd.Next(1000, 200000), 
-                   state.Get<Position>(playerId),
+                   state.Position(playerId),
                    new Sprite { Image = "res://resources/tiles/tile663.png" },
                    new Velocity { X = direction.x, Y = direction.y },
                    new LowRenderPriority(),

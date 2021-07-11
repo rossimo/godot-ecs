@@ -59,18 +59,13 @@ public static class Physics
         return Convert.ToUInt64((Convert.ToSingle(millis) / 1000f) * PHYSICS_FPS);
     }
 
-    public static int VELOCITY = typeof(Velocity).Name.GetHashCode();
-    public static int DESTINATION = typeof(Destination).Name.GetHashCode();
-    public static int POSITION = typeof(Position).Name.GetHashCode();
-    public static int PHYSICS_NODE = typeof(PhysicsNode).Name.GetHashCode();
-
     public static State System(State previous, State state, Game game, float delta)
     {
         var configChange = previous != state;
 
         state = state.With(ENTITY, new Ticks
         {
-            Tick = (state.Get<Ticks>(ENTITY)?.Tick ?? 0) + 1
+            Tick = (state.Ticks(ENTITY)?.Tick ?? 0) + 1
         });
 
         if (configChange)
@@ -97,7 +92,8 @@ public static class Physics
             {
                 state = state.Without<Move>(id);
 
-                var (position, speed) = state.Get<Position, Speed>(id);
+                var position = state.Position(id);
+                var speed = state.Speed(id);
                 if (position == null) continue;
 
                 speed = speed ?? new Speed { Value = 1f };
@@ -123,10 +119,10 @@ public static class Physics
 
             foreach (var id in needPhysics)
             {
-                var existing = state.Get<PhysicsNode>(id);
+                var existing = state.PhysicsNode(id);
                 if (existing?.Node != null) continue;
 
-                var position = state.Get<Position>(id) ?? new Position { X = 0, Y = 0 };
+                var position = state.Position(id) ?? new Position { X = 0, Y = 0 };
 
                 var node = new KinematicBody2D()
                 {
@@ -154,10 +150,11 @@ public static class Physics
 
             foreach (var (id, component) in areas.Added.Concat(areas.Changed))
             {
-                var node = state.Get<PhysicsNode>(id)?.Node;
+                var node = state.PhysicsNode(id)?.Node;
                 if (node == null) continue;
 
-                var (sprite, scale) = state.Get<Sprite, Scale>(id);
+                var sprite = state.Sprite(id);
+                var scale = state.Scale(id);
                 scale = scale ?? new Scale { X = 1, Y = 1 };
 
                 var area = node.GetNodeOrNull<Node2D>("area");
@@ -197,7 +194,7 @@ public static class Physics
 
             foreach (var (id, ev) in areaEnterEvents.Removed)
             {
-                var node = state.Get<PhysicsNode>(id)?.Node;
+                var node = state.PhysicsNode(id)?.Node;
                 var area = node?.GetNodeOrNull<Node2D>("area");
                 if (area == null) continue;
 
@@ -209,7 +206,7 @@ public static class Physics
 
             foreach (var (id, ev) in areaEnterEvents.Added.Concat(areaEnterEvents.Changed))
             {
-                var node = state.Get<PhysicsNode>(id)?.Node;
+                var node = state.PhysicsNode(id)?.Node;
                 var area = node?.GetNodeOrNull<Node2D>("area");
                 if (area == null) continue;
 
@@ -225,7 +222,7 @@ public static class Physics
 
             foreach (var (id, component) in collisions.Removed)
             {
-                var node = state.Get<PhysicsNode>(id)?.Node;
+                var node = state.PhysicsNode(id)?.Node;
                 var collision = node?.GetNodeOrNull<Node2D>("collision");
 
                 if (collision != null)
@@ -237,10 +234,11 @@ public static class Physics
 
             foreach (var (id, component) in collisions.Changed.Concat(collisions.Added))
             {
-                var node = state.Get<PhysicsNode>(id)?.Node;
+                var node = state.PhysicsNode(id)?.Node;
                 if (node == null) continue;
 
-                var (sprite, scale) = state.Get<Sprite, Scale>(id);
+                var sprite = state.Sprite(id);
+                var scale = state.Scale(id);
                 scale = scale ?? new Scale { X = 1, Y = 1 };
 
                 var collision = node.GetNodeOrNull<Node2D>("collision");
@@ -277,11 +275,12 @@ public static class Physics
 
         var positionBatch = new Dictionary<int, Position>();
 
-        foreach (var (id, velocity) in state.GetAll<Velocity>(VELOCITY))
+        foreach (var (id, velocity) in state.Velocity())
         {
-            var (destination, position) = state.Get<Destination, Position>(DESTINATION, POSITION, id);
+            var destination = state.Destination(id);
+            var position = state.Position(id);
 
-            var physics = state.Get<PhysicsNode>(PHYSICS_NODE, id)?.Node;
+            var physics = state.PhysicsNode(id)?.Node;
             if (physics == null) continue;
 
             var travel = new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS);
@@ -311,18 +310,18 @@ public static class Physics
                 {
                     var collideId = Convert.ToInt32((collided.Collider as Node).Name.Split("-").First());
 
-                    var ev = state.Get<CollisionEvent>(id);
+                    var ev = state.CollisionEvent(id);
                     if (ev != null)
                     {
                         var queue = (id, collideId, ev as Event);
                         state = state.With(Events.ENTITY, new EventQueue()
                         {
-                            Events = state.Get<EventQueue>(Events.ENTITY).Events.With(queue)
+                            Events = state.EventQueue(Events.ENTITY).Events.With(queue)
                         });
                     }
 
                     var otherEv = state.ContainsKey(collideId)
-                        ? state.Get<CollisionEvent>(collideId)
+                        ? state.CollisionEvent(collideId)
                         : null;
                     if (otherEv != null)
                     {
@@ -330,7 +329,7 @@ public static class Physics
 
                         state = state.With(Events.ENTITY, new EventQueue()
                         {
-                            Events = state.Get<EventQueue>(Events.ENTITY).Events.With(queue)
+                            Events = state.EventQueue(Events.ENTITY).Events.With(queue)
                         });
                     }
                 }

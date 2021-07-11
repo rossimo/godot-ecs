@@ -80,7 +80,7 @@ public static class Events
 
     public static State System(State previous, State state)
     {
-        var queue = state.Get<EventQueue>(ENTITY).Events;
+        var queue = state.EventQueue(ENTITY).Events;
         if (queue?.Count() == 0) return state;
 
         foreach (var queued in queue)

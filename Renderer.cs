@@ -67,7 +67,7 @@ public class Renderer
 
         foreach (var (id, component) in sprites.Added)
         {
-            var position = state.Get<Position>(id);
+            var position = state.Position(id);
             position = position ?? new Position { X = 0, Y = 0 };
 
             var node = game.GetNodeOrNull<ClickableSprite>($"{id}");
@@ -120,35 +120,35 @@ public class Renderer
 
         foreach (var (id, scale) in scales.Removed)
         {
-            var node = state.Get<Sprite>(id)?.Node;
+            var node = state.Sprite(id)?.Node;
             if (node == null) continue;
             node.Scale = new Vector2(1, 1);
         }
 
         foreach (var (id, scale) in scales.Added.Concat(scales.Changed))
         {
-            var node = state.Get<Sprite>(id)?.Node;
+            var node = state.Sprite(id)?.Node;
             if (node == null) continue;
             node.Scale = new Vector2(scale.X, scale.Y);
         }
 
         foreach (var (id, rotation) in rotations.Removed)
         {
-            var node = state.Get<Sprite>(id)?.Node;
+            var node = state.Sprite(id)?.Node;
             if (node == null) continue;
             node.RotationDegrees = 0;
         }
 
         foreach (var (id, rotation) in rotations.Added.Concat(rotations.Changed))
         {
-            var node = state.Get<Sprite>(id)?.Node;
+            var node = state.Sprite(id)?.Node;
             if (node == null) continue;
             node.RotationDegrees = rotation.Degrees;
         }
 
         foreach (var (id, click) in clicks.Removed)
         {
-            var node = state.Get<Sprite>(id)?.Node;
+            var node = state.Sprite(id)?.Node;
             if (node == null) continue;
 
             if (node.IsConnected("pressed", game, nameof(game._Event)))
@@ -159,7 +159,7 @@ public class Renderer
 
         foreach (var (id, click) in clicks.Added.Concat(clicks.Changed))
         {
-            var node = state.Get<Sprite>(id)?.Node;
+            var node = state.Sprite(id)?.Node;
             if (node == null) continue;
 
             if (node.IsConnected("pressed", game, nameof(game._Event)))
@@ -175,10 +175,10 @@ public class Renderer
         {
             state = state.Without<Flash>(id);
 
-            var position = state.Get<Position>(id);
+            var position = state.Position(id);
             position = position ?? new Position { X = 0, Y = 0 };
 
-            var node = state.Get<Sprite>(id)?.Node;
+            var node = state.Sprite(id)?.Node;
             var tween = game.GetNodeOrNull<Tween>($"{id}/modulate");
 
             if (node == null) continue;
@@ -200,7 +200,8 @@ public class Renderer
 
         foreach (var (id, position) in positions.Changed)
         {
-            var (sprite, lowPriority) = state.Get<Sprite, LowRenderPriority>(SPRITE, LOW_PRIORITY, id);
+            var sprite = state.Sprite(id);
+            var lowPriority = state.LowRenderPriority(id);
             var node = sprite?.Node;
             if (node == null) continue;
 
