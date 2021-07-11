@@ -46,9 +46,6 @@ public record ClickEvent : Event;
 
 public class Renderer
 {
-    public static int SPRITE = typeof(Sprite).Name.GetHashCode();
-    public static int LOW_PRIORITY = typeof(LowRenderPriority).Name.GetHashCode();
-
     public static State System(State previous, State state, Game game, float delta)
     {
         if (previous == state) return state;

@@ -17,8 +17,7 @@ public static class Logger
                 var (Previous, State, ignore) = Queue.Take();
                 if (Previous == State) continue;
 
-                var types = new List<int>()
-                    .Concat(Previous.Types())
+                var types = Previous.Types()
                     .Concat(State.Types())
                     .Distinct()
                     .Where(type => ignore?.Contains(type) == false);

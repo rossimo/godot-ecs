@@ -280,6 +280,8 @@ public static class Physics
             var velocity = component as Velocity;
             var destination = state.Destination(id);
             var position = state.Position(id);
+            var collision = state.Collision(id);
+            var area = state.Area(id);
 
             var physics = state.PhysicsNode(id)?.Node;
             if (physics == null) continue;
@@ -296,7 +298,16 @@ public static class Physics
                 withinReach = remainingDistance < moveDistance;
             }
 
-            var collided = physics.MoveAndCollide(travel);
+            KinematicCollision2D collided = null;
+
+            if (collision != null || area != null)
+            {
+                collided = physics.MoveAndCollide(travel);
+            }
+            else
+            {
+                physics.Position += travel;
+            }
 
             if (withinReach || collided != null)
             {

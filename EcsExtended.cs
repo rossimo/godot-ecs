@@ -22,6 +22,9 @@ namespace Ecs
         public static int LOW_RENDER_PRIORITY = typeof(LowRenderPriority).Name.GetHashCode();
         public static int MOVE = typeof(Move).Name.GetHashCode();
         public static int FLASH = typeof(Flash).Name.GetHashCode();
+        public static int AREA_ENTER_EVENT = typeof(AreaEnterEvent).Name.GetHashCode();
+        public static int COLLISION = typeof(Collision).Name.GetHashCode();
+        public static int AREA = typeof(Area).Name.GetHashCode();
 
         public static Velocity Velocity(this State state, int entityId)
         {
@@ -291,6 +294,51 @@ namespace Ecs
         public static Dictionary<int, Component> LowRenderPriority(this State state)
         {
             return state.GetAll<LowRenderPriority>(LOW_RENDER_PRIORITY);
+        }
+
+        public static AreaEnterEvent AreaEnterEvent(this State state, int entityId)
+        {
+            return state.Get<AreaEnterEvent>(AREA_ENTER_EVENT, entityId);
+        }
+
+        public static State WithoutAreaEnterEvent(this State state, int entityId)
+        {
+            return state.Without(AREA_ENTER_EVENT, entityId);
+        }
+
+        public static Dictionary<int, Component> AreaEnterEvent(this State state)
+        {
+            return state.GetAll<AreaEnterEvent>(AREA_ENTER_EVENT);
+        }
+
+        public static Area Area(this State state, int entityId)
+        {
+            return state.Get<Area>(AREA, entityId);
+        }
+
+        public static State WithoutArea(this State state, int entityId)
+        {
+            return state.Without(AREA, entityId);
+        }
+
+        public static Dictionary<int, Component> Area(this State state)
+        {
+            return state.GetAll<Area>(AREA);
+        }
+
+        public static Collision Collision(this State state, int entityId)
+        {
+            return state.Get<Collision>(COLLISION, entityId);
+        }
+
+        public static State WithoutCollision(this State state, int entityId)
+        {
+            return state.Without(COLLISION, entityId);
+        }
+
+        public static Dictionary<int, Component> Collision(this State state)
+        {
+            return state.GetAll<Collision>(COLLISION);
         }
     }
 }
