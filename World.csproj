@@ -1,11 +1,20 @@
 <Project Sdk="Godot.NET.Sdk/3.3.0">
   <PropertyGroup>
     <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
-    <RootNamespace>World</RootNamespace>
     <LangVersion>9.0</LangVersion>
   </PropertyGroup>
-
+  <PropertyGroup>
+    <DefaultItemExcludes>Generated\**</DefaultItemExcludes>
+  </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <Compile Remove="Generated\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Remove="Generated\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Generated\Generated.csproj" 
+      OutputItemType="Analyzer"
+      ReferenceOutputAssembly="false"/>
   </ItemGroup>
 </Project>
