@@ -1,4 +1,5 @@
 using Ecs;
+using System.Collections.Generic;
 
 public record ExpirationEvent : Event
 {
@@ -20,11 +21,12 @@ public static class Combat
 
         foreach (var (id, ev) in state.ExpirationEvent())
         {
-            if (ev.Tick <= tick)
+            var expiration = ev as ExpirationEvent;
+            if (expiration.Tick <= tick)
             {
-                var queued = (id, -3, ev);
+                var queued = (id, -3, expiration);
 
-                state = state.Without<ExpirationEvent>(id);
+                state = state.WithoutExpirationEvent(id);
 
                 state = state.With(Events.ENTITY, new EventQueue()
                 {

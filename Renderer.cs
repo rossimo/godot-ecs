@@ -61,7 +61,7 @@ public class Renderer
             var node = sprite.Node;
             if (node == null) continue;
 
-            game.RemoveChild(node);
+            node.RemoveAndSkip();
             node.QueueFree();
         }
 
@@ -173,7 +173,7 @@ public class Renderer
 
         foreach (var (id, flash) in flashes.Added.Concat(flashes.Changed))
         {
-            state = state.Without<Flash>(id);
+            state = state.WithoutFlash(id);
 
             var position = state.Position(id);
             position = position ?? new Position { X = 0, Y = 0 };

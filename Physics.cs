@@ -90,7 +90,7 @@ public static class Physics
 
             foreach (var (id, move) in moves.Added.Concat(moves.Changed))
             {
-                state = state.Without<Move>(id);
+                state = state.WithoutMove(id);
 
                 var position = state.Position(id);
                 var speed = state.Speed(id);
@@ -111,10 +111,10 @@ public static class Physics
                 var node = game.GetNodeOrNull<KinematicBody2D>(id + "-physics");
                 if (node == null) continue;
 
-                game.RemoveChild(node);
+                node.RemoveAndSkip();
                 node.QueueFree();
 
-                state = state.Without<PhysicsNode>(id);
+                state = state.WithoutPhysicsNode(id);
             }
 
             foreach (var id in needPhysics)
@@ -144,7 +144,7 @@ public static class Physics
                 var area = node?.GetNodeOrNull<Area2D>("area");
                 if (area == null) continue;
 
-                node.RemoveChild(area);
+                area.RemoveAndSkip();
                 area.QueueFree();
             }
 
@@ -160,7 +160,7 @@ public static class Physics
                 var area = node.GetNodeOrNull<Node2D>("area");
                 if (area != null)
                 {
-                    node.RemoveChild(area);
+                    area.RemoveAndSkip();
                     area.QueueFree();
                 }
 
@@ -227,7 +227,7 @@ public static class Physics
 
                 if (collision != null)
                 {
-                    node.RemoveChild(collision);
+                    collision.RemoveAndSkip();
                     collision.QueueFree();
                 }
             }
@@ -244,7 +244,7 @@ public static class Physics
                 var collision = node.GetNodeOrNull<Node2D>("collision");
                 if (collision != null)
                 {
-                    node.RemoveChild(collision);
+                    collision.RemoveAndSkip();
                     collision.QueueFree();
                 }
 
@@ -275,8 +275,9 @@ public static class Physics
 
         var positionBatch = new Dictionary<int, Position>();
 
-        foreach (var (id, velocity) in state.Velocity())
+        foreach (var (id, component) in state.Velocity())
         {
+            var velocity = component as Velocity;
             var destination = state.Destination(id);
             var position = state.Position(id);
 
@@ -299,8 +300,8 @@ public static class Physics
 
             if (withinReach || collided != null)
             {
-                state = state.Without<Destination>(id);
-                state = state.Without<Velocity>(id);
+                state = state.WithoutDestination(id);
+                state = state.WithoutVelocity(id);
 
                 if (collided == null)
                 {
@@ -335,10 +336,8 @@ public static class Physics
                 }
             }
 
-            if (position?.X != physics.Position.x || position?.Y != physics.Position.y)
-            {
-                positionBatch.Add(id, new Position { X = physics.Position.x, Y = physics.Position.y });
-            }
+            var physicsPosition = physics.Position;
+            positionBatch.Add(id, new Position { X = physicsPosition.x, Y = physicsPosition.y });
         }
 
         state = state.Batch<Position>(positionBatch);

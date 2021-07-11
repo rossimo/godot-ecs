@@ -64,7 +64,7 @@ public static class InputMonitor
         var mouseLeft = state.MouseLeft(ENTITY);
         var mouseRight = state.MouseRight(ENTITY);
 
-        var playerId = state.Player().FirstOrDefault().Item1;
+        var playerId = state.Player().FirstOrDefault().Key;
 
         var position = state.Position(playerId);
         var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());

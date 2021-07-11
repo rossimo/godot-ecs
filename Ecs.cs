@@ -11,6 +11,7 @@ namespace Ecs
         private Dictionary<int, Dictionary<int, Component>> Components = new Dictionary<int, Dictionary<int, Component>>();
 
         public static IEnumerable<int> LOGGING_IGNORE = new[] { typeof(Ticks).Name.GetHashCode() };
+        private static Dictionary<int, Component> BLANK = new Dictionary<int, Component>();
 
         public State()
         {
@@ -26,27 +27,32 @@ namespace Ecs
             return Components.Keys;
         }
 
-        public IEnumerable<(int, C1)> GetAll<C1>(int componentId)
+        public Dictionary<int, Component> GetAll<C1>(int componentId)
             where C1 : Component
         {
-            return GetComponent(componentId).Select(entry => (entry.Key, entry.Value as C1));
+            return GetComponent(componentId);
         }
 
 
         public C1 Get<C1>(int componentId, int entityId)
             where C1 : Component
         {
-            return Components.ContainsKey(componentId) &&
-                Components[componentId].ContainsKey(entityId)
-                ? Components[componentId][entityId] as C1
-                : null;
+            Dictionary<int, Component> components;
+            Components.TryGetValue(componentId, out components);
+            if (components == null) {
+                return null;
+            }
+
+            Component component;
+            components.TryGetValue(entityId, out component);
+            return component as C1;
         }
 
         public Dictionary<int, Component> GetComponent(int componentId)
         {
             if (!Components.ContainsKey(componentId))
             {
-                return new Dictionary<int, Component>();
+                return BLANK;
             }
             return Components[componentId];
         }
@@ -121,14 +127,9 @@ namespace Ecs
             var state = this;
             foreach (var componentId in state.Components.Keys)
             {
-                state = state.Without(componentId.GetHashCode(), entityId);
+                state = state.Without(componentId, entityId);
             }
             return state;
-        }
-
-        public State Without<C>(int entityId) where C : Component
-        {
-            return this.Without(typeof(C).Name.GetHashCode(), entityId);
         }
 
         public State Without(int componentId, int entityId)
@@ -200,27 +201,35 @@ namespace Ecs
 
     public class Diff
     {
+        private static (int ID, Component Component)[] BLANK = new (int ID, Component Component)[] { };
+
         public static Result<Component> Compare(int componentId, State before, State after)
         {
-            if (before == after || before.GetComponent(componentId) == after.GetComponent(componentId))
+            if (before == after)
             {
                 return new Result<Component>(
-                    Added: new (int ID, Component Component)[] { },
-                    Removed: new (int ID, Component Component)[] { },
-                    Changed: new (int ID, Component Component)[] { });
+                    Added: BLANK,
+                    Removed: BLANK,
+                    Changed: BLANK);
             }
 
             var oldComponents = before.GetComponent(componentId);
             var newComponents = after.GetComponent(componentId);
 
-            var oldIds = oldComponents.Keys.ToHashSet();
-            var newIds = newComponents.Keys.ToHashSet();
-            var changeIds = newIds.Intersect(oldIds).Where(id => oldComponents[id] != newComponents[id]);
+            var oldIds = oldComponents?.Keys.ToHashSet();
+            var newIds = newComponents?.Keys.ToHashSet();
+            var changeIds = (oldIds != null && newIds != null)
+                ? newIds.Intersect(oldIds).Where(id => oldComponents[id] != newComponents[id])
+                : null;
 
             return new Result<Component>(
-                Added: newIds.Except(oldIds).Select(id => (id, newComponents[id])),
-                Removed: oldIds.Except(newIds).Select(id => (id, oldComponents[id])),
-                Changed: changeIds.Select(id => (id, newComponents[id])));
+                Added: (oldIds != null && newIds != null)
+                    ? newIds.Except(oldIds).Select(id => (id, newComponents[id]))
+                    : newIds?.Select(id => (id, newComponents[id])) ?? BLANK,
+                Removed: (oldIds != null && newIds != null)
+                    ? oldIds.Except(newIds).Select(id => (id, oldComponents[id]))
+                    : oldIds?.Select(id => (id, oldComponents[id])) ?? BLANK,
+                Changed: changeIds?.Select(id => (id, newComponents[id])) ?? BLANK);
         }
 
         public static Result<Component> Compare(Type type, State before, State after)

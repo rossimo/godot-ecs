@@ -20,15 +20,52 @@ namespace Ecs
         public static int PLAYER = typeof(Player).Name.GetHashCode();
         public static int INVENTORY = typeof(Inventory).Name.GetHashCode();
         public static int LOW_RENDER_PRIORITY = typeof(LowRenderPriority).Name.GetHashCode();
+        public static int MOVE = typeof(Move).Name.GetHashCode();
+        public static int FLASH = typeof(Flash).Name.GetHashCode();
 
         public static Velocity Velocity(this State state, int entityId)
         {
             return state.Get<Velocity>(VELOCITY, entityId);
         }
 
-        public static IEnumerable<(int, Velocity)> Velocity(this State state)
+        public static State WithoutVelocity(this State state, int entityId)
+        {
+            return state.Without(VELOCITY, entityId);
+        }
+
+        public static Dictionary<int, Component> Velocity(this State state)
         {
             return state.GetAll<Velocity>(VELOCITY);
+        }
+
+        public static Move Move(this State state, int entityId)
+        {
+            return state.Get<Move>(MOVE, entityId);
+        }
+
+        public static State WithoutMove(this State state, int entityId)
+        {
+            return state.Without(MOVE, entityId);
+        }
+
+        public static Dictionary<int, Component> Move(this State state)
+        {
+            return state.GetAll<Move>(MOVE);
+        }
+
+        public static Flash Flash(this State state, int entityId)
+        {
+            return state.Get<Flash>(FLASH, entityId);
+        }
+
+        public static State WithoutFlash(this State state, int entityId)
+        {
+            return state.Without(FLASH, entityId);
+        }
+
+        public static Dictionary<int, Component> Flash(this State state)
+        {
+            return state.GetAll<Flash>(FLASH);
         }
 
         public static Destination Destination(this State state, int entityId)
@@ -36,7 +73,12 @@ namespace Ecs
             return state.Get<Destination>(DESTINATION, entityId);
         }
 
-        public static IEnumerable<(int, Destination)> Destination(this State state)
+        public static State WithoutDestination(this State state, int entityId)
+        {
+            return state.Without(DESTINATION, entityId);
+        }
+
+        public static Dictionary<int, Component> Destination(this State state)
         {
             return state.GetAll<Destination>(DESTINATION);
         }
@@ -46,7 +88,12 @@ namespace Ecs
             return state.Get<Position>(POSITION, entityId);
         }
 
-        public static IEnumerable<(int, Position)> Position(this State state)
+        public static State WithoutPosition(this State state, int entityId)
+        {
+            return state.Without(POSITION, entityId);
+        }
+
+        public static Dictionary<int, Component> Position(this State state)
         {
             return state.GetAll<Position>(POSITION);
         }
@@ -56,7 +103,12 @@ namespace Ecs
             return state.Get<PhysicsNode>(PHYSICS_NODE, entityId);
         }
 
-        public static IEnumerable<(int, PhysicsNode)> PhysicsNode(this State state)
+        public static State WithoutPhysicsNode(this State state, int entityId)
+        {
+            return state.Without(PHYSICS_NODE, entityId);
+        }
+
+        public static Dictionary<int, Component> PhysicsNode(this State state)
         {
             return state.GetAll<PhysicsNode>(PHYSICS_NODE);
         }
@@ -66,7 +118,12 @@ namespace Ecs
             return state.Get<Ticks>(TICKS, entityId);
         }
 
-        public static IEnumerable<(int, Ticks)> Ticks(this State state)
+        public static State WithoutTicks(this State state, int entityId)
+        {
+            return state.Without(TICKS, entityId);
+        }
+
+        public static Dictionary<int, Component> Ticks(this State state)
         {
             return state.GetAll<Ticks>(TICKS);
         }
@@ -76,7 +133,12 @@ namespace Ecs
             return state.Get<Speed>(SPEED, entityId);
         }
 
-        public static IEnumerable<(int, Speed)> Speed(this State state)
+        public static State WithoutSpeed(this State state, int entityId)
+        {
+            return state.Without(SPEED, entityId);
+        }
+
+        public static Dictionary<int, Component> Speed(this State state)
         {
             return state.GetAll<Speed>(SPEED);
         }
@@ -86,7 +148,12 @@ namespace Ecs
             return state.Get<Sprite>(SPRITE, entityId);
         }
 
-        public static IEnumerable<(int, Sprite)> Sprite(this State state)
+        public static State WithoutSprite(this State state, int entityId)
+        {
+            return state.Without(SPRITE, entityId);
+        }
+
+        public static Dictionary<int, Component> Sprite(this State state)
         {
             return state.GetAll<Sprite>(SPRITE);
         }
@@ -96,7 +163,12 @@ namespace Ecs
             return state.Get<Scale>(SCALE, entityId);
         }
 
-        public static IEnumerable<(int, Scale)> Scale(this State state)
+        public static State WithoutScale(this State state, int entityId)
+        {
+            return state.Without(SCALE, entityId);
+        }
+
+        public static Dictionary<int, Component> Scale(this State state)
         {
             return state.GetAll<Scale>(SCALE);
         }
@@ -106,7 +178,12 @@ namespace Ecs
             return state.Get<CollisionEvent>(COLLISION_EVENT, entityId);
         }
 
-        public static IEnumerable<(int, CollisionEvent)> CollisionEvent(this State state)
+        public static State WithoutCollisionEvent(this State state, int entityId)
+        {
+            return state.Without(COLLISION_EVENT, entityId);
+        }
+
+        public static Dictionary<int, Component> CollisionEvent(this State state)
         {
             return state.GetAll<CollisionEvent>(COLLISION_EVENT);
         }
@@ -116,7 +193,12 @@ namespace Ecs
             return state.Get<EventQueue>(EVENT_QUEUE, entityId);
         }
 
-        public static IEnumerable<(int, EventQueue)> EventQueue(this State state)
+        public static State WithoutEventQueue(this State state, int entityId)
+        {
+            return state.Without(EVENT_QUEUE, entityId);
+        }
+
+        public static Dictionary<int, Component> EventQueue(this State state)
         {
             return state.GetAll<EventQueue>(EVENT_QUEUE);
         }
@@ -126,7 +208,12 @@ namespace Ecs
             return state.Get<ExpirationEvent>(EXPIRATION_EVENT, entityId);
         }
 
-        public static IEnumerable<(int, ExpirationEvent)> ExpirationEvent(this State state)
+        public static State WithoutExpirationEvent(this State state, int entityId)
+        {
+            return state.Without(EXPIRATION_EVENT, entityId);
+        }
+
+        public static Dictionary<int, Component> ExpirationEvent(this State state)
         {
             return state.GetAll<ExpirationEvent>(EXPIRATION_EVENT);
         }
@@ -136,7 +223,12 @@ namespace Ecs
             return state.Get<MouseLeft>(MOUSE_LEFT, entityId);
         }
 
-        public static IEnumerable<(int, MouseLeft)> MouseLeft(this State state)
+        public static State WithoutMouseLeft(this State state, int entityId)
+        {
+            return state.Without(MOUSE_LEFT, entityId);
+        }
+
+        public static Dictionary<int, Component> MouseLeft(this State state)
         {
             return state.GetAll<MouseLeft>(MOUSE_LEFT);
         }
@@ -146,7 +238,12 @@ namespace Ecs
             return state.Get<MouseRight>(MOUSE_RIGHT, entityId);
         }
 
-        public static IEnumerable<(int, MouseRight)> MouseRight(this State state)
+        public static State WithoutMouseRight(this State state, int entityId)
+        {
+            return state.Without(MOUSE_RIGHT, entityId);
+        }
+
+        public static Dictionary<int, Component> MouseRight(this State state)
         {
             return state.GetAll<MouseRight>(MOUSE_RIGHT);
         }
@@ -156,7 +253,12 @@ namespace Ecs
             return state.Get<Player>(PLAYER, entityId);
         }
 
-        public static IEnumerable<(int, Player)> Player(this State state)
+        public static State WithoutPlayer(this State state, int entityId)
+        {
+            return state.Without(PLAYER, entityId);
+        }
+
+        public static Dictionary<int, Component> Player(this State state)
         {
             return state.GetAll<Player>(PLAYER);
         }
@@ -166,7 +268,12 @@ namespace Ecs
             return state.Get<Inventory>(INVENTORY, entityId);
         }
 
-        public static IEnumerable<(int, Inventory)> Inventory(this State state)
+        public static State WithoutInventory(this State state, int entityId)
+        {
+            return state.Without(INVENTORY, entityId);
+        }
+
+        public static Dictionary<int, Component> Inventory(this State state)
         {
             return state.GetAll<Inventory>(INVENTORY);
         }
@@ -176,7 +283,12 @@ namespace Ecs
             return state.Get<LowRenderPriority>(LOW_RENDER_PRIORITY, entityId);
         }
 
-        public static IEnumerable<(int, LowRenderPriority)> LowRenderPriority(this State state)
+        public static State WithoutLowRenderPriority(this State state, int entityId)
+        {
+            return state.Without(LOW_RENDER_PRIORITY, entityId);
+        }
+
+        public static Dictionary<int, Component> LowRenderPriority(this State state)
         {
             return state.GetAll<LowRenderPriority>(LOW_RENDER_PRIORITY);
         }
