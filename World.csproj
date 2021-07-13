@@ -3,18 +3,7 @@
     <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
     <LangVersion>9.0</LangVersion>
   </PropertyGroup>
-  <PropertyGroup>
-    <DefaultItemExcludes>Generated\**</DefaultItemExcludes>
-  </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="Generated\**" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Remove="Generated\**" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="Generated\Generated.csproj" 
-      OutputItemType="Analyzer"
-      ReferenceOutputAssembly="false"/>
+    <PackageReference Include="DefaultEcs" Version="0.16.0" />
   </ItemGroup>
 </Project>

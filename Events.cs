@@ -14,7 +14,7 @@ public record Task
     public int Target = -2;
 }
 
-public record Event : Component
+public record Event
 {
     public Task[] Tasks = new Task[] { };
 
@@ -27,13 +27,13 @@ public record Event : Component
     }
 }
 
-public record Add : Task
+public record Add<T> : Task
 {
-    public Component Component;
+    public T Component;
 
     public Add() { }
 
-    public Add(Component component, int target = -2)
+    public Add(T component, int target = -2)
         => (Component, Target) = (component, target);
 }
 

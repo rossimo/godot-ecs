@@ -1,52 +1,50 @@
-using Ecs;
+using DefaultEcs;
 using Godot;
 using System;
 using System.Linq;
 
 public class Game : Godot.YSort
 {
-    public State State;
-    private State Previous = new State();
+    public DefaultEcs.World World = new DefaultEcs.World();
 
     public override void _Ready()
     {
-        State = new State()
-            .With(10,
-                new Player(),
-                new Speed { Value = 2.5f },
-                new Inventory { },
-                new Position { X = 50, Y = 50 },
-                new Scale { X = 3, Y = 3 },
-                new Area(),
-                new Sprite { Image = "res://resources/tiles/tile072.png" },
-                new Collision())
-            .With(11, Potion)
-            .With(12,
-                new Position { X = 400, Y = 200 },
-                new Area(),
-                new Collision(),
-                new CollisionEvent(
-                    new Add(new Flash { Color = new Color { Red = 2f, Green = 2f, Blue = 0f } }),
-                    new Add(new Flash { Color = new Color { Red = 1f, Green = 0f, Blue = 0f } }, Target.Other)
-                ),
-                new Scale { X = 2, Y = 2 },
-                new Sprite { Image = "res://resources/tiles/tile495.png" })
-            .With(13,
-                new Position { X = 300, Y = 300 },
-                new Area(),
-                new AreaEnterEvent(
-                    new Add(new Flash { Color = new Color { Red = 0.1f, Green = 0.1f, Blue = 0.1f } }),
-                    new AddEntity(Potion, 11)
-                ),
-                new Scale { X = 2, Y = 2 },
-                new Sprite { Image = "res://resources/tiles/tile481.png" })
-            .With(Events.ENTITY, new EventQueue())
-            .With(InputEvents.ENTITY)
-            .With(Physics.ENTITY, new Ticks { Tick = 0 });
+        var player = World.CreateEntity();
+        player.Set<Player>(new Player());
+        player.Set<Speed>(new Speed { Value = 2.5f });
+        player.Set<Position>(new Position { X = 50, Y = 50 });
+        player.Set<Scale>(new Scale { X = 3, Y = 3 });
+        player.Set<Area>(new Area());
+        player.Set<Sprite>(new Sprite { Image = "res://resources/tiles/tile072.png" });
+        player.Set<Collision>(new Collision());
 
-        Logger.Log(new State(), State, State.LOGGING_IGNORE);
-        
-        HelloWorld.Hello.Main8(new [] { ""});
+        var fire = World.CreateEntity();
+        fire.Set<Position>(new Position { X = 400, Y = 200 });
+        fire.Set<Area>(new Area());
+        fire.Set<Collision>(new Collision());
+        fire.Set<CollisionEvent>(new CollisionEvent(
+            new Add<Flash>(new Flash { Color = new Color { Red = 2f, Green = 2f, Blue = 0f } }),
+            new Add<Flash>(new Flash { Color = new Color { Red = 1f, Green = 0f, Blue = 0f } }, Target.Other)
+        ));
+        fire.Set<Scale>(new Scale { X = 2, Y = 2 });
+        fire.Set<Sprite>(new Sprite { Image = "res://resources/tiles/tile495.png" });
+
+        var button = World.CreateEntity();
+        button.Set<Position>(new Position { X = 300, Y = 300 });
+        button.Set<Area>(new Area());
+        button.Set<AreaEnterEvent>(new AreaEnterEvent(
+            new Add<Flash>(new Flash { Color = new Color { Red = 0.1f, Green = 0.1f, Blue = 0.1f } }),
+            new AddEntity(Potion, 11)
+        ));
+        button.Set<Scale>(new Scale { X = 2, Y = 2 });
+        button.Set<Sprite>(new Sprite { Image = "res://resources/tiles/tile481.png" });
+
+        var events = World.CreateEntity();
+        events.Set<EventQueue>(new EventQueue());
+
+        var input = World.CreateEntity();
+
+        var physics = World.CreateEntity();
     }
 
     public static Component[] Potion = new Component[] {
