@@ -1,4 +1,5 @@
-using Ecs;
+using DefaultEcs;
+using System.Linq;
 using System.Collections.Generic;
 
 public record ExpirationEvent : Event
@@ -13,28 +14,37 @@ public record ExpirationEvent : Event
     }
 }
 
-public static class Combat
+public class Combat
 {
-    public static State System(State previous, State state)
-    {
-        var tick = state.Ticks(Physics.ENTITY).Tick;
+    private DefaultEcs.EntitySet ExpirationEvents;
+    private DefaultEcs.EntitySet Ticks;
+    private DefaultEcs.EntitySet EventQueue;
 
-        foreach (var (id, ev) in state.ExpirationEvent())
+    public Combat(DefaultEcs.World world)
+    {
+        ExpirationEvents = world.GetEntities().With<ExpirationEvent>().AsSet();
+        Ticks = world.GetEntities().With<Ticks>().AsSet();
+        EventQueue = world.GetEntities().With<EventQueue>().AsSet();
+    }
+
+    public void System()
+    {
+        var tick = Ticks.GetEntities()[0].Get<Ticks>().Tick;
+        var eventQueue = EventQueue.GetEntities()[0];
+
+        foreach (var entity in ExpirationEvents.GetEntities())
         {
-            var expiration = ev as ExpirationEvent;
+            var expiration = entity.Get<ExpirationEvent>();
             if (expiration.Tick <= tick)
             {
-                var queued = (id, -3, expiration);
+                var queued = (entity, -3, expiration);
 
-                state = state.WithoutExpirationEvent(id);
-
-                state = state.With(Events.ENTITY, new EventQueue()
+                entity.Remove<ExpirationEvent>();
+                eventQueue.Set(new EventQueue()
                 {
-                    Events = state.EventQueue(Events.ENTITY).Events.With(queued)
+                    Events = eventQueue.Get<EventQueue>().With(queued)
                 });
             }
         }
-
-        return state;
     }
 }

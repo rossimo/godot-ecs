@@ -34,7 +34,7 @@ public class Game : Godot.YSort
         button.Set(new Area());
         button.Set(new AreaEnterEvent(
             new Add<Flash>(new Flash { Color = new Color { Red = 0.1f, Green = 0.1f, Blue = 0.1f } }),
-            new AddEntity(Potion, 11)
+            //new AddEntity(Potion, 11)
         ));
         button.Set(new Scale { X = 2, Y = 2 });
         button.Set(new Sprite { Image = "res://resources/tiles/tile481.png" });
@@ -47,6 +47,7 @@ public class Game : Godot.YSort
         var physics = World.CreateEntity();
     }
 
+/*
     public static Component[] Potion = new Component[] {
         new Position { X = 200, Y = 300 },
         new Area(),
@@ -55,7 +56,7 @@ public class Game : Godot.YSort
         new Scale { X = 2, Y = 2 },
         new Sprite { Image = "res://resources/tiles/tile570.png" }
     };
-
+*/
     public override void _Input(InputEvent @event)
     {
         State = InputEvents.System(State, this, @event);
