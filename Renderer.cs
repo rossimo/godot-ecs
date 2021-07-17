@@ -1,79 +1,134 @@
-using Ecs;
 using Godot;
+using System;
 using System.Linq;
-using System.Collections.Generic;
 
-public record Sprite : Component
+public record Sprite
 {
     public string Image;
-    public ClickableSprite Node;
 }
 
-public record LowRenderPriority : Component
+public record LowRenderPriority
 {
 }
 
-public record Position : Component
+public record Position
 {
     public float X;
     public float Y;
 }
 
-public record Rotation : Component
+public record Rotation
 {
     public float Degrees;
 }
 
-public record Scale : Component
+public record Scale
 {
     public float X;
     public float Y;
 }
 
-public record Color : Component
+public record Color
 {
     public float Red;
     public float Green;
     public float Blue;
 }
 
-public record Flash : Component
+public record Flash
 {
     public Color Color;
 }
 
-public record ClickEvent : Event;
+public record ClickEvent;
+
+public class Diff<T>
+{
+    private DefaultEcs.EntitySet added;
+    private DefaultEcs.EntitySet changed;
+    private DefaultEcs.EntitySet removed;
+
+    public Diff(DefaultEcs.World world)
+    {
+        added = world.GetEntities().WhenAdded<T>().AsSet();
+        changed = world.GetEntities().WhenChanged<T>().AsSet();
+        removed = world.GetEntities().WhenRemoved<T>().AsSet();
+    }
+
+    public ReadOnlySpan<DefaultEcs.Entity> Added()
+    {
+        return added.GetEntities();
+    }
+
+    public ReadOnlySpan<DefaultEcs.Entity> Changed()
+    {
+        return changed.GetEntities();
+    }
+
+    public ReadOnlySpan<DefaultEcs.Entity> Removed()
+    {
+        return removed.GetEntities();
+    }
+
+    public void Complete()
+    {
+        added.Complete();
+        changed.Complete();
+        removed.Complete();
+    }
+}
+
+public static class Utils
+{
+    public static string ID(this DefaultEcs.Entity entity)
+    {
+        return $"{entity.GetHashCode()}";
+    }
+}
 
 public class Renderer
 {
-    public static State System(State previous, State state, Game game, float delta)
+    private Diff<Sprite> sprites;
+    private Diff<Scale> scales;
+    private Diff<Rotation> rotations;
+    private Diff<ClickEvent> clicks;
+    private Diff<Position> positions;
+    private Diff<Flash> flashes;
+
+    public Renderer(DefaultEcs.World world)
     {
-        if (previous == state) return state;
+        sprites = new Diff<Sprite>(world);
+        scales = new Diff<Scale>(world);
+        rotations = new Diff<Rotation>(world);
+        clicks = new Diff<ClickEvent>(world);
+        positions = new Diff<Position>(world);
+        flashes = new Diff<Flash>(world);
+    }
 
-        var (sprites, scales, rotations, clicks, positions, flashes) =
-            Diff.Compare<Sprite, Scale, Rotation, ClickEvent, Position, Flash>(previous, state);
-
-        foreach (var (id, sprite) in sprites.Removed)
+    public void System(Game game, float delta)
+    {
+        foreach (var entity in sprites.Removed())
         {
-            var node = sprite.Node;
+            var node = game.GetNodeOrNull(entity.ID());
             if (node == null) continue;
 
             node.RemoveAndSkip();
             node.QueueFree();
         }
 
-        foreach (var (id, component) in sprites.Added)
+        foreach (var entity in sprites.Added())
         {
-            var position = state.Position(id);
+            var sprite = entity.Get<Sprite>();
+            var position = entity.Get<Position>();
             position = position ?? new Position { X = 0, Y = 0 };
 
-            var node = game.GetNodeOrNull<ClickableSprite>($"{id}");
+            var node = game.GetNodeOrNull(entity.ID());
             if (node != null) continue;
 
-            node = new ClickableSprite()
+            node = new Godot.Sprite()
             {
-                Name = $"{id}",
-                Texture = GD.Load<Texture>(component.Image),
+                Name = entity.ID(),
+                Texture = GD.Load<Texture>(sprite.Image),
                 Position = new Vector2(position.X, position.Y)
             };
             game.AddChild(node);
@@ -89,103 +144,81 @@ public class Renderer
                 Name = "modulate"
             };
             node.AddChild(modulate);
-
-            if (component.Node != node)
-            {
-                state = state.With(id, component with
-                {
-                    Node = node
-                });
-            }
         }
 
-        foreach (var (id, component) in sprites.Changed)
+        foreach (var entity in sprites.Changed())
         {
-            var node = game.GetNodeOrNull<ClickableSprite>($"{id}");
+            var id = entity.ID();
+            var component = entity.Get<Sprite>();
+
+            var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
 
             node.Texture = GD.Load<Texture>(component.Image);
-
-            if (node != component.Node)
-            {
-                state = state.With(id, component with
-                {
-                    Node = node
-                });
-            }
         }
 
-        foreach (var (id, scale) in scales.Removed)
+        foreach (var entity in scales.Removed())
         {
-            var node = state.Sprite(id)?.Node;
+            var id = entity.ID();
+            var component = entity.Get<Scale>();
+
+            var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
             node.Scale = new Vector2(1, 1);
         }
 
-        foreach (var (id, scale) in scales.Added.Concat(scales.Changed))
+        foreach (var entity in scales.Added().ToArray().Concat(scales.Changed().ToArray()))
         {
-            var node = state.Sprite(id)?.Node;
+            var id = entity.ID();
+            var scale = entity.Get<Scale>();
+
+            var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
+
             node.Scale = new Vector2(scale.X, scale.Y);
         }
 
-        foreach (var (id, rotation) in rotations.Removed)
+        foreach (var entity in rotations.Removed())
         {
-            var node = state.Sprite(id)?.Node;
+            var id = entity.ID();
+            var scale = entity.Get<Rotation>();
+
+            var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
+
             node.RotationDegrees = 0;
         }
 
-        foreach (var (id, rotation) in rotations.Added.Concat(rotations.Changed))
+        foreach (var entity in rotations.Added().ToArray().Concat(rotations.Changed().ToArray()))
         {
-            var node = state.Sprite(id)?.Node;
+            var id = entity.ID();
+            var rotation = entity.Get<Rotation>();
+
+            var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
+
             node.RotationDegrees = rotation.Degrees;
         }
 
-        foreach (var (id, click) in clicks.Removed)
+        foreach (var entity in flashes.Added().ToArray().Concat(flashes.Changed().ToArray()))
         {
-            var node = state.Sprite(id)?.Node;
-            if (node == null) continue;
-
-            if (node.IsConnected("pressed", game, nameof(game._Event)))
-            {
-                node.Disconnect("pressed", game, nameof(game._Event));
-            }
-        }
-
-        foreach (var (id, click) in clicks.Added.Concat(clicks.Changed))
-        {
-            var node = state.Sprite(id)?.Node;
-            if (node == null) continue;
-
-            if (node.IsConnected("pressed", game, nameof(game._Event)))
-            {
-                node.Disconnect("pressed", game, nameof(game._Event));
-            }
-            node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(click)
-            });
-        }
-
-        foreach (var (id, flash) in flashes.Added.Concat(flashes.Changed))
-        {
-            state = state.WithoutFlash(id);
-
-            var position = state.Position(id);
+            var flash = entity.Get<Flash>();
+            var position = entity.Get<Position>();
             position = position ?? new Position { X = 0, Y = 0 };
 
-            var node = state.Sprite(id)?.Node;
-            var tween = game.GetNodeOrNull<Tween>($"{id}/modulate");
+            entity.Remove<Flash>();
+
+            var node = game.GetNodeOrNull(entity.ID());
+            var tween = node.GetNodeOrNull<Tween>("modulate");
 
             if (node == null) continue;
 
             tween.RemoveAll();
 
-            if (tween.IsConnected("tween_all_completed", game, nameof(game._Event)))
-            {
-                tween.Disconnect("tween_all_completed", game, nameof(game._Event));
-            }
+            // if (tween.IsConnected("tween_all_completed", game, nameof(game._Event)))
+            // {
+            //    tween.Disconnect("tween_all_completed", game, nameof(game._Event));
+            // }
 
             tween.InterpolateProperty(node, "modulate",
                 new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue),
@@ -195,11 +228,15 @@ public class Renderer
             tween.Start();
         }
 
-        foreach (var (id, position) in positions.Changed)
+        foreach (var entity in positions.Changed())
         {
-            var sprite = state.Sprite(id);
-            var lowPriority = state.LowRenderPriority(id);
-            var node = sprite?.Node;
+            var id = entity.ID();
+            var position = entity.Get<Position>();
+
+            var sprite = entity.Get<Sprite>();
+            var lowPriority = entity.Get<LowRenderPriority>();
+
+            var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
 
             if (position.X != node.Position.x || position.Y != node.Position.y)
@@ -230,7 +267,12 @@ public class Renderer
             }
         }
 
-        return state;
+        sprites.Complete();
+        scales.Complete();
+        rotations.Complete();
+        clicks.Complete();
+        positions.Complete();
+        flashes.Complete();
     }
 }
 

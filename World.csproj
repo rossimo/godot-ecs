@@ -1,9 +1,21 @@
 <Project Sdk="Godot.NET.Sdk/3.3.0">
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks>netstandard2.1</TargetFrameworks>
     <LangVersion>9.0</LangVersion>
+    <RootNamespace>World</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="DefaultEcs" Version="0.16.0" />
+  <Reference Include="DefaultEcs">
+    <HintPath>DefaultEcs.dll</HintPath>
+  </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Physics.cs" />
+    <Compile Remove="Events.cs" />
+    <Compile Remove="Input.cs" />
+    <Compile Remove="Combat.cs" />
+    <Compile Remove="ClickableSprite.cs" />
+    <Compile Remove="Logs.cs" />
+    <Compile Remove="Compiler.cs" />
   </ItemGroup>
 </Project>

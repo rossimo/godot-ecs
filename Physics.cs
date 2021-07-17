@@ -4,28 +4,28 @@ using Godot;
 using System.Linq;
 using System.Collections.Generic;
 
-public record Ticks : Component
+public record Ticks
 {
     public ulong Tick;
 }
 
-public record Speed : Component
+public record Speed
 {
     public float Value;
 }
 
-public record Destination : Component
+public record Destination
 {
     public Position Position;
 }
 
-public record Velocity : Component
+public record Velocity
 {
     public float X;
     public float Y;
 }
 
-public record Collision : Component;
+public record Collision;
 
 public record CollisionEvent : Event
 {
@@ -34,7 +34,7 @@ public record CollisionEvent : Event
     public override string ToString() => base.ToString();
 }
 
-public record Area : Component;
+public record Area :;
 
 public record AreaEnterEvent : Event
 {
@@ -43,7 +43,7 @@ public record AreaEnterEvent : Event
     public override string ToString() => base.ToString();
 }
 
-public record PhysicsNode : Component
+public record PhysicsNode
 {
     public KinematicBody2D Node;
 }
