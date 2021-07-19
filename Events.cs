@@ -2,17 +2,52 @@ using DefaultEcs;
 using System;
 using System.Linq;
 
-public static class Target
+public interface Target
 {
-    public static int Other = -1;
-    public static int Self = -2;
+    public Entity Find(Entity self, Entity other);
+
+    public static Target Self = new Self();
+
+    public static Target Other = new Other();
+
+    public static Func<Entity, Target> Specific = (Entity Entity) =>
+    {
+        return new TargetSpecific()
+        {
+            Target = Entity
+        };
+    };
+}
+
+public class Self : Target
+{
+    public Entity Find(Entity self, Entity other)
+    {
+        return self;
+    }
+}
+
+public class Other : Target
+{
+    public Entity Find(Entity self, Entity other)
+    {
+        return other;
+    }
+}
+
+public class TargetSpecific : Target
+{
+    public Entity Target;
+
+    public Entity Find(Entity self, Entity other)
+    {
+        return Target;
+    }
 }
 
 public record Task
 {
-    public DefaultEcs.Entity Target;
-    public bool TargetSelf;
-    public bool TargetOther;
+    public Target Target;
 
     public virtual void Execute(DefaultEcs.Entity entity)
     {
@@ -36,6 +71,8 @@ public record Add : Task
 {
     public object Component;
 
+    private static System.Reflection.MethodInfo SetGeneric = typeof(Entity).GetMethod("Set");
+
     public Add() { }
 
     public Add(object component)
@@ -43,20 +80,29 @@ public record Add : Task
 
     override public void Execute(DefaultEcs.Entity entity)
     {
-        entity.Set(Component);
+        var type = Component.GetType();
+        var set = SetGeneric.MakeGenericMethod(new[] { type });
+        set.Invoke(entity, new[] { Component });
     }
 }
 
-public record Remove<T> : Task
+public record Remove : Task
 {
+    public Type Type;
+
+    private static System.Reflection.MethodInfo RemoveGeneric = typeof(Entity).GetMethod("Remove");
+
     override public void Execute(DefaultEcs.Entity entity)
     {
-        entity.Remove<T>();
+        var remove = RemoveGeneric.MakeGenericMethod(new[] { Type });
+        remove.Invoke(entity, new object[] { });
     }
 }
 
 public record AddEntity : Task
 {
+    private static System.Reflection.MethodInfo SetGeneric = typeof(Entity).GetMethod("Set");
+
     public object[] Components;
 
     public AddEntity() { }
@@ -68,7 +114,9 @@ public record AddEntity : Task
     {
         foreach (var component in Components)
         {
-            entity.Set(component);
+            var type = component.GetType();
+            var set = SetGeneric.MakeGenericMethod(new[] { type });
+            set.Invoke(entity, new[] { component });
         }
     }
 }
@@ -114,23 +162,11 @@ public class Events
 
         foreach (var queued in eventQueue.Events)
         {
-            var (entity, otherEntity, @event) = queued;
+            var (self, other, @event) = queued;
 
             foreach (var task in @event.Tasks)
             {
-                DefaultEcs.Entity target = task.Target;
-
-                if (task.TargetOther)
-                {
-                    target = otherEntity;
-                }
-
-                if (task.TargetSelf)
-                {
-                    target = entity;
-                }
-
-                task.Execute(target);
+                task.Execute(task.Target.Find(self, other));
             }
         }
 
