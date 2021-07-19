@@ -47,7 +47,7 @@ public class TargetSpecific : Target
 
 public record Task
 {
-    public Target Target;
+    public Target Target = Target.Self;
 
     public virtual void Execute(DefaultEcs.Entity entity)
     {
@@ -71,7 +71,8 @@ public record Add : Task
 {
     public object Component;
 
-    private static System.Reflection.MethodInfo SetGeneric = typeof(Entity).GetMethod("Set");
+    private static System.Reflection.MethodInfo SetGeneric = typeof(Entity).GetMethods()
+        .Single(method => method.Name == "Set" && method.GetParameters().Length == 1);
 
     public Add() { }
 
@@ -101,7 +102,8 @@ public record Remove : Task
 
 public record AddEntity : Task
 {
-    private static System.Reflection.MethodInfo SetGeneric = typeof(Entity).GetMethod("Set");
+    private static System.Reflection.MethodInfo SetGeneric = typeof(Entity).GetMethods()
+        .Single(method => method.Name == "Set" && method.GetParameters().Length == 1);
 
     public object[] Components;
 

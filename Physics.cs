@@ -1,4 +1,4 @@
-using Ecs;
+using DefaultEcs;
 using System;
 using Godot;
 using System.Linq;
@@ -34,7 +34,7 @@ public record CollisionEvent : Event
     public override string ToString() => base.ToString();
 }
 
-public record Area :;
+public record Area;
 
 public record AreaEnterEvent : Event
 {
@@ -43,247 +43,278 @@ public record AreaEnterEvent : Event
     public override string ToString() => base.ToString();
 }
 
+public record Move
+{
+    public Position Destination;
+}
+
 public record PhysicsNode
 {
     public KinematicBody2D Node;
 }
 
-public static class Physics
+public class Physics
 {
     public static int ENTITY = 1;
 
     public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_fps")}".ToFloat();
+
+    private Diff<Area> areas;
+    private Diff<AreaEnterEvent> areaEnterEvents;
+    private Diff<Collision> collisions;
+    private Diff<Move> moves;
+    private Diff<Position> positions;
+    private Diff<PhysicsNode> physics;
+    private DefaultEcs.World world;
+
+    public Physics(DefaultEcs.World world)
+    {
+        this.world = world;
+        world.Set(new Ticks());
+
+        areas = new Diff<Area>(world);
+        areaEnterEvents = new Diff<AreaEnterEvent>(world);
+        collisions = new Diff<Collision>(world);
+        moves = new Diff<Move>(world);
+        positions = new Diff<Position>(world);
+        physics = new Diff<PhysicsNode>(world);
+    }
 
     public static ulong MillisToTicks(ulong millis)
     {
         return Convert.ToUInt64((Convert.ToSingle(millis) / 1000f) * PHYSICS_FPS);
     }
 
-    public static State System(State previous, State state, Game game, float delta)
+    public void System(Game game, float delta)
     {
-        var configChange = previous != state;
-
-        state = state.With(ENTITY, new Ticks
+        world.Set(new Ticks
         {
-            Tick = (state.Ticks(ENTITY)?.Tick ?? 0) + 1
+            Tick = (world.Get<Ticks>()?.Tick ?? 0) + 1
         });
 
-        if (configChange)
+        var needPhysics = areas.Added().ToArray()
+            .Concat(areas.Changed().ToArray())
+            .Concat(positions.Added().ToArray())
+            .Concat(positions.Changed().ToArray())
+            .Concat(collisions.Added().ToArray())
+            .Concat(collisions.Changed().ToArray())
+            .Distinct();
+
+        var notNeedPhysics = areas.Removed().ToArray()
+            .Concat(collisions.Removed().ToArray())
+            .Concat(positions.Removed().ToArray())
+            .Concat(physics.Removed().ToArray())
+            .Distinct()
+            .Where(id => !needPhysics.Contains(id));
+
+        foreach (var entity in moves.Added().ToArray().Concat(moves.Changed().ToArray()))
         {
-            var (areas, areaEnterEvents, collisions, positions, moves, physics) =
-                Diff.Compare<Area, AreaEnterEvent, Collision, Position, Move, PhysicsNode>(previous, state);
+            var id = entity.ID();
+            var move = entity.Get<Move>();
+            entity.Remove<Move>();
 
-            var needPhysics = areas.Added.Select(entry => entry.ID)
-                .Concat(areas.Changed.Select(entry => entry.ID))
-                .Concat(positions.Added.Select(entry => entry.ID))
-                .Concat(positions.Changed.Select(entry => entry.ID))
-                .Concat(collisions.Added.Select(entry => entry.ID))
-                .Concat(collisions.Changed.Select(entry => entry.ID))
-                .Distinct();
+            var position = entity.Get<Position>();
+            var speed = entity.Get<Speed>();
+            if (position == null) continue;
 
-            var notNeedPhysics = areas.Removed.Select(entry => entry.ID)
-                .Concat(collisions.Removed.Select(entry => entry.ID))
-                .Concat(positions.Removed.Select(entry => entry.ID))
-                .Concat(physics.Removed.Select(entry => entry.ID))
-                .Distinct()
-                .Where(id => !needPhysics.Contains(id));
+            speed = speed ?? new Speed { Value = 1f };
 
-            foreach (var (id, move) in moves.Added.Concat(moves.Changed))
+            var velocity = new Vector2(position.X, position.Y)
+                .DirectionTo(new Vector2(move.Destination.X, move.Destination.Y))
+                .Normalized() * speed.Value;
+
+            entity.Set(new Velocity { X = velocity.x, Y = velocity.y });
+            entity.Set(new Destination { Position = move.Destination });
+        }
+
+        foreach (var entity in notNeedPhysics)
+        {
+            var node = game.GetNodeOrNull<KinematicBody2D>(entity.ID() + "-physics");
+            if (node == null) continue;
+
+            node.RemoveAndSkip();
+            node.QueueFree();
+
+            entity.Remove<PhysicsNode>();
+        }
+
+        foreach (var entity in needPhysics)
+        {
+            var id = entity.ID();
+            if (entity.Has<PhysicsNode>()) continue;
+
+            var position = entity.Get<Position>() ?? new Position { X = 0, Y = 0 };
+
+            var node = new KinematicBody2D()
             {
-                state = state.WithoutMove(id);
+                Name = id + "-physics",
+                Position = new Vector2(position.X, position.Y)
+            };
 
-                var position = state.Position(id);
-                var speed = state.Speed(id);
-                if (position == null) continue;
-
-                speed = speed ?? new Speed { Value = 1f };
-
-                var velocity = new Vector2(position.X, position.Y)
-                    .DirectionTo(new Vector2(move.Destination.X, move.Destination.Y))
-                    .Normalized() * speed.Value;
-
-                state = state.With(id, new Velocity { X = velocity.x, Y = velocity.y });
-                state = state.With(id, new Destination { Position = move.Destination });
-            }
-
-            foreach (var id in notNeedPhysics)
+            entity.Set(new PhysicsNode()
             {
-                var node = game.GetNodeOrNull<KinematicBody2D>(id + "-physics");
-                if (node == null) continue;
+                Node = node
+            });
+            game.AddChild(node);
+        }
 
-                node.RemoveAndSkip();
-                node.QueueFree();
+        foreach (var entity in areas.Removed())
+        {
+            var id = entity.ID();
 
-                state = state.WithoutPhysicsNode(id);
-            }
+            var node = game.GetNodeOrNull<Node2D>(id + "-physics");
+            var area = node?.GetNodeOrNull<Area2D>("area");
+            if (area == null) continue;
 
-            foreach (var id in needPhysics)
+            area.RemoveAndSkip();
+            area.QueueFree();
+        }
+
+        foreach (var entity in areas.Added().ToArray().Concat(areas.Changed().ToArray()))
+        {
+            var id = entity.ID();
+            var component = entity.Get<Area>();
+
+            var node = entity.Get<PhysicsNode>()?.Node;
+            if (node == null) continue;
+
+            var sprite = entity.Get<Sprite>();
+            var scale = entity.Get<Scale>();
+            scale = scale ?? new Scale { X = 1, Y = 1 };
+
+            var area = node.GetNodeOrNull<Node2D>("area");
+            if (area != null)
             {
-                var existing = state.PhysicsNode(id);
-                if (existing?.Node != null) continue;
-
-                var position = state.Position(id) ?? new Position { X = 0, Y = 0 };
-
-                var node = new KinematicBody2D()
-                {
-                    Name = id + "-physics",
-                    Position = new Vector2(position.X, position.Y)
-                };
-
-                state = state.With(id, new PhysicsNode()
-                {
-                    Node = node
-                });
-
-                game.AddChild(node);
-            }
-
-            foreach (var (id, enter) in areas.Removed)
-            {
-                var node = game.GetNodeOrNull<Node2D>(id + "-physics");
-                var area = node?.GetNodeOrNull<Area2D>("area");
-                if (area == null) continue;
-
                 area.RemoveAndSkip();
                 area.QueueFree();
             }
 
-            foreach (var (id, component) in areas.Added.Concat(areas.Changed))
+            area = new Area2D()
             {
-                var node = state.PhysicsNode(id)?.Node;
-                if (node == null) continue;
+                Name = "area"
+            };
+            node.AddChild(area);
 
-                var sprite = state.Sprite(id);
-                var scale = state.Scale(id);
-                scale = scale ?? new Scale { X = 1, Y = 1 };
+            if (sprite != null)
+            {
+                var texture = GD.Load<Texture>(sprite.Image);
 
-                var area = node.GetNodeOrNull<Node2D>("area");
-                if (area != null)
+                area.AddChild(new EntityCollisionShape2D()
                 {
-                    area.RemoveAndSkip();
-                    area.QueueFree();
-                }
-
-                area = new Area2D()
-                {
-                    Name = "area"
-                };
-                node.AddChild(area);
-
-                if (sprite != null)
-                {
-                    var texture = GD.Load<Texture>(sprite.Image);
-
-                    area.AddChild(new CollisionShape2D()
+                    Shape = new RectangleShape2D()
                     {
-                        Shape = new RectangleShape2D()
-                        {
-                            Extents = new Vector2(
-                                texture.GetHeight() * scale.X,
-                                texture.GetWidth() * scale.Y) / 2f
-                        }
-                    });
-
-                    area.AddChild(new RectangleNode()
-                    {
-                        Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
-                        Color = new Godot.Color(0, 0, 1)
-                    });
-                }
-            }
-
-            foreach (var (id, ev) in areaEnterEvents.Removed)
-            {
-                var node = state.PhysicsNode(id)?.Node;
-                var area = node?.GetNodeOrNull<Node2D>("area");
-                if (area == null) continue;
-
-                if (area.IsConnected("area_entered", game, nameof(game._Event)))
-                {
-                    area.Disconnect("area_entered", game, nameof(game._Event));
-                }
-            }
-
-            foreach (var (id, ev) in areaEnterEvents.Added.Concat(areaEnterEvents.Changed))
-            {
-                var node = state.PhysicsNode(id)?.Node;
-                var area = node?.GetNodeOrNull<Node2D>("area");
-                if (area == null) continue;
-
-                if (area.IsConnected("area_entered", game, nameof(game._Event)))
-                {
-                    area.Disconnect("area_entered", game, nameof(game._Event));
-                }
-
-                area.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
-                    id, new GodotWrapper(ev)
+                        Extents = new Vector2(
+                            texture.GetHeight() * scale.X,
+                            texture.GetWidth() * scale.Y) / 2f
+                    }
                 });
-            }
 
-            foreach (var (id, component) in collisions.Removed)
-            {
-                var node = state.PhysicsNode(id)?.Node;
-                var collision = node?.GetNodeOrNull<Node2D>("collision");
-
-                if (collision != null)
+                area.AddChild(new RectangleNode()
                 {
-                    collision.RemoveAndSkip();
-                    collision.QueueFree();
-                }
-            }
-
-            foreach (var (id, component) in collisions.Changed.Concat(collisions.Added))
-            {
-                var node = state.PhysicsNode(id)?.Node;
-                if (node == null) continue;
-
-                var sprite = state.Sprite(id);
-                var scale = state.Scale(id);
-                scale = scale ?? new Scale { X = 1, Y = 1 };
-
-                var collision = node.GetNodeOrNull<Node2D>("collision");
-                if (collision != null)
-                {
-                    collision.RemoveAndSkip();
-                    collision.QueueFree();
-                }
-
-                if (sprite != null)
-                {
-                    var texture = GD.Load<Texture>(sprite.Image);
-
-                    var shape = new CollisionShape2D()
-                    {
-                        Name = "collision",
-                        Shape = new RectangleShape2D()
-                        {
-                            Extents = new Vector2(
-                                texture.GetHeight() * scale.X,
-                                texture.GetWidth() * scale.Y) / 2f
-                        }
-                    };
-                    node.AddChild(shape);
-
-                    shape.AddChild(new RectangleNode()
-                    {
-                        Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
-                        Color = new Godot.Color(1, 0, 0)
-                    });
-                }
+                    Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
+                    Color = new Godot.Color(0, 0, 1)
+                });
             }
         }
 
-        var positionBatch = new Dictionary<int, Position>();
-
-        foreach (var (id, component) in state.Velocity())
+        foreach (var entity in areaEnterEvents.Removed())
         {
-            var velocity = component as Velocity;
-            var destination = state.Destination(id);
-            var position = state.Position(id);
-            var collision = state.Collision(id);
-            var area = state.Area(id);
+            var id = entity.ID();
+            var component = entity.Get<AreaEnterEvent>();
 
-            var physics = state.PhysicsNode(id)?.Node;
+            var node = entity.Get<PhysicsNode>()?.Node;
+            var area = node?.GetNodeOrNull<Node2D>("area");
+            if (area == null) continue;
+
+            if (area.IsConnected("area_entered", game, nameof(game._Event)))
+            {
+                area.Disconnect("area_entered", game, nameof(game._Event));
+            }
+        }
+
+        foreach (var entity in areaEnterEvents.Added().ToArray().Concat(areaEnterEvents.Changed().ToArray()))
+        {
+            var id = entity.ID();
+            var ev = entity.Get<AreaEnterEvent>();
+
+            var node = entity.Get<PhysicsNode>()?.Node;
+            var area = node?.GetNodeOrNull<Node2D>("area");
+            if (area == null) continue;
+
+            if (area.IsConnected("area_entered", game, nameof(game._Event)))
+            {
+                area.Disconnect("area_entered", game, nameof(game._Event));
+            }
+
+            area.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
+                new GodotWrapper(entity), new GodotWrapper(ev)
+            });
+        }
+
+        foreach (var entity in collisions.Removed())
+        {
+            var node = entity.Get<PhysicsNode>()?.Node;
+            var collision = node?.GetNodeOrNull<Node2D>("collision");
+
+            if (collision != null)
+            {
+                collision.RemoveAndSkip();
+                collision.QueueFree();
+            }
+        }
+
+        foreach (var entity in collisions.Changed().ToArray().Concat(collisions.Added().ToArray()))
+        {
+            var node = entity.Get<PhysicsNode>()?.Node;
+            if (node == null) continue;
+
+            var sprite = entity.Get<Sprite>();
+            var scale = entity.Get<Scale>();
+            scale = scale ?? new Scale { X = 1, Y = 1 };
+
+            var collision = node.GetNodeOrNull<Node2D>("collision");
+            if (collision != null)
+            {
+                collision.RemoveAndSkip();
+                collision.QueueFree();
+            }
+
+            if (sprite != null)
+            {
+                var texture = GD.Load<Texture>(sprite.Image);
+
+                var shape = new EntityCollisionShape2D()
+                {
+                    Name = "collision",
+                    Entity = entity,
+                    Shape = new RectangleShape2D()
+                    {
+                        Extents = new Vector2(
+                            texture.GetHeight() * scale.X,
+                            texture.GetWidth() * scale.Y) / 2f
+                    }
+                };
+                node.AddChild(shape);
+
+                shape.AddChild(new RectangleNode()
+                {
+                    Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
+                    Color = new Godot.Color(1, 0, 0)
+                });
+            }
+        }
+
+        foreach (var entity in world.GetEntities().With<Velocity>().AsSet().GetEntities())
+        {
+            var id = entity.ID();
+
+            var velocity = entity.Get<Velocity>();
+            var destination = entity.Get<Destination>();
+            var position = entity.Get<Position>();
+            var collision = entity.Get<Collision>();
+            var area = entity.Get<Area>();
+
+            var physics = entity.Get<PhysicsNode>()?.Node;
             if (physics == null) continue;
 
             var travel = new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS);
@@ -311,8 +342,8 @@ public static class Physics
 
             if (withinReach || collided != null)
             {
-                state = state.WithoutDestination(id);
-                state = state.WithoutVelocity(id);
+                entity.Remove<Destination>();
+                entity.Remove<Velocity>();
 
                 if (collided == null)
                 {
@@ -320,40 +351,36 @@ public static class Physics
                 }
                 else
                 {
-                    var collideId = Convert.ToInt32((collided.Collider as Node).Name.Split("-").First());
+                    var other = (collided.Collider as EntityCollisionShape2D).Entity;
 
-                    var ev = state.CollisionEvent(id);
+                    var ev = entity.Get<CollisionEvent>();
                     if (ev != null)
                     {
-                        var queue = (id, collideId, ev as Event);
-                        state = state.With(Events.ENTITY, new EventQueue()
+                        var queue = (entity, other, ev as Event);
+
+                        world.Set(new EventQueue()
                         {
-                            Events = state.EventQueue(Events.ENTITY).Events.With(queue)
+                            Events = world.Get<EventQueue>().Events.With(queue)
                         });
                     }
 
-                    var otherEv = state.ContainsKey(collideId)
-                        ? state.CollisionEvent(collideId)
-                        : null;
+                    var otherEv = other.Get<CollisionEvent>();
                     if (otherEv != null)
                     {
-                        var queue = (collideId, id, otherEv as Event);
+                        var queue = (other, entity, otherEv as Event);
 
-                        state = state.With(Events.ENTITY, new EventQueue()
+                        world.Set(new EventQueue()
                         {
-                            Events = state.EventQueue(Events.ENTITY).Events.With(queue)
+                            Events = world.Get<EventQueue>().Events.With(queue)
                         });
                     }
                 }
             }
 
             var physicsPosition = physics.Position;
-            positionBatch.Add(id, new Position { X = physicsPosition.x, Y = physicsPosition.y });
+
+            entity.Set(new Position { X = physicsPosition.x, Y = physicsPosition.y });
         }
-
-        state = state.Batch<Position>(positionBatch);
-
-        return state;
     }
 }
 
