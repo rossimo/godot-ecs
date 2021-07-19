@@ -11,10 +11,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Physics.cs" />
-    <Compile Remove="Events.cs" />
     <Compile Remove="Input.cs" />
     <Compile Remove="Combat.cs" />
-    <Compile Remove="ClickableSprite.cs" />
     <Compile Remove="Logs.cs" />
     <Compile Remove="Compiler.cs" />
   </ItemGroup>

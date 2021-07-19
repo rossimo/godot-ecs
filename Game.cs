@@ -7,11 +7,13 @@ public class Game : Godot.YSort
 {
 	public DefaultEcs.World World;
 	public Renderer Renderer;
+    public Events Events;
 
 	public override void _Ready()
 	{
 		World = new DefaultEcs.World();
 		Renderer = new Renderer(World);
+        Events = new Events(World);
 
 		var player = World.CreateEntity();
 		//player.Set(new Player());
@@ -69,7 +71,7 @@ public class Game : Godot.YSort
 	public override void _PhysicsProcess(float delta)
 	{
 		//State = InputMonitor.System(Previous, State, this);
-		//State = Events.System(Previous, State);
+		Events.System();
 		//State = Combat.System(Previous, State);
 		//State = Physics.System(Previous, State, this, delta);
 		Renderer.System(this, delta);

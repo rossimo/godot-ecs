@@ -1,7 +1,6 @@
-using Ecs;
+using DefaultEcs;
 using System;
 using System.Linq;
-
 
 public static class Target
 {
@@ -11,7 +10,13 @@ public static class Target
 
 public record Task
 {
-    public int Target = -2;
+    public DefaultEcs.Entity Target;
+    public bool TargetSelf;
+    public bool TargetOther;
+
+    public virtual void Execute(DefaultEcs.Entity entity)
+    {
+    }
 }
 
 public record Event
@@ -27,45 +32,61 @@ public record Event
     }
 }
 
-public record Add<T> : Task
+public record Add : Task
 {
-    public T Component;
+    public object Component;
 
     public Add() { }
 
-    public Add(T component, int target = -2)
-        => (Component, Target) = (component, target);
+    public Add(object component)
+        => (Component) = (component);
+
+    override public void Execute(DefaultEcs.Entity entity)
+    {
+        entity.Set(Component);
+    }
 }
 
-public record Remove : Task
+public record Remove<T> : Task
 {
-    public Type Type;
-
-    public Remove(Type type)
-        => (Type) = (type);
-
-    public Remove(Component component)
-        => (Type) = (component.GetType());
+    override public void Execute(DefaultEcs.Entity entity)
+    {
+        entity.Remove<T>();
+    }
 }
 
 public record AddEntity : Task
 {
-    public Component[] Components;
+    public object[] Components;
 
     public AddEntity() { }
 
-    public AddEntity(Component[] components, int target = -2)
-        => (Components, Target) = (components, target);
+    public AddEntity(object[] components)
+        => (Components) = (components);
+
+    override public void Execute(DefaultEcs.Entity entity)
+    {
+        foreach (var component in Components)
+        {
+            entity.Set(component);
+        }
+    }
 }
 
-public record RemoveEntity : Task;
-
-public record EventQueue : Component
+public record RemoveEntity : Task
 {
-    public (int Source, int Target, Event Event)[] Events =
-        new (int Source, int Target, Event Event)[] { };
+    override public void Execute(DefaultEcs.Entity entity)
+    {
+        entity.Dispose();
+    }
+}
 
-    public EventQueue(params (int Source, int Target, Event Event)[] queue)
+public record EventQueue
+{
+    public (DefaultEcs.Entity Source, DefaultEcs.Entity Target, Event Event)[] Events =
+        new (DefaultEcs.Entity Source, DefaultEcs.Entity Target, Event Event)[] { };
+
+    public EventQueue(params (DefaultEcs.Entity Source, DefaultEcs.Entity Target, Event Event)[] queue)
         => (Events) = (queue);
 
     public override string ToString()
@@ -74,56 +95,45 @@ public record EventQueue : Component
     }
 }
 
-public static class Events
+public class Events
 {
     public static int ENTITY = 2;
 
-    public static State System(State previous, State state)
-    {
-        var queue = state.EventQueue(ENTITY).Events;
-        if (queue?.Count() == 0) return state;
+    private DefaultEcs.World world;
 
-        foreach (var queued in queue)
+    public Events(DefaultEcs.World world)
+    {
+        this.world = world;
+        world.Set(new EventQueue());
+    }
+
+    public void System()
+    {
+        var eventQueue = world.Get<EventQueue>();
+        if (eventQueue?.Events?.Count() == 0) return;
+
+        foreach (var queued in eventQueue.Events)
         {
-            var (id, otherId, @event) = queued;
+            var (entity, otherEntity, @event) = queued;
 
             foreach (var task in @event.Tasks)
             {
-                var target = task.Target == Target.Other
-                    ? otherId
-                    : task.Target == Target.Self
-                        ? id
-                        : task.Target;
+                DefaultEcs.Entity target = task.Target;
 
-                switch (task)
+                if (task.TargetOther)
                 {
-                    case Add add:
-                        {
-                            state = state.With(target, add.Component);
-                        }
-                        break;
-
-                    case Remove remove:
-                        {
-                            state = state.Without(remove.Type.Name.GetHashCode(), target);
-                        }
-                        break;
-
-                    case AddEntity addEntity:
-                        {
-                            state = state.With(target, addEntity.Components);
-                        }
-                        break;
-
-                    case RemoveEntity removeEntity:
-                        {
-                            state = state.Without(target);
-                        }
-                        break;
+                    target = otherEntity;
                 }
+
+                if (task.TargetSelf)
+                {
+                    target = entity;
+                }
+
+                task.Execute(target);
             }
         }
 
-        return state = state.With(Events.ENTITY, new EventQueue());
+        eventQueue.Events = new (DefaultEcs.Entity Source, DefaultEcs.Entity Target, Event Event)[] { };
     }
 }

@@ -78,14 +78,6 @@ public class Diff<T>
     }
 }
 
-public static class Utils
-{
-    public static string ID(this DefaultEcs.Entity entity)
-    {
-        return $"{entity.GetHashCode()}";
-    }
-}
-
 public class Renderer
 {
     private Diff<Sprite> sprites;
