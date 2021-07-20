@@ -49,7 +49,7 @@ public record Task
 {
     public Target Target = Target.Self;
 
-    public virtual void Execute(DefaultEcs.Entity entity)
+    public virtual void Execute(DefaultEcs.World world, DefaultEcs.Entity entity)
     {
     }
 }
@@ -79,7 +79,7 @@ public record Add : Task
     public Add(object component)
         => (Component) = (component);
 
-    override public void Execute(DefaultEcs.Entity entity)
+    override public void Execute(DefaultEcs.World world, DefaultEcs.Entity entity)
     {
         var type = Component.GetType();
         var set = SetGeneric.MakeGenericMethod(new[] { type });
@@ -93,7 +93,7 @@ public record Remove : Task
 
     private static System.Reflection.MethodInfo RemoveGeneric = typeof(Entity).GetMethod("Remove");
 
-    override public void Execute(DefaultEcs.Entity entity)
+    override public void Execute(DefaultEcs.World world, DefaultEcs.Entity entity)
     {
         var remove = RemoveGeneric.MakeGenericMethod(new[] { Type });
         remove.Invoke(entity, new object[] { });
@@ -112,7 +112,7 @@ public record AddEntity : Task
     public AddEntity(object[] components)
         => (Components) = (components);
 
-    override public void Execute(DefaultEcs.Entity entity)
+    override public void Execute(DefaultEcs.World world, DefaultEcs.Entity entity)
     {
         foreach (var component in Components)
         {
@@ -125,9 +125,10 @@ public record AddEntity : Task
 
 public record RemoveEntity : Task
 {
-    override public void Execute(DefaultEcs.Entity entity)
+    override public void Execute(DefaultEcs.World world, DefaultEcs.Entity entity)
     {
-        entity.Dispose();
+        entity.Dispose
+        ();
     }
 }
 
@@ -149,17 +150,17 @@ public class Events
 {
     public static int ENTITY = 2;
 
-    private DefaultEcs.World world;
+    private DefaultEcs.World World;
 
     public Events(DefaultEcs.World world)
     {
-        this.world = world;
+        World = world;
         world.Set(new EventQueue());
     }
 
     public void System()
     {
-        var eventQueue = world.TryGet<EventQueue>();
+        var eventQueue = World.TryGet<EventQueue>();
         if (eventQueue?.Events?.Count() == 0) return;
 
         foreach (var queued in eventQueue.Events)
@@ -168,11 +169,11 @@ public class Events
 
             foreach (var task in @event.Tasks)
             {
-                task.Execute(task.Target.Find(self, other));
+                task.Execute(World, task.Target.Find(self, other));
             }
         }
 
         eventQueue.Events = new (DefaultEcs.Entity Source, DefaultEcs.Entity Target, Event Event)[] { };
-        world.Set(eventQueue);
+        World.Set(eventQueue);
     }
 }

@@ -1,6 +1,4 @@
 using DefaultEcs;
-using System.Linq;
-using System.Collections.Generic;
 
 public record ExpirationEvent : Event
 {
@@ -17,32 +15,28 @@ public record ExpirationEvent : Event
 public class Combat
 {
     private DefaultEcs.EntitySet ExpirationEvents;
-    private DefaultEcs.EntitySet Ticks;
-    private DefaultEcs.EntitySet EventQueue;
+    private DefaultEcs.World World;
 
     public Combat(DefaultEcs.World world)
     {
-        ExpirationEvents = world.GetEntities().With<ExpirationEvent>().AsSet();
-        Ticks = world.GetEntities().With<Ticks>().AsSet();
-        EventQueue = world.GetEntities().With<EventQueue>().AsSet();
+        World = world;
+
+        ExpirationEvents = World.GetEntities().With<ExpirationEvent>().AsSet();
     }
 
     public void System()
     {
-        var tick = Ticks.GetEntities()[0].Get<Ticks>().Tick;
-        var eventQueue = EventQueue.GetEntities()[0];
-
+        var tick = World.Get<Ticks>().Tick;
         foreach (var entity in ExpirationEvents.GetEntities())
         {
             var expiration = entity.Get<ExpirationEvent>();
             if (expiration.Tick <= tick)
             {
-                var queued = (entity, -3, expiration);
+                var queued = (entity, default(DefaultEcs.Entity), expiration);
 
-                entity.Remove<ExpirationEvent>();
-                eventQueue.Set(new EventQueue()
+                World.Set(new EventQueue()
                 {
-                    Events = eventQueue.Get<EventQueue>().With(queued)
+                    Events = World.Get<EventQueue>().Events.With(queued)
                 });
             }
         }

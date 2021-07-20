@@ -61,8 +61,6 @@ public class InputMonitor
 
     public void System(Game game)
     {
-        var tick = world.TryGet<Ticks>()?.Tick;
-
         var mouseLeft = world.TryGet<MouseLeft>();
         var mouseRight = world.TryGet<MouseRight>();
 
@@ -80,22 +78,21 @@ public class InputMonitor
                 }
             }
 
-/*
             if (mouseLeft?.Pressed == true)
             {
                 var direction = new Vector2(position.X, position.Y).DirectionTo(mousePosition).Normalized() * 10f;
                 if (direction.x != 0 && direction.y != 0)
                 {
-                    state = state.With(rnd.Next(1000, 200000),
-                       state.Position(playerId),
-                       new Sprite { Image = "res://resources/tiles/tile663.png" },
-                       new Velocity { X = direction.x, Y = direction.y },
-                       new LowRenderPriority(),
-                       new ExpirationEvent(new RemoveEntity()) with { Tick = Physics.MillisToTicks(1 * 1000) + tick }
-                    );
+                    var tick = world.TryGet<Ticks>().Tick;
+
+                    var particle = world.CreateEntity();
+                    particle.Set(position);
+                    particle.Set(new Sprite { Image = "res://resources/tiles/tile663.png" });
+                    particle.Set(new Velocity { X = direction.x, Y = direction.y });
+                    particle.Set(new LowRenderPriority());
+                    particle.Set(new ExpirationEvent(new RemoveEntity()) with { Tick = Physics.MillisToTicks(500) + tick });
                 }
             }
-            */
         }
     }
 }

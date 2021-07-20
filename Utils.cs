@@ -10,7 +10,11 @@ public static class Utils
 
     public static string ID(this DefaultEcs.Entity entity)
     {
-        return $"{entity.GetHashCode()}";
+        var data = entity.ToString().Split(" ").Last();
+        var world = data.Split(":").First();
+        var id = data.Split(".").First().Split(":").Last();
+        var version = data.Split(".").Last();
+        return $"{world}-{id}-{version}";
     }
 
     public static string Log<V>(string name, IEnumerable<V> list)

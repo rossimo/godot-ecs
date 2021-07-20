@@ -11,6 +11,7 @@ public class Game : Godot.YSort
     public Physics Physics;
     public InputEvents InputEvents;
     public InputMonitor InputMonitor;
+    public Combat Combat;
 
     public override void _Ready()
     {
@@ -20,6 +21,7 @@ public class Game : Godot.YSort
         Physics = new Physics(World);
         InputEvents = new InputEvents(World);
         InputMonitor = new InputMonitor(World);
+        Combat = new Combat(World);
 
         var player = World.CreateEntity();
         player.Set(new Player());
@@ -71,7 +73,7 @@ public class Game : Godot.YSort
     {
         InputMonitor.System(this);
         Events.System();
-        //State = Combat.System(Previous, State);
+        Combat.System();
         Physics.System(this, delta);
         Renderer.System(this, delta);
     }

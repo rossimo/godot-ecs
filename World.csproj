@@ -10,7 +10,6 @@
   </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Remove="Combat.cs" />
     <Compile Remove="Logs.cs" />
     <Compile Remove="Compiler.cs" />
   </ItemGroup>
