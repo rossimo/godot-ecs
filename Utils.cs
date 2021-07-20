@@ -36,4 +36,18 @@ public static class Utils
     {
         return list.Concat(new[] { value }).ToArray();
     }
+
+    public static C TryGet<C>(this DefaultEcs.World world)
+    {
+        return world.Has<C>()
+            ? world.Get<C>()
+            : default(C);
+    }
+
+    public static C TryGet<C>(this DefaultEcs.Entity entity)
+    {
+        return entity.Has<C>()
+            ? entity.Get<C>()
+            : default(C);
+    }
 }

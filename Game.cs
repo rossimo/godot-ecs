@@ -9,6 +9,8 @@ public class Game : Godot.YSort
     public Renderer Renderer;
     public Events Events;
     public Physics Physics;
+    public InputEvents InputEvents;
+    public InputMonitor InputMonitor;
 
     public override void _Ready()
     {
@@ -16,9 +18,11 @@ public class Game : Godot.YSort
         Renderer = new Renderer(World);
         Events = new Events(World);
         Physics = new Physics(World);
+        InputEvents = new InputEvents(World);
+        InputMonitor = new InputMonitor(World);
 
         var player = World.CreateEntity();
-        //player.Set(new Player());
+        player.Set(new Player());
         player.Set(new Speed { Value = 2.5f });
         player.Set(new Position { X = 50, Y = 50 });
         player.Set(new Scale { X = 3, Y = 3 });
@@ -42,12 +46,10 @@ public class Game : Godot.YSort
         button.Set(new Area());
         button.Set(new AreaEnterEvent(
             new Add(new Flash { Color = new Color { Red = 0.1f, Green = 0.1f, Blue = 0.1f } })
-            //new AddEntity(Potion, 11)
+        //new AddEntity(Potion, 11)
         ));
         button.Set(new Scale { X = 2, Y = 2 });
         button.Set(new Sprite { Image = "res://resources/tiles/tile481.png" });
-
-        var input = World.CreateEntity();
     }
 
     /*
@@ -62,12 +64,12 @@ public class Game : Godot.YSort
 	*/
     public override void _Input(InputEvent @event)
     {
-        //State = InputEvents.System(State, this, @event);
+        InputEvents.System(this, @event);
     }
 
     public override void _PhysicsProcess(float delta)
     {
-        //State = InputMonitor.System(Previous, State, this);
+        InputMonitor.System(this);
         Events.System();
         //State = Combat.System(Previous, State);
         Physics.System(this, delta);

@@ -110,8 +110,8 @@ public class Renderer
 
         foreach (var entity in sprites.Added())
         {
-            var sprite = entity.Get<Sprite>();
-            var position = entity.Get<Position>();
+            var sprite = entity.TryGet<Sprite>();
+            var position = entity.TryGet<Position>();
             position = position ?? new Position { X = 0, Y = 0 };
 
             var node = game.GetNodeOrNull(entity.ID());
@@ -141,7 +141,7 @@ public class Renderer
         foreach (var entity in sprites.Changed())
         {
             var id = entity.ID();
-            var component = entity.Get<Sprite>();
+            var component = entity.TryGet<Sprite>();
 
             var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
@@ -152,7 +152,7 @@ public class Renderer
         foreach (var entity in scales.Removed())
         {
             var id = entity.ID();
-            var component = entity.Get<Scale>();
+            var component = entity.TryGet<Scale>();
 
             var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
@@ -162,7 +162,7 @@ public class Renderer
         foreach (var entity in scales.Added().ToArray().Concat(scales.Changed().ToArray()))
         {
             var id = entity.ID();
-            var scale = entity.Get<Scale>();
+            var scale = entity.TryGet<Scale>();
 
             var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
@@ -173,7 +173,7 @@ public class Renderer
         foreach (var entity in rotations.Removed())
         {
             var id = entity.ID();
-            var scale = entity.Get<Rotation>();
+            var scale = entity.TryGet<Rotation>();
 
             var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
@@ -184,7 +184,7 @@ public class Renderer
         foreach (var entity in rotations.Added().ToArray().Concat(rotations.Changed().ToArray()))
         {
             var id = entity.ID();
-            var rotation = entity.Get<Rotation>();
+            var rotation = entity.TryGet<Rotation>();
 
             var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
@@ -194,8 +194,8 @@ public class Renderer
 
         foreach (var entity in flashes.Added().ToArray().Concat(flashes.Changed().ToArray()))
         {
-            var flash = entity.Get<Flash>();
-            var position = entity.Get<Position>();
+            var flash = entity.TryGet<Flash>();
+            var position = entity.TryGet<Position>();
             position = position ?? new Position { X = 0, Y = 0 };
 
             entity.Remove<Flash>();
@@ -223,10 +223,10 @@ public class Renderer
         foreach (var entity in positions.Changed())
         {
             var id = entity.ID();
-            var position = entity.Get<Position>();
+            var position = entity.TryGet<Position>();
 
-            var sprite = entity.Get<Sprite>();
-            var lowPriority = entity.Get<LowRenderPriority>();
+            var sprite = entity.TryGet<Sprite>();
+            var lowPriority = entity.TryGet<LowRenderPriority>();
 
             var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;

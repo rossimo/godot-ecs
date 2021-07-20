@@ -1,30 +1,28 @@
-using Ecs;
+using DefaultEcs;
 using Godot;
-using System;
-using System.Linq;
 
-public record Player() : Component;
+public record Player;
 
-public record MouseLeft : Component
+public record MouseLeft
 {
     public bool Pressed;
 }
 
-public record MouseRight : Component
+public record MouseRight
 {
     public bool Pressed;
 }
 
-public record Move : Component
+public class InputEvents
 {
-    public Position Destination;
-}
+    private DefaultEcs.World world;
 
-public static class InputEvents
-{
-    public static int ENTITY = 3;
+    public InputEvents(DefaultEcs.World world)
+    {
+        this.world = world;
+    }
 
-    public static Ecs.State System(Ecs.State state, Game game, InputEvent @event)
+    public void System(Game game, InputEvent @event)
     {
         switch (@event)
         {
@@ -32,14 +30,14 @@ public static class InputEvents
                 {
                     if ((mouseButton.ButtonIndex & (int)ButtonList.MaskLeft) != 0)
                     {
-                        state = state.With(InputEvents.ENTITY, new MouseLeft
+                        world.Set(new MouseLeft
                         {
                             Pressed = mouseButton.IsPressed()
                         });
                     }
                     else if ((mouseButton.ButtonIndex & (int)ButtonList.MaskRight) != 0)
                     {
-                        state = state.With(InputEvents.ENTITY, new MouseRight
+                        world.Set(new MouseRight
                         {
                             Pressed = mouseButton.IsPressed()
                         });
@@ -47,52 +45,57 @@ public static class InputEvents
                 }
                 break;
         }
-        return state;
     }
 }
 
-public static class InputMonitor
+public class InputMonitor
 {
-    public static int ENTITY = InputEvents.ENTITY;
+    private DefaultEcs.World world;
 
-    private static Random rnd = new Random();
-
-    public static State System(State previous, State state, Game game)
+    public InputMonitor(DefaultEcs.World world)
     {
-        var tick = state.Ticks(Physics.ENTITY).Tick;
+        this.world = world;
+    }
 
-        var mouseLeft = state.MouseLeft(ENTITY);
-        var mouseRight = state.MouseRight(ENTITY);
+    public void System(Game game)
+    {
+        var tick = world.TryGet<Ticks>()?.Tick;
 
-        var playerId = state.Player().FirstOrDefault().Key;
+        var mouseLeft = world.TryGet<MouseLeft>();
+        var mouseRight = world.TryGet<MouseRight>();
 
-        var position = state.Position(playerId);
-        var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());
+        var players = world.GetEntities().With<Player>().AsSet();
 
-        if (mouseRight?.Pressed == true)
+        foreach (var player in players.GetEntities())
         {
-            var destination = new Position { X = mousePosition.x, Y = mousePosition.y };
-            if (position != destination)
-            {
-                state = state.With(playerId, new Move { Destination = destination });
-            }
-        }
+            var position = player.TryGet<Position>();
+            var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());
 
-        if (mouseLeft?.Pressed == true)
-        {
-            var direction = new Vector2(position.X, position.Y).DirectionTo(mousePosition).Normalized() * 10f;
-            if (direction.x != 0 && direction.y != 0)
+            if (mouseRight?.Pressed == true)
             {
-                state = state.With(rnd.Next(1000, 200000), 
-                   state.Position(playerId),
-                   new Sprite { Image = "res://resources/tiles/tile663.png" },
-                   new Velocity { X = direction.x, Y = direction.y },
-                   new LowRenderPriority(),
-                   new ExpirationEvent(new RemoveEntity()) with { Tick = Physics.MillisToTicks(1 * 1000) + tick }
-                );
+                var destination = new Position { X = mousePosition.x, Y = mousePosition.y };
+                if (position != destination)
+                {
+                    player.Set(new Move { Destination = destination });
+                }
             }
-        }
 
-        return state;
+/*
+            if (mouseLeft?.Pressed == true)
+            {
+                var direction = new Vector2(position.X, position.Y).DirectionTo(mousePosition).Normalized() * 10f;
+                if (direction.x != 0 && direction.y != 0)
+                {
+                    state = state.With(rnd.Next(1000, 200000),
+                       state.Position(playerId),
+                       new Sprite { Image = "res://resources/tiles/tile663.png" },
+                       new Velocity { X = direction.x, Y = direction.y },
+                       new LowRenderPriority(),
+                       new ExpirationEvent(new RemoveEntity()) with { Tick = Physics.MillisToTicks(1 * 1000) + tick }
+                    );
+                }
+            }
+            */
+        }
     }
 }

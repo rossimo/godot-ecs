@@ -159,7 +159,7 @@ public class Events
 
     public void System()
     {
-        var eventQueue = world.Get<EventQueue>();
+        var eventQueue = world.TryGet<EventQueue>();
         if (eventQueue?.Events?.Count() == 0) return;
 
         foreach (var queued in eventQueue.Events)
@@ -173,5 +173,6 @@ public class Events
         }
 
         eventQueue.Events = new (DefaultEcs.Entity Source, DefaultEcs.Entity Target, Event Event)[] { };
+        world.Set(eventQueue);
     }
 }

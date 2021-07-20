@@ -50,7 +50,7 @@ public record Move
 
 public record PhysicsNode
 {
-    public KinematicBody2D Node;
+    public EntityKinematicBody2D Node;
 }
 
 public class Physics
@@ -89,7 +89,7 @@ public class Physics
     {
         world.Set(new Ticks
         {
-            Tick = (world.Get<Ticks>()?.Tick ?? 0) + 1
+            Tick = (world.TryGet<Ticks>()?.Tick ?? 0) + 1
         });
 
         var needPhysics = areas.Added().ToArray()
@@ -110,11 +110,11 @@ public class Physics
         foreach (var entity in moves.Added().ToArray().Concat(moves.Changed().ToArray()))
         {
             var id = entity.ID();
-            var move = entity.Get<Move>();
+            var move = entity.TryGet<Move>();
             entity.Remove<Move>();
 
-            var position = entity.Get<Position>();
-            var speed = entity.Get<Speed>();
+            var position = entity.TryGet<Position>();
+            var speed = entity.TryGet<Speed>();
             if (position == null) continue;
 
             speed = speed ?? new Speed { Value = 1f };
@@ -129,7 +129,7 @@ public class Physics
 
         foreach (var entity in notNeedPhysics)
         {
-            var node = game.GetNodeOrNull<KinematicBody2D>(entity.ID() + "-physics");
+            var node = game.GetNodeOrNull<EntityKinematicBody2D>(entity.ID() + "-physics");
             if (node == null) continue;
 
             node.RemoveAndSkip();
@@ -143,11 +143,12 @@ public class Physics
             var id = entity.ID();
             if (entity.Has<PhysicsNode>()) continue;
 
-            var position = entity.Get<Position>() ?? new Position { X = 0, Y = 0 };
+            var position = entity.TryGet<Position>() ?? new Position { X = 0, Y = 0 };
 
-            var node = new KinematicBody2D()
+            var node = new EntityKinematicBody2D()
             {
                 Name = id + "-physics",
+                Entity = entity,
                 Position = new Vector2(position.X, position.Y)
             };
 
@@ -173,13 +174,13 @@ public class Physics
         foreach (var entity in areas.Added().ToArray().Concat(areas.Changed().ToArray()))
         {
             var id = entity.ID();
-            var component = entity.Get<Area>();
+            var component = entity.TryGet<Area>();
 
-            var node = entity.Get<PhysicsNode>()?.Node;
+            var node = entity.TryGet<PhysicsNode>()?.Node;
             if (node == null) continue;
 
-            var sprite = entity.Get<Sprite>();
-            var scale = entity.Get<Scale>();
+            var sprite = entity.TryGet<Sprite>();
+            var scale = entity.TryGet<Scale>();
             scale = scale ?? new Scale { X = 1, Y = 1 };
 
             var area = node.GetNodeOrNull<Node2D>("area");
@@ -199,7 +200,7 @@ public class Physics
             {
                 var texture = GD.Load<Texture>(sprite.Image);
 
-                area.AddChild(new EntityCollisionShape2D()
+                area.AddChild(new CollisionShape2D()
                 {
                     Shape = new RectangleShape2D()
                     {
@@ -220,9 +221,9 @@ public class Physics
         foreach (var entity in areaEnterEvents.Removed())
         {
             var id = entity.ID();
-            var component = entity.Get<AreaEnterEvent>();
+            var component = entity.TryGet<AreaEnterEvent>();
 
-            var node = entity.Get<PhysicsNode>()?.Node;
+            var node = entity.TryGet<PhysicsNode>()?.Node;
             var area = node?.GetNodeOrNull<Node2D>("area");
             if (area == null) continue;
 
@@ -235,9 +236,9 @@ public class Physics
         foreach (var entity in areaEnterEvents.Added().ToArray().Concat(areaEnterEvents.Changed().ToArray()))
         {
             var id = entity.ID();
-            var ev = entity.Get<AreaEnterEvent>();
+            var ev = entity.TryGet<AreaEnterEvent>();
 
-            var node = entity.Get<PhysicsNode>()?.Node;
+            var node = entity.TryGet<PhysicsNode>()?.Node;
             var area = node?.GetNodeOrNull<Node2D>("area");
             if (area == null) continue;
 
@@ -253,7 +254,7 @@ public class Physics
 
         foreach (var entity in collisions.Removed())
         {
-            var node = entity.Get<PhysicsNode>()?.Node;
+            var node = entity.TryGet<PhysicsNode>()?.Node;
             var collision = node?.GetNodeOrNull<Node2D>("collision");
 
             if (collision != null)
@@ -265,11 +266,11 @@ public class Physics
 
         foreach (var entity in collisions.Changed().ToArray().Concat(collisions.Added().ToArray()))
         {
-            var node = entity.Get<PhysicsNode>()?.Node;
+            var node = entity.TryGet<PhysicsNode>()?.Node;
             if (node == null) continue;
 
-            var sprite = entity.Get<Sprite>();
-            var scale = entity.Get<Scale>();
+            var sprite = entity.TryGet<Sprite>();
+            var scale = entity.TryGet<Scale>();
             scale = scale ?? new Scale { X = 1, Y = 1 };
 
             var collision = node.GetNodeOrNull<Node2D>("collision");
@@ -283,10 +284,9 @@ public class Physics
             {
                 var texture = GD.Load<Texture>(sprite.Image);
 
-                var shape = new EntityCollisionShape2D()
+                var shape = new CollisionShape2D()
                 {
                     Name = "collision",
-                    Entity = entity,
                     Shape = new RectangleShape2D()
                     {
                         Extents = new Vector2(
@@ -308,13 +308,13 @@ public class Physics
         {
             var id = entity.ID();
 
-            var velocity = entity.Get<Velocity>();
-            var destination = entity.Get<Destination>();
-            var position = entity.Get<Position>();
-            var collision = entity.Get<Collision>();
-            var area = entity.Get<Area>();
+            var velocity = entity.TryGet<Velocity>();
+            var destination = entity.TryGet<Destination>();
+            var position = entity.TryGet<Position>();
+            var collision = entity.TryGet<Collision>();
+            var area = entity.TryGet<Area>();
 
-            var physics = entity.Get<PhysicsNode>()?.Node;
+            var physics = entity.TryGet<PhysicsNode>()?.Node;
             if (physics == null) continue;
 
             var travel = new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS);
@@ -351,27 +351,27 @@ public class Physics
                 }
                 else
                 {
-                    var other = (collided.Collider as EntityCollisionShape2D).Entity;
+                    var other = (collided.Collider as EntityKinematicBody2D).Entity;
 
-                    var ev = entity.Get<CollisionEvent>();
+                    var ev = entity.TryGet<CollisionEvent>();
                     if (ev != null)
                     {
                         var queue = (entity, other, ev as Event);
 
                         world.Set(new EventQueue()
                         {
-                            Events = world.Get<EventQueue>().Events.With(queue)
+                            Events = world.TryGet<EventQueue>().Events.With(queue)
                         });
                     }
 
-                    var otherEv = other.Get<CollisionEvent>();
+                    var otherEv = other.TryGet<CollisionEvent>();
                     if (otherEv != null)
                     {
                         var queue = (other, entity, otherEv as Event);
 
                         world.Set(new EventQueue()
                         {
-                            Events = world.Get<EventQueue>().Events.With(queue)
+                            Events = world.TryGet<EventQueue>().Events.With(queue)
                         });
                     }
                 }
@@ -381,6 +381,13 @@ public class Physics
 
             entity.Set(new Position { X = physicsPosition.x, Y = physicsPosition.y });
         }
+
+        areas.Complete();
+        areaEnterEvents.Complete();
+        collisions.Complete();
+        moves.Complete();
+        positions.Complete();
+        physics.Complete();
     }
 }
 

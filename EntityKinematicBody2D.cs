@@ -1,7 +1,7 @@
 using Godot;
 using DefaultEcs;
 
-public class EntityCollisionShape2D : CollisionShape2D, EntityNode
+public class EntityKinematicBody2D : KinematicBody2D, EntityNode
 {
     private Entity _entity;
 
