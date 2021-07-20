@@ -127,8 +127,7 @@ public record RemoveEntity : Task
 {
     override public void Execute(DefaultEcs.World world, DefaultEcs.Entity entity)
     {
-        entity.Dispose
-        ();
+        entity.Dispose();
     }
 }
 

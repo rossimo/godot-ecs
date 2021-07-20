@@ -102,12 +102,18 @@ public class Physics
             .Concat(collisions.Changed().ToArray())
             .Distinct();
 
+        var notNeedPhysicsComponent = areas.RemovedComponent().ToArray()
+            .Concat(collisions.RemovedComponent().ToArray())
+            .Concat(positions.RemovedComponent().ToArray())
+            .Concat(physics.RemovedComponent().ToArray())
+            .Distinct();
+
         var notNeedPhysics = areas.Removed().ToArray()
             .Concat(collisions.Removed().ToArray())
             .Concat(positions.Removed().ToArray())
             .Concat(physics.Removed().ToArray())
             .Distinct()
-            .Where(id => !needPhysics.Contains(id));
+            .Where(id => !needPhysics.Select(entity => entity.ID()).Contains(id));
 
         foreach (var entity in moves.Added().ToArray().Concat(moves.Changed().ToArray()))
         {
@@ -129,15 +135,24 @@ public class Physics
             entity.Set(new Destination { Position = move.Destination });
         }
 
-        foreach (var entity in notNeedPhysics)
+        foreach (var entity in notNeedPhysicsComponent)
         {
             var node = game.GetNodeOrNull<EntityKinematicBody2D>(entity.ID() + "-physics");
             if (node == null) continue;
 
-            node.RemoveAndSkip();
+            game.RemoveChild(node);
             node.QueueFree();
 
             entity.Remove<PhysicsNode>();
+        }
+
+        foreach (var id in notNeedPhysics)
+        {
+            var node = game.GetNodeOrNull<EntityKinematicBody2D>(id + "-physics");
+            if (node == null) continue;
+
+            game.RemoveChild(node);
+            node.QueueFree();
         }
 
         foreach (var entity in needPhysics)
@@ -161,10 +176,8 @@ public class Physics
             game.AddChild(node);
         }
 
-        foreach (var entity in areas.Removed())
+        foreach (var id in areas.Removed())
         {
-            var id = entity.ID();
-
             var node = game.GetNodeOrNull<Node2D>(id + "-physics");
             var area = node?.GetNodeOrNull<Area2D>("area");
             if (area == null) continue;
@@ -220,13 +233,9 @@ public class Physics
             }
         }
 
-        foreach (var entity in areaEnterEvents.Removed())
+        foreach (var id in areaEnterEvents.Removed())
         {
-            var id = entity.ID();
-            var component = entity.TryGet<AreaEnterEvent>();
-
-            var node = entity.TryGet<PhysicsNode>()?.Node;
-            var area = node?.GetNodeOrNull<Node2D>("area");
+            var area = game.GetNodeOrNull<Node2D>($"{id}-physics/area");
             if (area == null) continue;
 
             if (area.IsConnected("area_entered", game, nameof(game._Event)))
@@ -254,10 +263,9 @@ public class Physics
             });
         }
 
-        foreach (var entity in collisions.Removed())
+        foreach (var id in collisions.Removed())
         {
-            var node = entity.TryGet<PhysicsNode>()?.Node;
-            var collision = node?.GetNodeOrNull<Node2D>("collision");
+            var collision = game?.GetNodeOrNull<Node2D>($"{id}-physics/collision");
 
             if (collision != null)
             {

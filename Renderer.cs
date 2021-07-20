@@ -1,7 +1,7 @@
 using Godot;
 using System;
 using System.Linq;
-
+using System.Collections.Generic;
 public record Sprite
 {
     public string Image;
@@ -48,11 +48,20 @@ public class Diff<T>
     private DefaultEcs.EntitySet changed;
     private DefaultEcs.EntitySet removed;
 
+    private List<String> disposed = new List<string>();
+
     public Diff(DefaultEcs.World world)
     {
         added = world.GetEntities().WhenAdded<T>().AsSet();
         changed = world.GetEntities().WhenChanged<T>().AsSet();
         removed = world.GetEntities().WhenRemoved<T>().AsSet();
+
+        world.SubscribeEntityDisposed(EntityDisabledHandler);
+    }
+
+    public void EntityDisabledHandler(in DefaultEcs.Entity entity)
+    {
+        disposed.Add(entity.ID());
     }
 
     public ReadOnlySpan<DefaultEcs.Entity> Added()
@@ -65,9 +74,14 @@ public class Diff<T>
         return changed.GetEntities();
     }
 
-    public ReadOnlySpan<DefaultEcs.Entity> Removed()
+    public ReadOnlySpan<DefaultEcs.Entity> RemovedComponent()
     {
         return removed.GetEntities();
+    }
+
+    public IEnumerable<String> Removed()
+    {
+        return removed.GetEntities().ToArray().Select(entity => entity.ID()).Concat(disposed).Distinct();
     }
 
     public void Complete()
@@ -75,6 +89,7 @@ public class Diff<T>
         added.Complete();
         changed.Complete();
         removed.Complete();
+        disposed.Clear();
     }
 }
 
@@ -99,9 +114,9 @@ public class Renderer
 
     public void System(Game game, float delta)
     {
-        foreach (var entity in sprites.Removed())
+        foreach (var entityId in sprites.Removed())
         {
-            var node = game.GetNodeOrNull(entity.ID());
+            var node = game.GetNodeOrNull(entityId);
             if (node == null) continue;
 
             node.RemoveAndSkip();
@@ -149,11 +164,8 @@ public class Renderer
             node.Texture = GD.Load<Texture>(component.Image);
         }
 
-        foreach (var entity in scales.Removed())
+        foreach (var id in scales.Removed())
         {
-            var id = entity.ID();
-            var component = entity.TryGet<Scale>();
-
             var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
             node.Scale = new Vector2(1, 1);
@@ -170,11 +182,8 @@ public class Renderer
             node.Scale = new Vector2(scale.X, scale.Y);
         }
 
-        foreach (var entity in rotations.Removed())
+        foreach (var id in rotations.Removed())
         {
-            var id = entity.ID();
-            var scale = entity.TryGet<Rotation>();
-
             var node = game.GetNodeOrNull<Godot.Sprite>(id);
             if (node == null) continue;
 
