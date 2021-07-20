@@ -51,10 +51,12 @@ public class InputEvents
 public class InputMonitor
 {
     private DefaultEcs.World world;
+    private EntitySet players;
 
     public InputMonitor(DefaultEcs.World world)
     {
         this.world = world;
+        players = world.GetEntities().With<Player>().AsSet();
     }
 
     public void System(Game game)
@@ -64,11 +66,9 @@ public class InputMonitor
         var mouseLeft = world.TryGet<MouseLeft>();
         var mouseRight = world.TryGet<MouseRight>();
 
-        var players = world.GetEntities().With<Player>().AsSet();
-
-        foreach (var player in players.GetEntities())
+        foreach (var entity in players.GetEntities())
         {
-            var position = player.TryGet<Position>();
+            var position = entity.TryGet<Position>();
             var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());
 
             if (mouseRight?.Pressed == true)
@@ -76,7 +76,7 @@ public class InputMonitor
                 var destination = new Position { X = mousePosition.x, Y = mousePosition.y };
                 if (position != destination)
                 {
-                    player.Set(new Move { Destination = destination });
+                    entity.Set(new Move { Destination = destination });
                 }
             }
 

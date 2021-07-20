@@ -66,6 +66,7 @@ public class Physics
     private Diff<Position> positions;
     private Diff<PhysicsNode> physics;
     private DefaultEcs.World world;
+    private EntitySet velocities;
 
     public Physics(DefaultEcs.World world)
     {
@@ -78,6 +79,7 @@ public class Physics
         moves = new Diff<Move>(world);
         positions = new Diff<Position>(world);
         physics = new Diff<PhysicsNode>(world);
+        velocities = world.GetEntities().With<Velocity>().AsSet();
     }
 
     public static ulong MillisToTicks(ulong millis)
@@ -304,7 +306,7 @@ public class Physics
             }
         }
 
-        foreach (var entity in world.GetEntities().With<Velocity>().AsSet().GetEntities())
+        foreach (var entity in velocities.GetEntities())
         {
             var id = entity.ID();
 
