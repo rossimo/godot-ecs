@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using Loyc.Collections;
 
 namespace SimpleEcs
 {
@@ -13,22 +14,22 @@ namespace SimpleEcs
 
     public class State
     {
-        private static readonly Dictionary<int, Component> BLANK = new Dictionary<int, Component>();
+        private static readonly BDictionary<int, Component> BLANK = new BDictionary<int, Component>();
 
         public bool Logging;
         public IEnumerable<int> LoggingIgnore;
-        private Dictionary<int, Dictionary<int, Component>> Components;
+        private BDictionary<int, BDictionary<int, Component>> Components;
 
         public State()
         {
-            Components = new Dictionary<int, Dictionary<int, Component>>();
+            Components = new BDictionary<int, BDictionary<int, Component>>();
             LoggingIgnore = new int[] { };
             Logging = false;
         }
 
         public State(State state)
         {
-            Components = new Dictionary<int, Dictionary<int, Component>>(state.Components);
+            Components = state.Components.Clone();
             LoggingIgnore = state.LoggingIgnore;
             Logging = state.Logging;
         }
@@ -38,7 +39,7 @@ namespace SimpleEcs
             return Components.Keys;
         }
 
-        public Dictionary<int, Component> Get<C1>()
+        public BDictionary<int, Component> Get<C1>()
             where C1 : Component
         {
             return GetComponent(ComponentUtils<C1>.Index);
@@ -54,7 +55,7 @@ namespace SimpleEcs
             return component as C1;
         }
 
-        public Dictionary<int, Component> GetComponent(int componentId)
+        public BDictionary<int, Component> GetComponent(int componentId)
         {
             Components.TryGetValue(componentId, out var components);
             return components == null
@@ -72,7 +73,8 @@ namespace SimpleEcs
             if (components == null)
             {
                 state = new State(state);
-                state.Components[componentId] = new Dictionary<int, Component> { { entityId, component } };
+                state.Components[componentId] = new BDictionary<int, Component>();
+                state.Components[componentId][entityId] = component;
             }
             else
             {
@@ -80,7 +82,7 @@ namespace SimpleEcs
                 if (existing == null || existing != component)
                 {
                     state = new State(state);
-                    state.Components[componentId] = new Dictionary<int, Component>(Components[componentId]);
+                    state.Components[componentId] = Components[componentId].Clone();
                     state.Components[componentId][entityId] = component;
                 }
                 else
@@ -126,11 +128,11 @@ namespace SimpleEcs
 
             if (!state.Components.ContainsKey(componentId))
             {
-                state.Components[componentId] = new Dictionary<int, Component>(1);
+                state.Components[componentId] = new BDictionary<int, Component>();
             }
             else
             {
-                state.Components[componentId] = new Dictionary<int, Component>(state.Components[componentId]);
+                state.Components[componentId] = state.Components[componentId].Clone();
             }
 
             foreach (var entry in update)
@@ -162,7 +164,7 @@ namespace SimpleEcs
 
             var prev = this;
             var state = new State(this);
-            state.Components[componentId] = new Dictionary<int, Component>(state.Components[componentId]);
+            state.Components[componentId] = state.Components[componentId].Clone();
             state.Components[componentId].Remove(entityId);
 
             if (Logging)

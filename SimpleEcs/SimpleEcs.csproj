@@ -3,4 +3,9 @@
     <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
     <LangVersion>9.0</LangVersion>
   </PropertyGroup>
+  <ItemGroup>
+  <Reference Include="Loyc.Collections">
+      <HintPath>..\Loyc.Collections.dll</HintPath>
+  </Reference>
+  </ItemGroup>
 </Project>

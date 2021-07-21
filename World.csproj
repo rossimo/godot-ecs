@@ -24,4 +24,12 @@
       ReferenceOutputAssembly="false"/>
     <ProjectReference Include="SimpleEcs\SimpleEcs.csproj" />
   </ItemGroup>
+    <ItemGroup>
+  <Reference Include="Loyc.Collections">
+      <HintPath>Loyc.Collections.dll</HintPath>
+  </Reference>
+  <Reference Include="Loyc.Interfaces">
+      <HintPath>Loyc.Interfaces.dll</HintPath>
+  </Reference>
+  </ItemGroup>
 </Project>
