@@ -49,8 +49,12 @@ public class Renderer
     {
         if (previous == state) return state;
 
-        var (sprites, scales, rotations, clicks, positions, flashes) =
-            Diff.Compare<Sprite, Scale, Rotation, ClickEvent, Position, Flash>(previous, state);
+        var sprites = Diff<Sprite>.Compare(previous, state);
+        var scales = Diff<Scale>.Compare(previous, state);
+        var rotations = Diff<Rotation>.Compare(previous, state);
+        var clicks = Diff<ClickEvent>.Compare(previous, state);
+        var positions = Diff<Position>.Compare(previous, state);
+        var flashes = Diff<Flash>.Compare(previous, state);
 
         foreach (var (id, sprite) in sprites.Removed)
         {

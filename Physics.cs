@@ -70,8 +70,12 @@ public static class Physics
 
         if (configChange)
         {
-            var (areas, areaEnterEvents, collisions, positions, moves, physics) =
-                Diff.Compare<Area, AreaEnterEvent, Collision, Position, Move, PhysicsNode>(previous, state);
+            var areas = Diff<Area>.Compare(previous, state);
+            var areaEnterEvents = Diff<AreaEnterEvent>.Compare(previous, state);
+            var collisions = Diff<Collision>.Compare(previous, state);
+            var positions = Diff<Position>.Compare(previous, state);
+            var moves = Diff<Move>.Compare(previous, state);
+            var physics = Diff<PhysicsNode>.Compare(previous, state);
 
             var needPhysics = areas.Added.Select(entry => entry.ID)
                 .Concat(areas.Changed.Select(entry => entry.ID))
@@ -332,9 +336,7 @@ public static class Physics
                         });
                     }
 
-                    var otherEv = state.ContainsKey(collideId)
-                        ? state.Get<CollisionEvent>(collideId)
-                        : null;
+                    var otherEv = state.Get<CollisionEvent>(collideId);
                     if (otherEv != null)
                     {
                         var queue = (collideId, id, otherEv as Event);

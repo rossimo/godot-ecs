@@ -13,7 +13,7 @@ namespace SimpleEcs
 
     public class State
     {
-        private static Dictionary<int, Component> BLANK = new Dictionary<int, Component>();
+        private static readonly Dictionary<int, Component> BLANK = new Dictionary<int, Component>();
 
         public bool Logging;
         public IEnumerable<int> LoggingIgnore;
@@ -56,45 +56,38 @@ namespace SimpleEcs
 
         public Dictionary<int, Component> GetComponent(int componentId)
         {
-            if (!Components.ContainsKey(componentId))
-            {
-                return BLANK;
-            }
-            return Components[componentId];
-        }
-
-        public Boolean ContainsKey(int entityId)
-        {
-            foreach (var component in Components.Values)
-            {
-                if (component.ContainsKey(entityId))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            Components.TryGetValue(componentId, out var components);
+            return components == null
+                ? BLANK
+                : components;
         }
 
         public State With(int componentId, int entityId, Component component)
         {
-            var hasComponent = this.Components.ContainsKey(componentId);
-
-            if (hasComponent &&
-                this.Components[componentId].ContainsKey(entityId) &&
-                this.Components[componentId][entityId] == component)
-            {
-                return this;
-            }
-
             var prev = this;
             var state = this;
-            state = new State(state);
 
-            state.Components[componentId] = hasComponent
-                ? new Dictionary<int, Component>(state.Components[componentId])
-                : new Dictionary<int, Component>(1);
-            state.Components[componentId][entityId] = component;
+            Components.TryGetValue(componentId, out var components);
+
+            if (components == null)
+            {
+                state = new State(state);
+                state.Components[componentId] = new Dictionary<int, Component> { { entityId, component } };
+            }
+            else
+            {
+                Components[componentId].TryGetValue(componentId, out var existing);
+                if (existing == null || existing != component)
+                {
+                    state = new State(state);
+                    state.Components[componentId] = new Dictionary<int, Component>(Components[componentId]);
+                    state.Components[componentId][entityId] = component;
+                }
+                else
+                {
+                    return this;
+                }
+            }
 
             if (Logging)
             {
@@ -172,11 +165,6 @@ namespace SimpleEcs
             state.Components[componentId] = new Dictionary<int, Component>(state.Components[componentId]);
             state.Components[componentId].Remove(entityId);
 
-            if (state.Components[componentId].Count() == 0)
-            {
-                state.Components.Remove(componentId);
-            }
-
             if (Logging)
             {
                 Logger.Log(prev, state, LoggingIgnore);
@@ -226,26 +214,18 @@ namespace SimpleEcs
         IEnumerable<(int ID, C Component)> Added,
         IEnumerable<(int ID, C Component)> Removed,
         IEnumerable<(int ID, C Component)> Changed)
+        where C : Component;
+
+    public class Diff<C>
         where C : Component
     {
-        public Result<D> To<D>() where D : Component
-        {
-            return new Result<D>(
-                Added: Added.Select(entry => (entry.ID, entry.Component as D)),
-                Removed: Removed.Select(entry => (entry.ID, entry.Component as D)),
-                Changed: Changed.Select(entry => (entry.ID, entry.Component as D)));
-        }
-    }
+        private static readonly IEnumerable<(int ID, C Component)> BLANK = new (int ID, C Component)[] { };
 
-    public class Diff
-    {
-        private static (int ID, Component Component)[] BLANK = new (int ID, Component Component)[] { };
-
-        public static Result<Component> Compare(int componentId, State before, State after)
+        public static Result<C> Compare(int componentId, State before, State after)
         {
             if (before == after)
             {
-                return new Result<Component>(
+                return new Result<C>(
                     Added: BLANK,
                     Removed: BLANK,
                     Changed: BLANK);
@@ -254,160 +234,26 @@ namespace SimpleEcs
             var oldComponents = before.GetComponent(componentId);
             var newComponents = after.GetComponent(componentId);
 
-            var oldIds = oldComponents?.Keys.ToHashSet();
-            var newIds = newComponents?.Keys.ToHashSet();
+            var oldIds = oldComponents?.Keys;
+            var newIds = newComponents?.Keys;
             var changeIds = (oldIds != null && newIds != null)
                 ? newIds.Intersect(oldIds).Where(id => oldComponents[id] != newComponents[id])
                 : null;
 
-            return new Result<Component>(
+            return new Result<C>(
                 Added: (oldIds != null && newIds != null)
-                    ? newIds.Except(oldIds).Select(id => (id, newComponents[id]))
-                    : newIds?.Select(id => (id, newComponents[id])) ?? BLANK,
+                    ? newIds.Except(oldIds).Select(id => (id, newComponents[id] as C))
+                    : newIds?.Select(id => (id, newComponents[id] as C)) ?? BLANK,
                 Removed: (oldIds != null && newIds != null)
-                    ? oldIds.Except(newIds).Select(id => (id, oldComponents[id]))
-                    : oldIds?.Select(id => (id, oldComponents[id])) ?? BLANK,
-                Changed: changeIds?.Select(id => (id, newComponents[id])) ?? BLANK);
+                    ? oldIds.Except(newIds).Select(id => (id, oldComponents[id] as C))
+                    : oldIds?.Select(id => (id, oldComponents[id] as C)) ?? BLANK,
+                Changed: changeIds?.Select(id => (id, newComponents[id] as C)) ?? BLANK);
         }
 
-        public static Result<Component> Compare(Type type, State before, State after)
+        public static Result<C> Compare(State before, State after)
         {
-            return Compare(type.Name.GetHashCode(), before, after);
-        }
-
-        public static Result<C1> Compare<C1>(State Current, State next)
-            where C1 : Component
-        {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            return changes1;
-        }
-
-        public static (Result<C1>, Result<C2>) Compare<C1, C2>(State Current, State next)
-            where C1 : Component
-            where C2 : Component
-        {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            return (changes1, changes2);
-        }
-
-        public static (Result<C1>, Result<C2>, Result<C3>) Compare<C1, C2, C3>(State Current, State next)
-            where C1 : Component
-            where C2 : Component
-            where C3 : Component
-        {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            return (changes1, changes2, changes3);
-        }
-
-        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>) Compare<C1, C2, C3, C4>(State Current, State next)
-            where C1 : Component
-            where C2 : Component
-            where C3 : Component
-            where C4 : Component
-        {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
-            return (changes1, changes2, changes3, changes4);
-        }
-
-        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>) Compare<C1, C2, C3, C4, C5>(State Current, State next)
-            where C1 : Component
-            where C2 : Component
-            where C3 : Component
-            where C4 : Component
-            where C5 : Component
-        {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
-            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
-            return (changes1, changes2, changes3, changes4, changes5);
-        }
-
-        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>, Result<C6>) Compare<C1, C2, C3, C4, C5, C6>(State Current, State next)
-            where C1 : Component
-            where C2 : Component
-            where C3 : Component
-            where C4 : Component
-            where C5 : Component
-            where C6 : Component
-        {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
-            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
-            var changes6 = Compare(typeof(C6), Current, next).To<C6>();
-            return (changes1, changes2, changes3, changes4, changes5, changes6);
-        }
-
-        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>, Result<C6>, Result<C7>) Compare<C1, C2, C3, C4, C5, C6, C7>(State Current, State next)
-            where C1 : Component
-            where C2 : Component
-            where C3 : Component
-            where C4 : Component
-            where C5 : Component
-            where C6 : Component
-            where C7 : Component
-        {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
-            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
-            var changes6 = Compare(typeof(C6), Current, next).To<C6>();
-            var changes7 = Compare(typeof(C7), Current, next).To<C7>();
-            return (changes1, changes2, changes3, changes4, changes5, changes6, changes7);
-        }
-
-        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>, Result<C6>, Result<C7>, Result<C8>) Compare<C1, C2, C3, C4, C5, C6, C7, C8>(State Current, State next)
-            where C1 : Component
-            where C2 : Component
-            where C3 : Component
-            where C4 : Component
-            where C5 : Component
-            where C6 : Component
-            where C7 : Component
-            where C8 : Component
-        {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
-            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
-            var changes6 = Compare(typeof(C6), Current, next).To<C6>();
-            var changes7 = Compare(typeof(C7), Current, next).To<C7>();
-            var changes8 = Compare(typeof(C8), Current, next).To<C8>();
-            return (changes1, changes2, changes3, changes4, changes5, changes6, changes7, changes8);
-        }
-
-        public static (Result<C1>, Result<C2>, Result<C3>, Result<C4>, Result<C5>, Result<C6>, Result<C7>, Result<C8>, Result<C9>) Compare<C1, C2, C3, C4, C5, C6, C7, C8, C9>(State Current, State next)
-            where C1 : Component
-            where C2 : Component
-            where C3 : Component
-            where C4 : Component
-            where C5 : Component
-            where C6 : Component
-            where C7 : Component
-            where C8 : Component
-            where C9 : Component
-        {
-            var changes1 = Compare(typeof(C1), Current, next).To<C1>();
-            var changes2 = Compare(typeof(C2), Current, next).To<C2>();
-            var changes3 = Compare(typeof(C3), Current, next).To<C3>();
-            var changes4 = Compare(typeof(C4), Current, next).To<C4>();
-            var changes5 = Compare(typeof(C5), Current, next).To<C5>();
-            var changes6 = Compare(typeof(C6), Current, next).To<C6>();
-            var changes7 = Compare(typeof(C7), Current, next).To<C7>();
-            var changes8 = Compare(typeof(C8), Current, next).To<C8>();
-            var changes9 = Compare(typeof(C9), Current, next).To<C9>();
-            return (changes1, changes2, changes3, changes4, changes5, changes6, changes7, changes8, changes9);
+            var componentId = ComponentUtils<C>.Index;
+            return Compare(componentId, before, after);
         }
     }
 }

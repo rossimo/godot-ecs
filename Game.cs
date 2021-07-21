@@ -44,7 +44,10 @@ public class Game : Godot.YSort
             .With(InputEvents.ENTITY)
             .With(Physics.ENTITY, new Ticks { Tick = 0 });
 
-        Logger.Log(new State(), State);
+        if (State.Logging)
+        {
+            Logger.Log(new State(), State);
+        }
     }
 
     public static Component[] Potion = new Component[] {

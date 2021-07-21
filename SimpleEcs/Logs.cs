@@ -26,7 +26,7 @@ namespace SimpleEcs
                     var diffs = new List<SimpleEcs.Result<SimpleEcs.Component>>();
                     foreach (var type in types)
                     {
-                        diffs.Add(Diff.Compare(type, Previous, State));
+                        diffs.Add(Diff<Component>.Compare(type, Previous, State));
                     }
 
                     IEnumerable<(int ID, string Message)> all = new List<(int, string)>();
