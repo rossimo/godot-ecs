@@ -2,8 +2,9 @@
   <PropertyGroup>
     <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
     <LangVersion>9.0</LangVersion>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="SimpleEcs\SimpleEcs.csproj" />
+    <ProjectReference Include="..\SimpleEcs\SimpleEcs.csproj" />
   </ItemGroup>
 </Project>

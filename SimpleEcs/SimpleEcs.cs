@@ -11,6 +11,8 @@ namespace SimpleEcs
         private static Dictionary<int, Component> BLANK = new Dictionary<int, Component>();
 
         public IEnumerable<int> LoggingIgnore = new int[] { };
+        public bool Logging = false;
+
         private Dictionary<int, Dictionary<int, Component>> Components = new Dictionary<int, Dictionary<int, Component>>();
 
         public State()
@@ -38,15 +40,10 @@ namespace SimpleEcs
         public C1 Get<C1>(int componentId, int entityId)
             where C1 : Component
         {
-            Dictionary<int, Component> components;
-            Components.TryGetValue(componentId, out components);
-            if (components == null)
-            {
-                return null;
-            }
+            Components.TryGetValue(componentId, out var components);
+            if (components == null) return null;
 
-            Component component;
-            components.TryGetValue(entityId, out component);
+            components.TryGetValue(entityId, out var component);
             return component as C1;
         }
 
@@ -94,7 +91,11 @@ namespace SimpleEcs
                     : new Dictionary<int, Component>(1);
                 state.Components[componentId][entityId] = component;
             }
-            Logger.Log(prev, state, LoggingIgnore);
+
+            if (Logging)
+            {
+                Logger.Log(prev, state, LoggingIgnore);
+            }
 
             return state;
         }
@@ -151,7 +152,12 @@ namespace SimpleEcs
             {
                 state.Components.Remove(componentId);
             }
-            Logger.Log(prev, state, LoggingIgnore);
+
+            if (Logging)
+            {
+                Logger.Log(prev, state, LoggingIgnore);
+            }
+            
             return state;
         }
     }

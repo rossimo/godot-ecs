@@ -45,13 +45,12 @@ namespace SimpleEcs
                 }
             }));
 
-        static Logger()
-        {
-            LogThread.Start();
-        }
-
         public static void Log(State Previous, State State, IEnumerable<int> ignore = null)
         {
+            if (!LogThread.IsAlive) {
+                LogThread.Start();
+            }
+
             Queue.Add((Previous, State, ignore));
         }
     }
