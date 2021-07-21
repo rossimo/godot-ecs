@@ -6,14 +6,17 @@
   <PropertyGroup>
     <DefaultItemExcludes>Generated\**</DefaultItemExcludes>
     <DefaultItemExcludes>SimpleEcs\**</DefaultItemExcludes>
+    <DefaultItemExcludes>SimpleEcsTest\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Generated\**" />
     <Compile Remove="SimpleEcs\**" />
+    <Compile Remove="SimpleEcsTest\**" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Remove="Generated\**" />
     <EmbeddedResource Remove="SimpleEcs\**" />
+    <EmbeddedResource Remove="SimpleEcsTest\**" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="Generated\Generated.csproj" 
