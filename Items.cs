@@ -21,7 +21,7 @@ public static class Items
             {
                 case AddItem addItem:
                     {
-                        var inventory = state.Inventory(target);
+                        var inventory = state.Get<Inventory>(target);
                         if (inventory != null)
                         {
                             state = state.With(target, new Inventory

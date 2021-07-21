@@ -6,11 +6,16 @@ namespace SimpleEcs
 {
     public record Component();
 
+    public static class ComponentUtils<T>
+    {
+        public static int Index = typeof(T).Name.GetHashCode();
+    }
+
     public class State
     {
         private static Dictionary<int, Component> BLANK = new Dictionary<int, Component>();
-        
-        public bool Logging = false;
+
+        public bool Logging;
         public IEnumerable<int> LoggingIgnore;
         private Dictionary<int, Dictionary<int, Component>> Components;
 
@@ -18,6 +23,7 @@ namespace SimpleEcs
         {
             Components = new Dictionary<int, Dictionary<int, Component>>();
             LoggingIgnore = new int[] { };
+            Logging = false;
         }
 
         public State(State state)
@@ -32,17 +38,16 @@ namespace SimpleEcs
             return Components.Keys;
         }
 
-        public Dictionary<int, Component> GetAll<C1>(int componentId)
+        public Dictionary<int, Component> Get<C1>()
             where C1 : Component
         {
-            return GetComponent(componentId);
+            return GetComponent(ComponentUtils<C1>.Index);
         }
 
-
-        public C1 Get<C1>(int componentId, int entityId)
+        public C1 Get<C1>(int entityId)
             where C1 : Component
         {
-            Components.TryGetValue(componentId, out var components);
+            Components.TryGetValue(ComponentUtils<C1>.Index, out var components);
             if (components == null) return null;
 
             components.TryGetValue(entityId, out var component);
@@ -71,32 +76,49 @@ namespace SimpleEcs
             return false;
         }
 
+        public State With(int componentId, int entityId, Component component)
+        {
+            var hasComponent = this.Components.ContainsKey(componentId);
+
+            if (hasComponent &&
+                this.Components[componentId].ContainsKey(entityId) &&
+                this.Components[componentId][entityId] == component)
+            {
+                return this;
+            }
+
+            var prev = this;
+            var state = this;
+            state = new State(state);
+
+            state.Components[componentId] = hasComponent
+                ? new Dictionary<int, Component>(state.Components[componentId])
+                : new Dictionary<int, Component>(1);
+            state.Components[componentId][entityId] = component;
+
+            if (Logging)
+            {
+                Logger.Log(prev, state, LoggingIgnore);
+            }
+
+            return state;
+        }
+
+        public State With<C>(int entityId, C component)
+         where C : Component
+        {
+            return With(ComponentUtils<C>.Index, entityId, component);
+        }
+
         public State With(int entityId, params Component[] components)
         {
-            var prev = this;
+
             var state = this;
             foreach (var component in components)
             {
                 var componentId = component.GetType().Name.GetHashCode();
 
-                if (state.Components.ContainsKey(componentId) &&
-                    state.Components[componentId].ContainsKey(entityId) &&
-                    state.Components[componentId][entityId] == component)
-                {
-                    continue;
-                }
-
-                state = new State(state);
-
-                state.Components[componentId] = state.Components.ContainsKey(componentId)
-                    ? new Dictionary<int, Component>(state.Components[componentId])
-                    : new Dictionary<int, Component>(1);
-                state.Components[componentId][entityId] = component;
-            }
-
-            if (Logging)
-            {
-                Logger.Log(prev, state, LoggingIgnore);
+                state = state.With(componentId, entityId, component);
             }
 
             return state;
@@ -159,8 +181,14 @@ namespace SimpleEcs
             {
                 Logger.Log(prev, state, LoggingIgnore);
             }
-            
+
             return state;
+        }
+
+        public State Without<C>(int entityId)
+            where C : Component
+        {
+            return Without(ComponentUtils<C>.Index, entityId);
         }
     }
 

@@ -77,7 +77,7 @@ public class Game : Godot.YSort
         var entry = (source, target, @event);
         State = State.With(Events.ENTITY, new EventQueue()
         {
-            Events = State.EventQueue(Events.ENTITY).Events.With(entry)
+            Events = State.Get<EventQueue>(Events.ENTITY).Events.With(entry)
         });
     }
 
