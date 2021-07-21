@@ -1,6 +1,6 @@
-using Ecs;
 using Godot;
 using System;
+using SimpleEcs;
 using System.Linq;
 
 public record Player() : Component;
@@ -24,7 +24,7 @@ public static class InputEvents
 {
     public static int ENTITY = 3;
 
-    public static Ecs.State System(Ecs.State state, Game game, InputEvent @event)
+    public static State System(State state, Game game, InputEvent @event)
     {
         switch (@event)
         {

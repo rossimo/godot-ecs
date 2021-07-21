@@ -1,7 +1,6 @@
-using Ecs;
 using Godot;
+using SimpleEcs;
 using System.Linq;
-using System.Collections.Generic;
 
 public record Sprite : Component
 {

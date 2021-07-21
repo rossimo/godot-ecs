@@ -1,6 +1,6 @@
-using Ecs;
 using Godot;
 using System;
+using SimpleEcs;
 using System.Linq;
 
 public class Game : Godot.YSort
@@ -10,7 +10,7 @@ public class Game : Godot.YSort
 
     public override void _Ready()
     {
-        State = new State()
+        State = new State() { LoggingIgnore = new[] { typeof(Ticks).Name.GetHashCode() } }
             .With(10,
                 new Player(),
                 new Speed { Value = 2.5f },
@@ -44,9 +44,7 @@ public class Game : Godot.YSort
             .With(InputEvents.ENTITY)
             .With(Physics.ENTITY, new Ticks { Tick = 0 });
 
-        Logger.Log(new State(), State, State.LOGGING_IGNORE);
-        
-        HelloWorld.Hello.Main8(new [] { ""});
+        Logger.Log(new State(), State);
     }
 
     public static Component[] Potion = new Component[] {

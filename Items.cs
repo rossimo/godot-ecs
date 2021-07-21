@@ -1,4 +1,4 @@
-using Ecs;
+using SimpleEcs;
 using System.Linq;
 
 public record Inventory : Component

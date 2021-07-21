@@ -1,4 +1,4 @@
-using Ecs;
+using SimpleEcs;
 using System.Collections.Generic;
 
 public record ExpirationEvent : Event

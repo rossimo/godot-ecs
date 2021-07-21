@@ -5,16 +5,20 @@
   </PropertyGroup>
   <PropertyGroup>
     <DefaultItemExcludes>Generated\**</DefaultItemExcludes>
+    <DefaultItemExcludes>SimpleEcs\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Generated\**" />
+    <Compile Remove="SimpleEcs\**" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Remove="Generated\**" />
+    <EmbeddedResource Remove="SimpleEcs\**" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="Generated\Generated.csproj" 
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"/>
+    <ProjectReference Include="SimpleEcs\SimpleEcs.csproj" />
   </ItemGroup>
 </Project>

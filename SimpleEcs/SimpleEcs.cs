@@ -2,16 +2,16 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace Ecs
+namespace SimpleEcs
 {
     public record Component();
 
     public class State
     {
-        private Dictionary<int, Dictionary<int, Component>> Components = new Dictionary<int, Dictionary<int, Component>>();
-
-        public static IEnumerable<int> LOGGING_IGNORE = new[] { typeof(Ticks).Name.GetHashCode() };
         private static Dictionary<int, Component> BLANK = new Dictionary<int, Component>();
+
+        public IEnumerable<int> LoggingIgnore = new int[] { };
+        private Dictionary<int, Dictionary<int, Component>> Components = new Dictionary<int, Dictionary<int, Component>>();
 
         public State()
         {
@@ -20,6 +20,7 @@ namespace Ecs
         public State(State state)
         {
             Components = new Dictionary<int, Dictionary<int, Component>>(state.Components);
+            LoggingIgnore = state.LoggingIgnore;
         }
 
         public IEnumerable<int> Types()
@@ -39,7 +40,8 @@ namespace Ecs
         {
             Dictionary<int, Component> components;
             Components.TryGetValue(componentId, out components);
-            if (components == null) {
+            if (components == null)
+            {
                 return null;
             }
 
@@ -92,7 +94,7 @@ namespace Ecs
                     : new Dictionary<int, Component>(1);
                 state.Components[componentId][entityId] = component;
             }
-            Logger.Log(prev, state, State.LOGGING_IGNORE);
+            Logger.Log(prev, state, LoggingIgnore);
 
             return state;
         }
@@ -149,7 +151,7 @@ namespace Ecs
             {
                 state.Components.Remove(componentId);
             }
-            Logger.Log(prev, state, State.LOGGING_IGNORE);
+            Logger.Log(prev, state, LoggingIgnore);
             return state;
         }
     }

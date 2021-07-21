@@ -1,7 +1,6 @@
-using Ecs;
 using System;
+using SimpleEcs;
 using System.Linq;
-
 
 public static class Target
 {
