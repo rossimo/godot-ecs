@@ -9,20 +9,22 @@ namespace SimpleEcs
     public class State
     {
         private static Dictionary<int, Component> BLANK = new Dictionary<int, Component>();
-
-        public IEnumerable<int> LoggingIgnore = new int[] { };
+        
         public bool Logging = false;
-
-        private Dictionary<int, Dictionary<int, Component>> Components = new Dictionary<int, Dictionary<int, Component>>();
+        public IEnumerable<int> LoggingIgnore;
+        private Dictionary<int, Dictionary<int, Component>> Components;
 
         public State()
         {
+            Components = new Dictionary<int, Dictionary<int, Component>>();
+            LoggingIgnore = new int[] { };
         }
 
         public State(State state)
         {
             Components = new Dictionary<int, Dictionary<int, Component>>(state.Components);
             LoggingIgnore = state.LoggingIgnore;
+            Logging = state.Logging;
         }
 
         public IEnumerable<int> Types()
