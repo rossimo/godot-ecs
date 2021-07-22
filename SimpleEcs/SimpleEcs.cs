@@ -1,7 +1,9 @@
 using System;
-using System.Linq;
 using System.Collections.Generic;
 using Loyc.Collections;
+using System.Linq;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace SimpleEcs
 {
@@ -14,15 +16,15 @@ namespace SimpleEcs
 
     public class State
     {
-        private static readonly BDictionary<int, Component> BLANK = new BDictionary<int, Component>();
+        private static readonly Dictionary<int, Component> BLANK = new Dictionary<int, Component>();
 
         public bool Logging;
         public IEnumerable<int> LoggingIgnore;
-        private BDictionary<int, BDictionary<int, Component>> Components;
+        private Dictionary<int, Dictionary<int, Component>> Components;
 
         public State()
         {
-            Components = new BDictionary<int, BDictionary<int, Component>>();
+            Components = new Dictionary<int, Dictionary<int, Component>>();
             LoggingIgnore = new int[] { };
             Logging = false;
         }
@@ -39,7 +41,7 @@ namespace SimpleEcs
             return Components.Keys;
         }
 
-        public BDictionary<int, Component> Get<C1>()
+        public Dictionary<int, Component> Get<C1>()
             where C1 : Component
         {
             return GetComponent(ComponentUtils<C1>.Index);
@@ -55,7 +57,7 @@ namespace SimpleEcs
             return component as C1;
         }
 
-        public BDictionary<int, Component> GetComponent(int componentId)
+        public Dictionary<int, Component> GetComponent(int componentId)
         {
             Components.TryGetValue(componentId, out var components);
             return components == null
@@ -69,21 +71,21 @@ namespace SimpleEcs
             var state = this;
 
             Components.TryGetValue(componentId, out var components);
-
             if (components == null)
             {
                 state = new State(state);
-                state.Components[componentId] = new BDictionary<int, Component>();
-                state.Components[componentId][entityId] = component;
+                var newComponents = new Dictionary<int, Component>();
+                newComponents.Add(entityId, component);
+                state.Components.Add(componentId, newComponents);
             }
             else
             {
-                Components[componentId].TryGetValue(componentId, out var existing);
-                if (existing == null || existing != component)
+                components.TryGetValue(entityId, out var existing);
+                if (existing != component)
                 {
                     state = new State(state);
-                    state.Components[componentId] = Components[componentId].Clone();
-                    state.Components[componentId][entityId] = component;
+                    var newComponents = state.Components[componentId] = components.Clone();
+                    newComponents[entityId] = component;
                 }
                 else
                 {
@@ -122,22 +124,24 @@ namespace SimpleEcs
         public State Batch<C>(Dictionary<int, C> update)
             where C : Component
         {
-            var componentId = typeof(C).Name.GetHashCode();
+            var componentId = ComponentUtils<C>.Index;
 
             var state = new State(this);
 
+            Dictionary<int, Component> newComponents;
+
             if (!state.Components.ContainsKey(componentId))
             {
-                state.Components[componentId] = new BDictionary<int, Component>();
+                newComponents = state.Components[componentId] = new Dictionary<int, Component>();
             }
             else
             {
-                state.Components[componentId] = state.Components[componentId].Clone();
+                newComponents = state.Components[componentId] = state.Components[componentId].Clone();
             }
 
             foreach (var entry in update)
             {
-                state.Components[componentId][entry.Key] = entry.Value;
+                newComponents[entry.Key] = entry.Value;
             }
 
             return state;
@@ -149,8 +153,23 @@ namespace SimpleEcs
             var state = this;
             foreach (var componentId in state.Components.Keys)
             {
-                state = state.Without(componentId, entityId);
+                if (state.Components[componentId].ContainsKey(entityId))
+                {
+                    if (state == prev)
+                    {
+                        state = new State(prev);
+                    }
+
+                    var newComponents = state.Components[componentId] = state.Components[componentId].Clone();
+                    newComponents.Remove(entityId);
+                }
             }
+
+            if (Logging)
+            {
+                Logger.Log(prev, state, LoggingIgnore);
+            }
+
             return state;
         }
 
@@ -164,8 +183,8 @@ namespace SimpleEcs
 
             var prev = this;
             var state = new State(this);
-            state.Components[componentId] = state.Components[componentId].Clone();
-            state.Components[componentId].Remove(entityId);
+            var newComponents = state.Components[componentId] = state.Components[componentId].Clone();
+            newComponents.Remove(entityId);
 
             if (Logging)
             {
@@ -208,7 +227,13 @@ namespace SimpleEcs
 
         public static V[] With<V>(this V[] list, V value)
         {
-            return list.Concat(new[] { value }).ToArray();
+            return list.ConcatNow(new[] { value }).ToArray();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Dictionary<int, T> Clone<T>(this Dictionary<int, T> self)
+        {
+            return new Dictionary<int, T>(self);
         }
     }
 
@@ -237,7 +262,7 @@ namespace SimpleEcs
             var newComponents = after.GetComponent(componentId);
 
             var oldIds = oldComponents?.Keys;
-            var newIds = newComponents?.Keys;
+            var newIds = newComponents?.Keys.ToHashSet();
             var changeIds = (oldIds != null && newIds != null)
                 ? newIds.Intersect(oldIds).Where(id => oldComponents[id] != newComponents[id])
                 : null;

@@ -31,5 +31,8 @@
   <Reference Include="Loyc.Interfaces">
       <HintPath>Loyc.Interfaces.dll</HintPath>
   </Reference>
+  <Reference Include="Loyc.Essentials">
+      <HintPath>Loyc.Essentials.dll</HintPath>
+  </Reference>
   </ItemGroup>
 </Project>
