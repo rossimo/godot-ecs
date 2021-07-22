@@ -13,7 +13,7 @@ public class Game : Godot.YSort
         State = new State() { LoggingIgnore = new[] { typeof(Ticks).Name.GetHashCode() } }
             .With(10,
                 new Player(),
-                new Speed { Value = 2.5f },
+                new Speed { Value = 3f },
                 new Inventory { },
                 new Position { X = 50, Y = 50 },
                 new Scale { X = 3, Y = 3 },

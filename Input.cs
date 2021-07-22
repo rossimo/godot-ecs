@@ -85,7 +85,7 @@ public static class InputMonitor
                    state.Get<Position>(playerId),
                    new Sprite { Image = "res://resources/tiles/tile663.png" },
                    new Velocity { X = direction.x, Y = direction.y },
-                   new LowRenderPriority(),
+                   // new LowRenderPriority(),
                    new ExpirationEvent(new RemoveEntity()) with { Tick = Physics.MillisToTicks(1 * 1000) + tick }
                 );
             }
