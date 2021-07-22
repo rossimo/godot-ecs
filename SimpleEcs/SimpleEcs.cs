@@ -75,7 +75,7 @@ namespace SimpleEcs
             }
             else
             {
-                components.TryGetValue(componentId, out var existing);
+                components.TryGetValue(entityId, out var existing);
                 if (existing != component)
                 {
                     state = new State(state);
@@ -119,22 +119,24 @@ namespace SimpleEcs
         public State Batch<C>(Dictionary<int, C> update)
             where C : Component
         {
-            var componentId = typeof(C).Name.GetHashCode();
+            var componentId = ComponentUtils<C>.Index;
 
             var state = new State(this);
 
+            Dictionary<int, Component> newComponents;
+
             if (!state.Components.ContainsKey(componentId))
             {
-                state.Components[componentId] = new Dictionary<int, Component>(1);
+                newComponents = state.Components[componentId] = new Dictionary<int, Component>(update.Count());
             }
             else
             {
-                state.Components[componentId] = new Dictionary<int, Component>(state.Components[componentId]);
+                newComponents = state.Components[componentId] = new Dictionary<int, Component>(state.Components[componentId]);
             }
 
             foreach (var entry in update)
             {
-                state.Components[componentId][entry.Key] = entry.Value;
+                newComponents[entry.Key] = entry.Value;
             }
 
             return state;
