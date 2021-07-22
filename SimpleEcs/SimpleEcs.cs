@@ -68,20 +68,19 @@ namespace SimpleEcs
             var state = this;
 
             Components.TryGetValue(componentId, out var components);
-
             if (components == null)
             {
                 state = new State(state);
-                state.Components[componentId] = new Dictionary<int, Component> { { entityId, component } };
+                state.Components.Add(componentId, new Dictionary<int, Component> { { entityId, component } });
             }
             else
             {
-                Components[componentId].TryGetValue(componentId, out var existing);
-                if (existing == null || existing != component)
+                components.TryGetValue(componentId, out var existing);
+                if (existing != component)
                 {
                     state = new State(state);
-                    state.Components[componentId] = new Dictionary<int, Component>(Components[componentId]);
-                    state.Components[componentId][entityId] = component;
+                    var newComponents = state.Components[componentId] = new Dictionary<int, Component>(components);
+                    newComponents[entityId] = component;
                 }
                 else
                 {
@@ -147,8 +146,23 @@ namespace SimpleEcs
             var state = this;
             foreach (var componentId in state.Components.Keys)
             {
-                state = state.Without(componentId, entityId);
+                if (state.Components[componentId].ContainsKey(entityId))
+                {
+                    if (state == prev)
+                    {
+                        state = new State(prev);
+                    }
+
+                    var newComponents = state.Components[componentId] = new Dictionary<int, Component>(state.Components[componentId]);
+                    newComponents.Remove(entityId);
+                }
             }
+
+            if (Logging)
+            {
+                Logger.Log(prev, state, LoggingIgnore);
+            }
+
             return state;
         }
 
@@ -235,7 +249,7 @@ namespace SimpleEcs
             var newComponents = after.GetComponent(componentId);
 
             var oldIds = oldComponents?.Keys;
-            var newIds = newComponents?.Keys;
+            var newIds = newComponents?.Keys.ToHashSet();
             var changeIds = (oldIds != null && newIds != null)
                 ? newIds.Intersect(oldIds).Where(id => oldComponents[id] != newComponents[id])
                 : null;
