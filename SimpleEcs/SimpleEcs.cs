@@ -22,6 +22,7 @@ namespace SimpleEcs
         public IEnumerable<int> LoggingIgnore;
         private Dictionary<int, Dictionary<int, Component>> Components;
 
+
         public State()
         {
             Components = new Dictionary<int, Dictionary<int, Component>>();
@@ -29,6 +30,7 @@ namespace SimpleEcs
             Logging = false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public State(State state)
         {
             Components = state.Components.Clone();
@@ -47,6 +49,7 @@ namespace SimpleEcs
             return GetComponent(ComponentUtils<C1>.Index);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public C1 Get<C1>(int entityId)
             where C1 : Component
         {
@@ -65,6 +68,7 @@ namespace SimpleEcs
                 : components;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public State With(int componentId, int entityId, Component component)
         {
             var prev = this;
@@ -101,6 +105,7 @@ namespace SimpleEcs
             return state;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public State With<C>(int entityId, C component)
          where C : Component
         {
@@ -111,8 +116,9 @@ namespace SimpleEcs
         {
 
             var state = this;
-            foreach (var component in components)
+            for (var i = 0; i < components.Length; i++)
             {
+                var component = components[i];
                 var componentId = component.GetType().Name.GetHashCode();
 
                 state = state.With(componentId, entityId, component);
