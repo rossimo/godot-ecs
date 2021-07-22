@@ -55,8 +55,6 @@ public static class InputMonitor
 {
     public static int ENTITY = InputEvents.ENTITY;
 
-    private static Random rnd = new Random();
-
     public static State System(State previous, State state, Game game)
     {
         var tick = state.Get<Ticks>(Physics.ENTITY).Tick;
@@ -83,7 +81,7 @@ public static class InputMonitor
             var direction = new Vector2(position.X, position.Y).DirectionTo(mousePosition).Normalized() * 10f;
             if (direction.x != 0 && direction.y != 0)
             {
-                state = state.With(rnd.Next(1000, 200000), 
+                state = state.With(state.CreateEntityId(), 
                    state.Get<Position>(playerId),
                    new Sprite { Image = "res://resources/tiles/tile663.png" },
                    new Velocity { X = direction.x, Y = direction.y },

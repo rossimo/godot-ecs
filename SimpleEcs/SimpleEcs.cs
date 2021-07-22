@@ -21,7 +21,7 @@ namespace SimpleEcs
         public bool Logging;
         public IEnumerable<int> LoggingIgnore;
         private Dictionary<int, Dictionary<int, Component>> Components;
-
+        private HashSet<int> SpareEntityIDs = new HashSet<int>();
 
         public State()
         {
@@ -68,11 +68,72 @@ namespace SimpleEcs
                 : components;
         }
 
+        public int CreateEntityId()
+        {
+            if (SpareEntityIDs.Count > 0)
+            {
+                return SpareEntityIDs.Take(1).First();
+            }
+            else
+            {
+                var ids = new SortedSet<int>();
+                foreach (var components in Components.Values)
+                {
+                    foreach (var entityId in components.Keys)
+                    {
+                        ids.Add(entityId);
+                    }
+                }
+
+                if (ids.Count > 0)
+                {
+                    var min = ids.Min();
+                    var max = ids.Max();
+                    var excluded = Enumerable.Range(min, max - min + 1).Except(ids);
+                    if (excluded.Count() > 0)
+                    {
+                        return excluded.First();
+                    }
+                    else
+                    {
+                        return ids.Last() + 1;
+                    }
+                }
+            }
+
+            return 0;
+        }
+
+        private void ReturnEntityId(int entityId)
+        {
+            SpareEntityIDs.Add(entityId);
+        }
+
+        private void RemoveEntityId(int entityId)
+        {
+            SpareEntityIDs.Remove(entityId);
+        }
+
+        private void RemoveIfUnusedEntityId(int entityId)
+        {
+            foreach (var component in Components.Values)
+            {
+                if (component.ContainsKey(entityId))
+                {
+                    return;
+                }
+            }
+
+            SpareEntityIDs.Remove(entityId);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public State With(int componentId, int entityId, Component component)
         {
             var prev = this;
             var state = this;
+
+            RemoveEntityId(entityId);
 
             Components.TryGetValue(componentId, out var components);
             if (components == null)
@@ -114,7 +175,6 @@ namespace SimpleEcs
 
         public State With(int entityId, params Component[] components)
         {
-
             var state = this;
             for (var i = 0; i < components.Length; i++)
             {
@@ -171,6 +231,8 @@ namespace SimpleEcs
                 }
             }
 
+            ReturnEntityId(entityId);
+
             if (Logging)
             {
                 Logger.Log(prev, state, LoggingIgnore);
@@ -191,6 +253,8 @@ namespace SimpleEcs
             var state = new State(this);
             var newComponents = state.Components[componentId] = state.Components[componentId].Clone();
             newComponents.Remove(entityId);
+
+            RemoveIfUnusedEntityId(entityId);
 
             if (Logging)
             {
