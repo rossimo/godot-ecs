@@ -3,97 +3,98 @@ using Leopotam.EcsLite;
 
 public class Game : Godot.YSort
 {
-	public EcsWorld world;
-	public EcsSystems systems;
+    public EcsWorld world;
+    public EcsSystems systems;
 
-	public override void _Ready()
-	{
-		world = new EcsWorld();
-		systems = new EcsSystems(world, this)
-			.Add(new Renderer(world));
-		systems.Init();
+    public override void _Ready()
+    {
+        world = new EcsWorld();
+        systems = new EcsSystems(world, this)
+            .Add(new Renderer(world));
 
-		var sprites = world.GetPool<Sprite>();
-		var positions = world.GetPool<Position>();
-		var scales = world.GetPool<Scale>();
+        var sprites = world.GetPool<Sprite>();
+        var positions = world.GetPool<Position>();
+        var scales = world.GetPool<Scale>();
 
-		{
-			var player = world.NewEntity();
+        {
+            var player = world.NewEntity();
 
-			ref var sprite = ref sprites.Add(player);
-			sprite.Image = "res://resources/tiles/tile072.png";
+            ref var sprite = ref sprites.Add(player);
+            sprite.Image = "res://resources/tiles/tile072.png";
 
-			ref var position = ref positions.Add(player);
-			position.X = 50;
-			position.Y = 50;
+            ref var position = ref positions.Add(player);
+            position.X = 50;
+            position.Y = 50;
 
-			ref var scale = ref scales.Add(player);
-			scale.X = 3;
-			scale.Y = 3;
-		}
+            ref var scale = ref scales.Add(player);
+            scale.X = 3;
+            scale.Y = 3;
+        }
 
-		{
-			var fire = world.NewEntity();
+        {
+            var fire = world.NewEntity();
 
-			ref var sprite = ref sprites.Add(fire);
-			sprite.Image = "res://resources/tiles/tile495.png";
+            ref var sprite = ref sprites.Add(fire);
+            sprite.Image = "res://resources/tiles/tile495.png";
 
-			ref var position = ref positions.Add(fire);
-			position.X = 400;
-			position.Y = 200;
+            ref var position = ref positions.Add(fire);
+            position.X = 400;
+            position.Y = 200;
 
-			ref var scale = ref scales.Add(fire);
-			scale.X = 2;
-			scale.Y = 2;
-		}
+            ref var scale = ref scales.Add(fire);
+            scale.X = 2;
+            scale.Y = 2;
+        }
 
-		{
-			var button = world.NewEntity();
+        {
+            var button = world.NewEntity();
 
-			ref var sprite = ref sprites.Add(button);
-			sprite.Image = "res://resources/tiles/tile481.png";
+            ref var sprite = ref sprites.Add(button);
+            sprite.Image = "res://resources/tiles/tile481.png";
 
-			ref var position = ref positions.Add(button);
-			position.X = 300;
-			position.Y = 300;
+            ref var position = ref positions.Add(button);
+            position.X = 300;
+            position.Y = 300;
 
-			ref var scale = ref scales.Add(button);
-			scale.X = 2;
-			scale.Y = 2;
-		}
+            ref var scale = ref scales.Add(button);
+            scale.X = 2;
+            scale.Y = 2;
+        }
 
-		{
-			var potion = world.NewEntity();
+        {
+            var potion = world.NewEntity();
 
-			ref var sprite = ref sprites.Add(potion);
-			sprite.Image = "res://resources/tiles/tile570.png";
+            ref var sprite = ref sprites.Add(potion);
+            sprite.Image = "res://resources/tiles/tile570.png";
 
-			ref var position = ref positions.Add(potion);
-			position.X = 200;
-			position.Y = 300;
+            ref var position = ref positions.Add(potion);
+            position.X = 200;
+            position.Y = 300;
 
-			ref var scale = ref scales.Add(potion);
-			scale.X = 2;
-			scale.Y = 2;
-		}
-	}
+            ref var scale = ref scales.Add(potion);
+            scale.X = 2;
+            scale.Y = 2;
+        }
 
-	public override void _Input(InputEvent @event)
-	{
-		//State = InputEvents.System(State, this, @event);
-	}
+        systems.Init();
+    }
 
-	public override void _PhysicsProcess(float delta)
-	{
-		systems.Run();
-		//State = InputMonitor.System(Previous, State, this);
-		//State = Events.System(Previous, State);
-		//State = Combat.System(Previous, State);
-		//State = Physics.System(Previous, State, this, delta);
-		//State = Renderer.System(Previous, State, this, delta);
-	}
+    public override void _Input(InputEvent @event)
+    {
+        //State = InputEvents.System(State, this, @event);
+    }
 
-	/*
+    public override void _PhysicsProcess(float delta)
+    {
+        systems.Run();
+        //State = InputMonitor.System(Previous, State, this);
+        //State = Events.System(Previous, State);
+        //State = Combat.System(Previous, State);
+        //State = Physics.System(Previous, State, this, delta);
+        //State = Renderer.System(Previous, State, this, delta);
+    }
+
+    /*
 	public void QueueEvent(Event @event, int source, int target)
 	{
 

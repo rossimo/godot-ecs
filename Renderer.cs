@@ -2,30 +2,24 @@ using Godot;
 using System.Linq;
 using Leopotam.EcsLite;
 
-public struct SpriteNode
-{
-    public Godot.Sprite Node;
-}
-
-public struct SpriteAdd
+public struct Sprite
 {
     public string Image;
 }
 
-public struct SpriteRemove
-{
+public struct SpriteUpdated { }
 
-}
-
-public struct LowRenderPriority
-{
-}
+public struct SpriteRemove { }
 
 public struct Position
 {
     public float X;
     public float Y;
 }
+
+public struct PositionUpdated { }
+
+public struct LowRenderPriority { }
 
 public struct Rotation
 {
@@ -52,48 +46,84 @@ public struct Flash
 
 // public record ClickEvent : Event;
 
-public class Renderer : IEcsRunSystem
+public class ChangeListener<C, U>
+    where C : struct
+    where U : struct
 {
-    
-    
-    private EcsPool<Position> positions;
-    private EcsFilter spritesAdded;
-    private EcsFilter spritesRemoved;
+    private EcsPool<C> ComponentsPool;
+    private EcsPool<U> UpdatedPool;
+    public EcsFilter Updated;
+
+    public ChangeListener(EcsWorld world)
+    {
+        ComponentsPool = world.GetPool<C>();
+        UpdatedPool = world.GetPool<U>();
+        Updated = world.Filter<C>().Inc<U>().End();
+    }
+
+    public void Init(EcsWorld world)
+    {
+        foreach (int entity in world.Filter<C>().End())
+        {
+            UpdatedPool.Add(entity);
+        }
+    }
+
+    public ref C Get(int entity)
+    {
+        return ref ComponentsPool.Get(entity);
+    }
+
+    public void CompleteUpdate(int entity)
+    {
+        UpdatedPool.Del(entity);
+    }
+}
+
+public class Renderer : IEcsRunSystem, IEcsInitSystem
+{
+    private ChangeListener<Sprite, SpriteUpdated> sprites;
+    private ChangeListener<Position, PositionUpdated> positions;
 
     public Renderer(EcsWorld world)
     {
-        sprites = world.GetPool<Sprite>();
-        positions = world.GetPool<Position>();
-        spritesRemoved = EcsFilter.Mask.New(world).Exc<Sprite>().End();
-        spritesAdded = EcsFilter.Mask.New(world).Inc<Sprite>().Inc<Position>().End();
+        sprites = new ChangeListener<Sprite, SpriteUpdated>(world);
+        positions = new ChangeListener<Position, PositionUpdated>(world);
+    }
+
+    public void Init(EcsSystems systems)
+    {
+        var world = systems.GetWorld();
+
+        sprites.Init(world);
+        positions.Init(world);
     }
 
     public void Run(EcsSystems systems)
     {
         var game = systems.GetShared<Game>();
 
-        foreach (int entity in spritesRemoved)
-        {
-            var node = game.GetNode($"{entity}");
-            game.RemoveChild(node);
-            node.QueueFree();
-
-            spritesRemoved.RemoveEntity(entity);
-        }
-
-        foreach (int entity in spritesAdded)
+        foreach (int entity in sprites.Updated)
         {
             ref Sprite sprite = ref sprites.Get(entity);
-            ref Position position = ref positions.Get(entity);
 
             game.AddChild(new Godot.Sprite()
             {
                 Name = $"{entity}",
-                Texture = GD.Load<Texture>(sprite.Image),
-                Position = new Vector2(position.X, position.Y)
+                Texture = GD.Load<Texture>(sprite.Image)
             });
 
-            spritesAdded.RemoveEntity(entity);
+            sprites.CompleteUpdate(entity);
+        }
+
+        foreach (int entity in positions.Updated)
+        {
+            ref Position position = ref positions.Get(entity);
+
+            var node = game.GetNodeOrNull<Godot.Sprite>($"{entity}");
+            node.Position = new Vector2(position.X, position.Y);
+
+            positions.CompleteUpdate(entity);
         }
 
         /*
@@ -109,7 +139,7 @@ public class Renderer : IEcsRunSystem
             node.QueueFree();
         }
 
-        foreach (var (id, component) in sprites.Added)
+        foreach (var (id, component) in sprites.Updated)
         {
             var position = state.Get<Position>(id);
             position = position ?? new Position { X = 0, Y = 0 };
@@ -169,7 +199,7 @@ public class Renderer : IEcsRunSystem
             node.Scale = new Vector2(1, 1);
         }
 
-        foreach (var (id, scale) in scales.Added.Concat(scales.Changed))
+        foreach (var (id, scale) in scales.Updated.Concat(scales.Changed))
         {
             var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
@@ -183,7 +213,7 @@ public class Renderer : IEcsRunSystem
             node.RotationDegrees = 0;
         }
 
-        foreach (var (id, rotation) in rotations.Added.Concat(rotations.Changed))
+        foreach (var (id, rotation) in rotations.Updated.Concat(rotations.Changed))
         {
             var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
@@ -201,7 +231,7 @@ public class Renderer : IEcsRunSystem
             }
         }
 
-        foreach (var (id, click) in clicks.Added.Concat(clicks.Changed))
+        foreach (var (id, click) in clicks.Updated.Concat(clicks.Changed))
         {
             var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
@@ -215,7 +245,7 @@ public class Renderer : IEcsRunSystem
             });
         }
 
-        foreach (var (id, flash) in flashes.Added.Concat(flashes.Changed))
+        foreach (var (id, flash) in flashes.Updated.Concat(flashes.Changed))
         {
             state = state.Without<Flash>(id);
 
