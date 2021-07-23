@@ -3,36 +3,11 @@
     <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
     <LangVersion>9.0</LangVersion>
   </PropertyGroup>
-  <PropertyGroup>
-    <DefaultItemExcludes>Generated\**</DefaultItemExcludes>
-    <DefaultItemExcludes>SimpleEcs\**</DefaultItemExcludes>
-    <DefaultItemExcludes>SimpleEcsTest\**</DefaultItemExcludes>
-  </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="Generated\**" />
-    <Compile Remove="SimpleEcs\**" />
-    <Compile Remove="SimpleEcsTest\**" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Remove="Generated\**" />
-    <EmbeddedResource Remove="SimpleEcs\**" />
-    <EmbeddedResource Remove="SimpleEcsTest\**" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="Generated\Generated.csproj" 
-      OutputItemType="Analyzer"
-      ReferenceOutputAssembly="false"/>
-    <ProjectReference Include="SimpleEcs\SimpleEcs.csproj" />
-  </ItemGroup>
-    <ItemGroup>
-  <Reference Include="Loyc.Collections">
-      <HintPath>Loyc.Collections.dll</HintPath>
-  </Reference>
-  <Reference Include="Loyc.Interfaces">
-      <HintPath>Loyc.Interfaces.dll</HintPath>
-  </Reference>
-  <Reference Include="Loyc.Essentials">
-      <HintPath>Loyc.Essentials.dll</HintPath>
-  </Reference>
+    <Compile Remove="Combat.cs" />
+    <Compile Remove="Events.cs" />
+    <Compile Remove="Input.cs" />
+    <Compile Remove="Items.cs" />
+    <Compile Remove="Physics.cs" />
   </ItemGroup>
 </Project>

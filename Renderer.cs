@@ -1,60 +1,104 @@
 using Godot;
-using SimpleEcs;
 using System.Linq;
+using Leopotam.EcsLite;
 
-public record Sprite : Component
+public struct SpriteNode
+{
+    public Godot.Sprite Node;
+}
+
+public struct SpriteAdd
 {
     public string Image;
-    public ClickableSprite Node;
 }
 
-public record LowRenderPriority : Component
+public struct SpriteRemove
+{
+
+}
+
+public struct LowRenderPriority
 {
 }
 
-public record Position : Component
+public struct Position
 {
     public float X;
     public float Y;
 }
 
-public record Rotation : Component
+public struct Rotation
 {
     public float Degrees;
 }
 
-public record Scale : Component
+public struct Scale
 {
     public float X;
     public float Y;
 }
 
-public record Color : Component
+public struct Color
 {
     public float Red;
     public float Green;
     public float Blue;
 }
 
-public record Flash : Component
+public struct Flash
 {
     public Color Color;
 }
 
-public record ClickEvent : Event;
+// public record ClickEvent : Event;
 
-public class Renderer
+public class Renderer : IEcsRunSystem
 {
-    public static State System(State previous, State state, Game game, float delta)
-    {
-        if (previous == state) return state;
+    
+    
+    private EcsPool<Position> positions;
+    private EcsFilter spritesAdded;
+    private EcsFilter spritesRemoved;
 
-        var sprites = Diff<Sprite>.Compare(previous, state);
+    public Renderer(EcsWorld world)
+    {
+        sprites = world.GetPool<Sprite>();
+        positions = world.GetPool<Position>();
+        spritesRemoved = EcsFilter.Mask.New(world).Exc<Sprite>().End();
+        spritesAdded = EcsFilter.Mask.New(world).Inc<Sprite>().Inc<Position>().End();
+    }
+
+    public void Run(EcsSystems systems)
+    {
+        var game = systems.GetShared<Game>();
+
+        foreach (int entity in spritesRemoved)
+        {
+            var node = game.GetNode($"{entity}");
+            game.RemoveChild(node);
+            node.QueueFree();
+
+            spritesRemoved.RemoveEntity(entity);
+        }
+
+        foreach (int entity in spritesAdded)
+        {
+            ref Sprite sprite = ref sprites.Get(entity);
+            ref Position position = ref positions.Get(entity);
+
+            game.AddChild(new Godot.Sprite()
+            {
+                Name = $"{entity}",
+                Texture = GD.Load<Texture>(sprite.Image),
+                Position = new Vector2(position.X, position.Y)
+            });
+
+            spritesAdded.RemoveEntity(entity);
+        }
+
+        /*
+
         var scales = Diff<Scale>.Compare(previous, state);
-        var rotations = Diff<Rotation>.Compare(previous, state);
-        var clicks = Diff<ClickEvent>.Compare(previous, state);
-        var positions = Diff<Position>.Compare(previous, state);
-        var flashes = Diff<Flash>.Compare(previous, state);
 
         foreach (var (id, sprite) in sprites.Removed)
         {
@@ -232,8 +276,7 @@ public class Renderer
                 }
             }
         }
-
-        return state;
+        */
     }
 }
 

@@ -1,98 +1,119 @@
 using Godot;
-using System;
-using SimpleEcs;
-using System.Linq;
+using Leopotam.EcsLite;
 
 public class Game : Godot.YSort
 {
-    public State State;
-    private State Previous = new State();
+	public EcsWorld world;
+	public EcsSystems systems;
 
-    public override void _Ready()
-    {
-        State = new State() { LoggingIgnore = new[] { typeof(Ticks).Name.GetHashCode() } }
-            .With(10,
-                new Player(),
-                new Speed { Value = 3f },
-                new Inventory { },
-                new Position { X = 50, Y = 50 },
-                new Scale { X = 3, Y = 3 },
-                new Area(),
-                new Sprite { Image = "res://resources/tiles/tile072.png" },
-                new Collision())
-            .With(11, Potion)
-            .With(12,
-                new Position { X = 400, Y = 200 },
-                new Area(),
-                new Collision(),
-                new CollisionEvent(
-                    new Add(new Flash { Color = new Color { Red = 2f, Green = 2f, Blue = 0f } }),
-                    new Add(new Flash { Color = new Color { Red = 1f, Green = 0f, Blue = 0f } }, Target.Other)
-                ),
-                new Scale { X = 2, Y = 2 },
-                new Sprite { Image = "res://resources/tiles/tile495.png" })
-            .With(13,
-                new Position { X = 300, Y = 300 },
-                new Area(),
-                new AreaEnterEvent(
-                    new Add(new Flash { Color = new Color { Red = 0.1f, Green = 0.1f, Blue = 0.1f } }),
-                    new AddEntity(Potion, 11)
-                ),
-                new Scale { X = 2, Y = 2 },
-                new Sprite { Image = "res://resources/tiles/tile481.png" })
-            .With(Events.ENTITY, new EventQueue())
-            .With(InputEvents.ENTITY)
-            .With(Physics.ENTITY, new Ticks { Tick = 0 });
+	public override void _Ready()
+	{
+		world = new EcsWorld();
+		systems = new EcsSystems(world, this)
+			.Add(new Renderer(world));
+		systems.Init();
 
-        if (State.Logging)
-        {
-            Logger.Log(new State(), State);
-        }
-    }
+		var sprites = world.GetPool<Sprite>();
+		var positions = world.GetPool<Position>();
+		var scales = world.GetPool<Scale>();
 
-    public static Component[] Potion = new Component[] {
-        new Position { X = 200, Y = 300 },
-        new Area(),
-        new AreaEnterEvent(new RemoveEntity()),
-        new Flash { Color = new Color { Red = 2f, Green = 2f, Blue = 2f } },
-        new Scale { X = 2, Y = 2 },
-        new Sprite { Image = "res://resources/tiles/tile570.png" }
-    };
+		{
+			var player = world.NewEntity();
 
-    public override void _Input(InputEvent @event)
-    {
-        State = InputEvents.System(State, this, @event);
-    }
+			ref var sprite = ref sprites.Add(player);
+			sprite.Image = "res://resources/tiles/tile072.png";
 
-    public override void _PhysicsProcess(float delta)
-    {
-        State = InputMonitor.System(Previous, State, this);
-        State = Events.System(Previous, State);
-        State = Combat.System(Previous, State);
-        State = Physics.System(Previous, State, this, delta);
-        State = Renderer.System(Previous, State, this, delta);
+			ref var position = ref positions.Add(player);
+			position.X = 50;
+			position.Y = 50;
 
-        Previous = State;
-    }
+			ref var scale = ref scales.Add(player);
+			scale.X = 3;
+			scale.Y = 3;
+		}
 
-    public void QueueEvent(Event @event, int source, int target)
-    {
-        var entry = (source, target, @event);
-        State = State.With(Events.ENTITY, new EventQueue()
-        {
-            Events = State.Get<EventQueue>(Events.ENTITY).Events.With(entry)
-        });
-    }
+		{
+			var fire = world.NewEntity();
 
-    public void _Event(string source, GodotWrapper @event)
-    {
-        QueueEvent(@event.Get<Event>(), Convert.ToInt32(source.Split("-").FirstOrDefault()), -2);
-    }
+			ref var sprite = ref sprites.Add(fire);
+			sprite.Image = "res://resources/tiles/tile495.png";
 
-    public void _Event(Node target, string source, GodotWrapper @event)
-    {
-        QueueEvent(@event.Get<Event>(),
-            Convert.ToInt32(source.Split("-").FirstOrDefault()),
-            Convert.ToInt32(target.GetParent().Name?.Split("-").FirstOrDefault()));
-    }
+			ref var position = ref positions.Add(fire);
+			position.X = 400;
+			position.Y = 200;
+
+			ref var scale = ref scales.Add(fire);
+			scale.X = 2;
+			scale.Y = 2;
+		}
+
+		{
+			var button = world.NewEntity();
+
+			ref var sprite = ref sprites.Add(button);
+			sprite.Image = "res://resources/tiles/tile481.png";
+
+			ref var position = ref positions.Add(button);
+			position.X = 300;
+			position.Y = 300;
+
+			ref var scale = ref scales.Add(button);
+			scale.X = 2;
+			scale.Y = 2;
+		}
+
+		{
+			var potion = world.NewEntity();
+
+			ref var sprite = ref sprites.Add(potion);
+			sprite.Image = "res://resources/tiles/tile570.png";
+
+			ref var position = ref positions.Add(potion);
+			position.X = 200;
+			position.Y = 300;
+
+			ref var scale = ref scales.Add(potion);
+			scale.X = 2;
+			scale.Y = 2;
+		}
+	}
+
+	public override void _Input(InputEvent @event)
+	{
+		//State = InputEvents.System(State, this, @event);
+	}
+
+	public override void _PhysicsProcess(float delta)
+	{
+		systems.Run();
+		//State = InputMonitor.System(Previous, State, this);
+		//State = Events.System(Previous, State);
+		//State = Combat.System(Previous, State);
+		//State = Physics.System(Previous, State, this, delta);
+		//State = Renderer.System(Previous, State, this, delta);
+	}
+
+	/*
+	public void QueueEvent(Event @event, int source, int target)
+	{
+
+		var entry = (source, target, @event);
+		State = State.With(Events.ENTITY, new EventQueue()
+		{
+			Events = State.Get<EventQueue>(Events.ENTITY).Events.With(entry)
+		});
+	}
+
+	public void _Event(string source, GodotWrapper @event)
+	{
+		QueueEvent(@event.Get<Event>(), Convert.ToInt32(source.Split("-").FirstOrDefault()), -2);
+	}
+
+	public void _Event(Node target, string source, GodotWrapper @event)
+	{
+		QueueEvent(@event.Get<Event>(),
+			Convert.ToInt32(source.Split("-").FirstOrDefault()),
+			Convert.ToInt32(target.GetParent().Name?.Split("-").FirstOrDefault()));
+	}
+	*/
 }
