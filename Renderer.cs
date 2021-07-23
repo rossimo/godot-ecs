@@ -1,5 +1,4 @@
 using Godot;
-using System.Linq;
 using Leopotam.EcsLite;
 
 public struct Sprite
@@ -7,17 +6,11 @@ public struct Sprite
     public string Image;
 }
 
-public struct SpriteUpdated { }
-
-public struct SpriteRemove { }
-
 public struct Position
 {
     public float X;
     public float Y;
 }
-
-public struct PositionUpdated { }
 
 public struct LowRenderPriority { }
 
@@ -46,84 +39,38 @@ public struct Flash
 
 // public record ClickEvent : Event;
 
-public class ChangeListener<C, U>
-    where C : struct
-    where U : struct
+public class Renderer : IEcsRunSystem
 {
-    private EcsPool<C> ComponentsPool;
-    private EcsPool<U> UpdatedPool;
-    public EcsFilter Updated;
-
-    public ChangeListener(EcsWorld world)
-    {
-        ComponentsPool = world.GetPool<C>();
-        UpdatedPool = world.GetPool<U>();
-        Updated = world.Filter<C>().Inc<U>().End();
-    }
-
-    public void Init(EcsWorld world)
-    {
-        foreach (int entity in world.Filter<C>().End())
-        {
-            UpdatedPool.Add(entity);
-        }
-    }
-
-    public ref C Get(int entity)
-    {
-        return ref ComponentsPool.Get(entity);
-    }
-
-    public void CompleteUpdate(int entity)
-    {
-        UpdatedPool.Del(entity);
-    }
-}
-
-public class Renderer : IEcsRunSystem, IEcsInitSystem
-{
-    private ChangeListener<Sprite, SpriteUpdated> sprites;
-    private ChangeListener<Position, PositionUpdated> positions;
+    private UpdateQueue<Sprite> _spriteUpdates;
+    private UpdateQueue<Position> _positionUpdates;
 
     public Renderer(EcsWorld world)
     {
-        sprites = new ChangeListener<Sprite, SpriteUpdated>(world);
-        positions = new ChangeListener<Position, PositionUpdated>(world);
-    }
-
-    public void Init(EcsSystems systems)
-    {
-        var world = systems.GetWorld();
-
-        sprites.Init(world);
-        positions.Init(world);
+        _spriteUpdates = new UpdateQueue<Sprite>(world);
+        _positionUpdates = new UpdateQueue<Position>(world);
     }
 
     public void Run(EcsSystems systems)
     {
         var game = systems.GetShared<Game>();
 
-        foreach (int entity in sprites.Updated)
+        foreach (int entity in _spriteUpdates)
         {
-            ref Sprite sprite = ref sprites.Get(entity);
+            ref var sprite = ref _spriteUpdates.Get(entity);
 
             game.AddChild(new Godot.Sprite()
             {
                 Name = $"{entity}",
                 Texture = GD.Load<Texture>(sprite.Image)
             });
-
-            sprites.CompleteUpdate(entity);
         }
 
-        foreach (int entity in positions.Updated)
+        foreach (int entity in _positionUpdates)
         {
-            ref Position position = ref positions.Get(entity);
+            ref var position = ref _positionUpdates.Get(entity);
 
             var node = game.GetNodeOrNull<Godot.Sprite>($"{entity}");
             node.Position = new Vector2(position.X, position.Y);
-
-            positions.CompleteUpdate(entity);
         }
 
         /*
