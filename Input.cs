@@ -1,6 +1,4 @@
 using Godot;
-using System;
-using System.Linq;
 using Leopotam.EcsLite;
 
 public struct Player { }
@@ -20,22 +18,25 @@ public struct Move
     public Position Destination;
 }
 
-public class InputEvents : IEcsInitSystem
+public class Input : IEcsInitSystem, IEcsRunSystem
 {
     private EcsPool<MouseLeft> mouseLefts;
     private EcsPool<MouseRight> mouseRights;
+    private EcsPool<Player> players;
+    private EcsPool<Move> moves;
 
     public void Init(EcsSystems systems)
     {
         var world = systems.GetWorld();
 
-        var entity = world.NewEntity();
-
+        players = world.GetPool<Player>();
+        moves = world.GetPool<Move>();
         mouseLefts = world.GetPool<MouseLeft>();
         mouseRights = world.GetPool<MouseRight>();
 
-        mouseLefts.Add(entity);
-        mouseRights.Add(entity);
+        var entity = world.NewEntity();
+        mouseLefts.Update(entity);
+        mouseRights.Update(entity);
     }
 
     public void Run(EcsSystems systems, InputEvent @event)
@@ -67,46 +68,55 @@ public class InputEvents : IEcsInitSystem
                 break;
         }
     }
-}
 
-public class InputMonitor : IEcsRunSystem
-{
     public void Run(EcsSystems systems)
     {
+        var world = systems.GetWorld();
+        var game = systems.GetShared<Game>();
+        var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());
+
         var mouseLeft = false;
         var mouseRight = false;
 
-        var playerId = state.Get<Player>().FirstOrDefault().Key;
-
-        var position = state.Get<Position>(playerId);
-        var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());
-
-        if (mouseRight?.Pressed == true)
+        foreach (var entity in world.Filter<MouseLeft>().End())
         {
-            var destination = new Position { X = mousePosition.x, Y = mousePosition.y };
-            if (position != destination)
+            mouseLeft |= mouseLefts.Get(entity).Pressed;
+        }
+
+        foreach (var entity in world.Filter<MouseRight>().End())
+        {
+            mouseRight |= mouseRights.Get(entity).Pressed;
+        }
+
+        if (mouseRight)
+        {
+            foreach (var entity in world.Filter<Player>().Inc<Position>().End())
             {
-                state = state.With(playerId, new Move { Destination = destination });
+                ref var move = ref moves.Update(entity);
+                move.Destination = new Position
+                {
+                    X = mousePosition.x,
+                    Y = mousePosition.y
+                };
             }
         }
 
         /*
-                var tick = state.Get<Ticks>(Physics.ENTITY).Tick;
-                if (mouseLeft?.Pressed == true)
-                {
-                    var direction = new Vector2(position.X, position.Y).DirectionTo(mousePosition).Normalized() * 10f;
-                    if (direction.x != 0 && direction.y != 0)
-                    {
-                        state = state.With(state.CreateEntityId(),
-                           state.Get<Position>(playerId),
-                           new Sprite { Image = "res://resources/tiles/tile663.png" },
-                           new Velocity { X = direction.x, Y = direction.y },
-                           // new LowRenderPriority(),
-                           new ExpirationEvent(new RemoveEntity()) with { Tick = Physics.MillisToTicks(1 * 1000) + tick }
-                        );
-                    }
-                }
+        var tick = state.Get<Ticks>(Physics.ENTITY).Tick;
+        if (mouseLeft?.Pressed == true)
+        {
+            var direction = new Vector2(position.X, position.Y).DirectionTo(mousePosition).Normalized() * 10f;
+            if (direction.x != 0 && direction.y != 0)
+            {
+                state = state.With(state.CreateEntityId(),
+                    state.Get<Position>(playerId),
+                    new Sprite { Image = "res://resources/tiles/tile663.png" },
+                    new Velocity { X = direction.x, Y = direction.y },
+                    // new LowRenderPriority(),
+                    new ExpirationEvent(new RemoveEntity()) with { Tick = Physics.MillisToTicks(1 * 1000) + tick }
+                );
+            }
+        }
         */
-        return state;
     }
 }

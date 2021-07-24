@@ -5,22 +5,30 @@ public class Game : Godot.YSort
 {
     public EcsWorld world;
     public EcsSystems systems;
+    public Input input;
 
     public override void _Ready()
     {
         world = new EcsWorld();
+        input = new Input();
+
         systems = new EcsSystems(world, this)
-            .Add(new Renderer(world))
-            .Add(new Physics());
+            .Add(input)
+            .Add(new Physics())
+            .Add(new Renderer(world));
         systems.Init();
 
         var sprites = world.GetPool<Sprite>();
         var positions = world.GetPool<Position>();
         var scales = world.GetPool<Scale>();
         var velocities = world.GetPool<Velocity>();
+        var players = world.GetPool<Player>();
+        var speeds = world.GetPool<Speed>();
 
         {
             var player = world.NewEntity();
+
+            players.Add(player);
 
             ref var sprite = ref sprites.AddEmit(world, player);
             sprite.Image = "res://resources/tiles/tile072.png";
@@ -33,9 +41,8 @@ public class Game : Godot.YSort
             scale.X = 3;
             scale.Y = 3;
 
-            ref var velocity = ref velocities.AddEmit(world, player);
-            velocity.X = 3;
-            velocity.Y = 3;
+            ref var speed = ref speeds.AddEmit(world, player);
+            speed.Value = 3;
         }
 
         {
@@ -88,7 +95,7 @@ public class Game : Godot.YSort
 
     public override void _Input(InputEvent @event)
     {
-        //State = InputEvents.System(State, this, @event);
+        input.Run(systems, @event);
     }
 
     public override void _PhysicsProcess(float delta)

@@ -98,7 +98,19 @@ public static class UpdateUtils
     public static void UpdateEmit<C>(this EcsPool<C> pool, EcsWorld world, int entity)
         where C : struct
     {
-        ref var update = ref world.GetPool<Update<C>>().Add(entity);
+        var updatePool = world.GetPool<Update<C>>();
+        updatePool.Del(entity);
+
+        ref var update = ref updatePool.Add(entity);
         update.Entity = world.PackEntity(entity);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ref C Update<C>(this EcsPool<C> pool, int entity)
+        where C : struct
+    {
+        pool.Del(entity);
+        ref var component = ref pool.Add(entity);
+        return ref component;
     }
 }

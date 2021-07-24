@@ -6,7 +6,6 @@
   <ItemGroup>
     <Compile Remove="Combat.cs" />
     <Compile Remove="Events.cs" />
-    <Compile Remove="Input.cs" />
     <Compile Remove="Items.cs" />
   </ItemGroup>
 </Project>

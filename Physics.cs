@@ -100,23 +100,59 @@ public class Physics : IEcsRunSystem
             game.AddChild(node);
         }
 
+        var moves = world.GetPool<Move>();
+        var speeds = world.GetPool<Speed>();
         var velocities = world.GetPool<Velocity>();
         var positions = world.GetPool<Position>();
-        foreach (var entity in world.Filter<Velocity>().Inc<PhysicsNode>().Inc<Position>().End())
+
+        foreach (var entity in world.Filter<Move>().Inc<Position>().Inc<Speed>().End())
+        {
+            ref var move = ref moves.Get(entity);
+            ref var position = ref positions.Get(entity);
+            ref var speed = ref speeds.Get(entity);
+
+            var newVelocity = new Vector2(position.X, position.Y)
+                .DirectionTo(new Vector2(move.Destination.X, move.Destination.Y))
+                .Normalized() * speed.Value;
+
+            ref var velocity = ref velocities.Update(entity);
+            velocity.X = newVelocity.x;
+            velocity.Y = newVelocity.y;
+        }
+
+        foreach (var entity in world.Filter<Velocity>().Inc<PhysicsNode>().Inc<Position>().Inc<Move>().End())
         {
             ref var velocity = ref velocities.Get(entity);
             ref var position = ref positions.Get(entity);
+            ref var move = ref moves.Get(entity);
             ref var physicsNode = ref physicsNodes.Get(entity);
             var node = physicsNode.Node;
 
-            var update = new Vector2(position.X, position.Y) +
-                new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS);
+            var movement = new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS);
+            var update = new Vector2(position.X, position.Y) + movement;
 
             node.Position = update;
 
+            var moveDistance = movement.DistanceTo(new Vector2(0, 0));
+            var remainingDistance = new Vector2(position.X, position.Y)
+                .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
+
+            var withinReach = remainingDistance < moveDistance;
             positions.UpdateEmit(world, entity);
-            position.X = update.x;
-            position.Y = update.y;
+
+            if (withinReach)
+            {
+                position.X = move.Destination.X;
+                position.Y = move.Destination.Y;
+
+                moves.Del(entity);
+                velocities.Del(entity);
+            }
+            else
+            {
+                position.X = update.x;
+                position.Y = update.y;
+            }
         }
 
         /*
@@ -129,24 +165,6 @@ public class Physics : IEcsRunSystem
             node.QueueFree();
 
             state = state.Without<PhysicsNode>(id);
-        }
-
-        foreach (var (id, move) in moves.Added.Concat(moves.Changed))
-        {
-            state = state.Without<Move>(id);
-
-            var position = state.Get<Position>(id);
-            var speed = state.Get<Speed>(id);
-            if (position == null) continue;
-
-            speed = speed ?? new Speed { Value = 1f };
-
-            var velocity = new Vector2(position.X, position.Y)
-                .DirectionTo(new Vector2(move.Destination.X, move.Destination.Y))
-                .Normalized() * speed.Value;
-
-            state = state.With(id, new Velocity { X = velocity.x, Y = velocity.y });
-            state = state.With(id, new Destination { Position = move.Destination });
         }
 
         foreach (var (id, enter) in areas.Removed)
