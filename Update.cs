@@ -86,16 +86,16 @@ public class UpdateQueue<C>
 public static class UpdateUtils
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ref C Create<C>(this EcsPool<C> pool, EcsWorld world, int entity)
+    public static ref C AddEmit<C>(this EcsPool<C> pool, EcsWorld world, int entity)
         where C : struct
     {
         ref var component = ref pool.Add(entity);
-        Update(pool, world, entity);
+        UpdateEmit(pool, world, entity);
         return ref component;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void Update<C>(this EcsPool<C> pool, EcsWorld world, int entity)
+    public static void UpdateEmit<C>(this EcsPool<C> pool, EcsWorld world, int entity)
         where C : struct
     {
         ref var update = ref world.GetPool<Update<C>>().Add(entity);
