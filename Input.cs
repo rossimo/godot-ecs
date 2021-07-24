@@ -23,7 +23,12 @@ public class Input : IEcsInitSystem, IEcsRunSystem
     private EcsPool<MouseLeft> mouseLefts;
     private EcsPool<MouseRight> mouseRights;
     private EcsPool<Player> players;
+    private EcsPool<Position> positions;
     private EcsPool<Move> moves;
+    private EcsPool<Ticks> ticks;
+    private EcsPool<Sprite> sprites;
+    private EcsPool<Velocity> velocities;
+    private EcsPool<Speed> speeds;
 
     public void Init(EcsSystems systems)
     {
@@ -33,6 +38,11 @@ public class Input : IEcsInitSystem, IEcsRunSystem
         moves = world.GetPool<Move>();
         mouseLefts = world.GetPool<MouseLeft>();
         mouseRights = world.GetPool<MouseRight>();
+        ticks = world.GetPool<Ticks>();
+        sprites = world.GetPool<Sprite>();
+        velocities = world.GetPool<Velocity>();
+        speeds = world.GetPool<Speed>();
+        positions = world.GetPool<Position>();
 
         var entity = world.NewEntity();
         mouseLefts.Update(entity);
@@ -77,6 +87,12 @@ public class Input : IEcsInitSystem, IEcsRunSystem
 
         var mouseLeft = false;
         var mouseRight = false;
+        ulong tick = 0;
+
+        foreach (var entity in world.Filter<Ticks>().End())
+        {
+            tick = ticks.Get(entity).Tick;
+        }
 
         foreach (var entity in world.Filter<MouseLeft>().End())
         {
@@ -88,9 +104,9 @@ public class Input : IEcsInitSystem, IEcsRunSystem
             mouseRight |= mouseRights.Get(entity).Pressed;
         }
 
-        if (mouseRight)
+        foreach (var entity in world.Filter<Player>().Inc<Position>().End())
         {
-            foreach (var entity in world.Filter<Player>().Inc<Position>().End())
+            if (mouseRight)
             {
                 ref var move = ref moves.Update(entity);
                 move.Destination = new Position
@@ -99,10 +115,32 @@ public class Input : IEcsInitSystem, IEcsRunSystem
                     Y = mousePosition.y
                 };
             }
+
+            if (mouseLeft)
+            {
+                ref var position = ref positions.Get(entity);
+                var direction = new Vector2(position.X, position.Y)
+                    .DirectionTo(mousePosition)
+                    .Normalized();
+
+                var bullet = world.NewEntity();
+                ref var sprite = ref sprites.AddEmit(world, bullet);
+                sprite.Image = "res://resources/tiles/tile663.png";
+
+                ref var bulletPosition = ref positions.Add(bullet);
+                bulletPosition.X = position.X;
+                bulletPosition.Y = position.Y;
+
+                ref var velocity = ref velocities.Add(bullet);
+                velocity.X = direction.x;
+                velocity.Y = direction.y;
+
+                ref var speed = ref speeds.Add(bullet);
+                speed.Value = 10f;
+            }
         }
 
         /*
-        var tick = state.Get<Ticks>(Physics.ENTITY).Tick;
         if (mouseLeft?.Pressed == true)
         {
             var direction = new Vector2(position.X, position.Y).DirectionTo(mousePosition).Normalized() * 10f;

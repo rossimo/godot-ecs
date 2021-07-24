@@ -6,6 +6,11 @@ public struct Sprite
     public string Image;
 }
 
+public struct SpriteNode
+{
+    public Godot.Sprite Node;
+}
+
 public struct Position
 {
     public float X;
@@ -42,37 +47,47 @@ public struct Flash
 public class Renderer : IEcsRunSystem
 {
     private UpdateQueue<Sprite> _spriteUpdates;
-    private UpdateQueue<Position> _positionUpdates;
     private UpdateQueue<Scale> _scaleUpdates;
+
+    private EcsPool<SpriteNode> spriteNodes;
+    private EcsPool<Position> positions;
 
     public Renderer(EcsWorld world)
     {
         _spriteUpdates = new UpdateQueue<Sprite>(world);
-        _positionUpdates = new UpdateQueue<Position>(world);
         _scaleUpdates = new UpdateQueue<Scale>(world);
+
+        spriteNodes = world.GetPool<SpriteNode>();
+        positions = world.GetPool<Position>();
     }
 
     public void Run(EcsSystems systems)
     {
+        var world = systems.GetWorld();
         var game = systems.GetShared<Game>();
 
         foreach (int entity in _spriteUpdates)
         {
             ref var sprite = ref _spriteUpdates.Get(entity);
 
-            game.AddChild(new Godot.Sprite()
+            var node = new Godot.Sprite()
             {
                 Name = $"{entity}",
                 Texture = GD.Load<Texture>(sprite.Image)
-            });
+            };
+
+            game.AddChild(node);
+
+            ref var spriteNode = ref spriteNodes.Add(entity);
+            spriteNode.Node = node;
         }
 
-        foreach (int entity in _positionUpdates)
+        foreach (int entity in world.Filter<Position>().Inc<SpriteNode>().End())
         {
-            ref var position = ref _positionUpdates.Get(entity);
+            ref var spriteNode = ref spriteNodes.Get(entity);
+            ref var position = ref positions.Get(entity);
 
-            var node = game.GetNodeOrNull<Godot.Sprite>($"{entity}");
-            node.Position = new Vector2(position.X, position.Y);
+            spriteNode.Node.Position = new Vector2(position.X, position.Y);
         }
 
         foreach (int entity in _scaleUpdates)

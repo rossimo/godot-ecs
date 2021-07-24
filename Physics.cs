@@ -155,6 +155,24 @@ public class Physics : IEcsRunSystem
             }
         }
 
+        foreach (var entity in world.Filter<Velocity>().Inc<PhysicsNode>().Inc<Position>().Inc<Speed>().End())
+        {
+            ref var velocity = ref velocities.Get(entity);
+            ref var physicsNode = ref physicsNodes.Get(entity);
+            ref var position = ref positions.Get(entity);
+            ref var speed = ref speeds.Get(entity);
+            var node = physicsNode.Node;
+
+            var movement = new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS) * speed.Value;
+            var update = new Vector2(position.X, position.Y) + movement;
+
+            node.Position = update;
+
+            positions.UpdateEmit(world, entity);
+            position.X = update.x;
+            position.Y = update.y;
+        }
+
         /*
         foreach (var id in notNeedPhysics)
         {

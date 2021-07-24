@@ -33,7 +33,7 @@ public class Game : Godot.YSort
             ref var sprite = ref sprites.AddEmit(world, player);
             sprite.Image = "res://resources/tiles/tile072.png";
 
-            ref var position = ref positions.AddEmit(world, player);
+            ref var position = ref positions.Add(player);
             position.X = 50;
             position.Y = 50;
 
@@ -51,7 +51,7 @@ public class Game : Godot.YSort
             ref var sprite = ref sprites.AddEmit(world, fire);
             sprite.Image = "res://resources/tiles/tile495.png";
 
-            ref var position = ref positions.AddEmit(world, fire);
+            ref var position = ref positions.Add(fire);
             position.X = 400;
             position.Y = 200;
 
@@ -66,7 +66,7 @@ public class Game : Godot.YSort
             ref var sprite = ref sprites.AddEmit(world, button);
             sprite.Image = "res://resources/tiles/tile481.png";
 
-            ref var position = ref positions.AddEmit(world, button);
+            ref var position = ref positions.Add(button);
             position.X = 300;
             position.Y = 300;
 
@@ -81,7 +81,7 @@ public class Game : Godot.YSort
             ref var sprite = ref sprites.AddEmit(world, potion);
             sprite.Image = "res://resources/tiles/tile570.png";
 
-            ref var position = ref positions.AddEmit(world, potion);
+            ref var position = ref positions.Add(potion);
             position.X = 200;
             position.Y = 300;
 
