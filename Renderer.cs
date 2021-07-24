@@ -43,11 +43,13 @@ public class Renderer : IEcsRunSystem
 {
     private UpdateQueue<Sprite> _spriteUpdates;
     private UpdateQueue<Position> _positionUpdates;
+    private UpdateQueue<Scale> _scaleUpdates;
 
     public Renderer(EcsWorld world)
     {
         _spriteUpdates = new UpdateQueue<Sprite>(world);
         _positionUpdates = new UpdateQueue<Position>(world);
+        _scaleUpdates = new UpdateQueue<Scale>(world);
     }
 
     public void Run(EcsSystems systems)
@@ -71,6 +73,14 @@ public class Renderer : IEcsRunSystem
 
             var node = game.GetNodeOrNull<Godot.Sprite>($"{entity}");
             node.Position = new Vector2(position.X, position.Y);
+        }
+
+        foreach (int entity in _scaleUpdates)
+        {
+            ref var scale = ref _scaleUpdates.Get(entity);
+
+            var node = game.GetNodeOrNull<Godot.Sprite>($"{entity}");
+            node.Scale = new Vector2(scale.X, scale.Y);
         }
 
         /*
