@@ -18,15 +18,6 @@ public class AddEvents<C> : Events<C, Add> where C : struct
     }
 }
 
-public struct Delete { }
-
-public class DeleteEvents<C> : Events<C, Delete> where C : struct
-{
-    public DeleteEvents(EcsWorld world) : base(world)
-    {
-    }
-}
-
 public class Events<C, E>
     where C : struct
     where E : struct
@@ -105,7 +96,9 @@ public class Events<C, E>
     }
 }
 
-public class DeleteSystem : IEcsRunSystem
+public struct Delete { }
+
+public class EntityCleanup : IEcsRunSystem
 {
     private EcsPool<Delete> deletes;
 
@@ -127,6 +120,30 @@ public class DeleteSystem : IEcsRunSystem
     }
 }
 
+public class EventCleanup<C, E> : IEcsInitSystem, IEcsRunSystem
+    where C : struct
+    where E : struct
+{
+    private EcsPool<Event<C, E>> pool;
+
+    public void Init(EcsSystems systems)
+    {
+        var world = systems.GetWorld();
+
+        pool = world.GetPool<Event<C, E>>();
+    }
+
+    public void Run(EcsSystems systems)
+    {
+        var world = systems.GetWorld();
+
+        foreach (var entity in world.Filter<Event<C, E>>().End())
+        {
+            pool.Del(entity);
+        }
+    }
+}
+
 public static class EventUtils
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -134,12 +151,12 @@ public static class EventUtils
         where C : struct
     {
         ref var component = ref pool.Add(entity);
-        pool.AddOrReplaceEmit(entity);
+        pool.Emit(entity);
         return ref component;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void AddOrReplaceEmit<C>(this EcsPool<C> pool, int entity)
+    public static void Emit<C>(this EcsPool<C> pool, int entity)
         where C : struct
     {
         var world = pool.GetWorld();
@@ -147,15 +164,12 @@ public static class EventUtils
         var addEvents = world.GetPool<Event<C, Add>>();
         addEvents.Del(entity);
 
-        var delEvents = world.GetPool<Event<C, Delete>>();
-        delEvents.Del(entity);
-
         ref var @event = ref addEvents.Add(entity);
         @event.Entity = world.PackEntity(entity);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ref C AddOrReplace<C>(this EcsPool<C> pool, int entity)
+    public static ref C Replace<C>(this EcsPool<C> pool, int entity)
         where C : struct
     {
         pool.Del(entity);

@@ -19,7 +19,7 @@ public struct Destination
     public Position Position;
 }
 
-public struct Velocity
+public struct Direction
 {
     public float X;
     public float Y;
@@ -61,6 +61,12 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
         return Convert.ToUInt64((Convert.ToSingle(millis) / 1000f) * PHYSICS_FPS);
     }
 
+    private EcsPool<Move> moves;
+    private EcsPool<Speed> speeds;
+    private EcsPool<Direction> directions;
+    private EcsPool<Position> positions;
+    private EcsPool<Ticks> ticks;
+    private EcsPool<PhysicsNode> physicsNodes;
 
     public Physics()
     {
@@ -70,7 +76,14 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
     public void Init(EcsSystems systems)
     {
         var world = systems.GetWorld();
-        var ticks = world.GetPool<Ticks>();
+
+        ticks = world.GetPool<Ticks>();
+        moves = world.GetPool<Move>();
+        speeds = world.GetPool<Speed>();
+        directions = world.GetPool<Direction>();
+        positions = world.GetPool<Position>();
+        physicsNodes = world.GetPool<PhysicsNode>();
+
         var physics = world.NewEntity();
 
         ref var component = ref ticks.Add(physics);
@@ -81,7 +94,8 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
         var world = systems.GetWorld();
         var game = systems.GetShared<Game>();
 
-        var ticks = world.GetPool<Ticks>();
+        var ratio = (60f / PHYSICS_FPS);
+
         foreach (var entity in world.Filter<Ticks>().End())
         {
             ref var component = ref ticks.Get(entity);
@@ -96,7 +110,6 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
         foreach (var entity in world.Filter<Collision>().Exc<PhysicsNode>().End())
             needPhysics.Add(entity);
 
-        var physicsNodes = world.GetPool<PhysicsNode>();
         foreach (var entity in needPhysics)
         {
             var node = new KinematicBody2D()
@@ -110,75 +123,58 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
             game.AddChild(node);
         }
 
-        var moves = world.GetPool<Move>();
-        var speeds = world.GetPool<Speed>();
-        var velocities = world.GetPool<Velocity>();
-        var positions = world.GetPool<Position>();
-
-        foreach (var entity in world.Filter<Move>().Inc<Position>().Inc<Speed>().End())
+        foreach (var entity in world.Filter<Move>().Inc<PhysicsNode>().Inc<Position>().Inc<Speed>().End())
         {
-            ref var move = ref moves.Get(entity);
             ref var position = ref positions.Get(entity);
+            ref var move = ref moves.Get(entity);
             ref var speed = ref speeds.Get(entity);
 
-            var newVelocity = new Vector2(position.X, position.Y)
+            var direction = new Vector2(position.X, position.Y)
                 .DirectionTo(new Vector2(move.Destination.X, move.Destination.Y))
-                .Normalized() * speed.Value;
+                .Normalized();
 
-            ref var velocity = ref velocities.AddOrReplace(entity);
-            velocity.X = newVelocity.x;
-            velocity.Y = newVelocity.y;
-        }
-
-        foreach (var entity in world.Filter<Velocity>().Inc<PhysicsNode>().Inc<Position>().Inc<Move>().End())
-        {
-            ref var velocity = ref velocities.Get(entity);
-            ref var position = ref positions.Get(entity);
-            ref var move = ref moves.Get(entity);
-            ref var physicsNode = ref physicsNodes.Get(entity);
-            var node = physicsNode.Node;
-
-            var movement = new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS);
-            var update = new Vector2(position.X, position.Y) + movement;
-
-            node.Position = update;
+            var movement = direction * speed.Value * ratio;
 
             var moveDistance = movement.DistanceTo(new Vector2(0, 0));
             var remainingDistance = new Vector2(position.X, position.Y)
                 .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
 
-            var withinReach = remainingDistance < moveDistance;
-            positions.AddOrReplaceEmit(entity);
 
-            if (withinReach)
+            positions.Emit(entity);
+            if (remainingDistance <= moveDistance)
             {
                 position.X = move.Destination.X;
                 position.Y = move.Destination.Y;
 
                 moves.Del(entity);
-                velocities.Del(entity);
+                directions.Del(entity);
             }
             else
             {
+                var update = new Vector2(position.X, position.Y) + movement;
+
                 position.X = update.x;
                 position.Y = update.y;
             }
+
+            ref var physicsNode = ref physicsNodes.Get(entity);
+            physicsNode.Node.Position = new Vector2(position.X, position.Y);
         }
 
-        foreach (var entity in world.Filter<Velocity>().Inc<PhysicsNode>().Inc<Position>().Inc<Speed>().End())
+        foreach (var entity in world.Filter<Direction>().Inc<PhysicsNode>().Inc<Position>().Inc<Speed>().End())
         {
-            ref var velocity = ref velocities.Get(entity);
+            ref var direction = ref directions.Get(entity);
             ref var physicsNode = ref physicsNodes.Get(entity);
             ref var position = ref positions.Get(entity);
             ref var speed = ref speeds.Get(entity);
             var node = physicsNode.Node;
 
-            var movement = new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS) * speed.Value;
+            var movement = new Vector2(direction.X, direction.Y) * speed.Value * ratio;
             var update = new Vector2(position.X, position.Y) + movement;
 
             node.Position = update;
 
-            positions.AddOrReplaceEmit(entity);
+            positions.Emit(entity);
             position.X = update.x;
             position.Y = update.y;
         }

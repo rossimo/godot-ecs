@@ -17,13 +17,15 @@ public class Game : Godot.YSort
             .Add(new Combat())
             .Add(new Physics())
             .Add(new Renderer(world))
-            .Add(new DeleteSystem());
+            .Add(new EventCleanup<Sprite, Add>())
+            .Add(new EventCleanup<Position, Add>())
+            .Add(new EventCleanup<Scale, Add>())
+            .Add(new EntityCleanup());
         systems.Init();
 
         var sprites = world.GetPool<Sprite>();
         var positions = world.GetPool<Position>();
         var scales = world.GetPool<Scale>();
-        var velocities = world.GetPool<Velocity>();
         var players = world.GetPool<Player>();
         var speeds = world.GetPool<Speed>();
 
@@ -35,7 +37,7 @@ public class Game : Godot.YSort
             ref var sprite = ref sprites.AddEmit(player);
             sprite.Image = "res://resources/tiles/tile072.png";
 
-            ref var position = ref positions.Add(player);
+            ref var position = ref positions.AddEmit(player);
             position.X = 50;
             position.Y = 50;
 
@@ -44,7 +46,7 @@ public class Game : Godot.YSort
             scale.Y = 3;
 
             ref var speed = ref speeds.Add(player);
-            speed.Value = 3;
+            speed.Value = 3f;
         }
 
         {
@@ -53,7 +55,7 @@ public class Game : Godot.YSort
             ref var sprite = ref sprites.AddEmit(fire);
             sprite.Image = "res://resources/tiles/tile495.png";
 
-            ref var position = ref positions.Add(fire);
+            ref var position = ref positions.AddEmit(fire);
             position.X = 400;
             position.Y = 200;
 
@@ -68,7 +70,7 @@ public class Game : Godot.YSort
             ref var sprite = ref sprites.AddEmit(button);
             sprite.Image = "res://resources/tiles/tile481.png";
 
-            ref var position = ref positions.Add(button);
+            ref var position = ref positions.AddEmit(button);
             position.X = 300;
             position.Y = 300;
 
@@ -83,7 +85,7 @@ public class Game : Godot.YSort
             ref var sprite = ref sprites.AddEmit(potion);
             sprite.Image = "res://resources/tiles/tile570.png";
 
-            ref var position = ref positions.Add(potion);
+            ref var position = ref positions.AddEmit(potion);
             position.X = 200;
             position.Y = 300;
 

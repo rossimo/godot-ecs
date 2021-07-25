@@ -27,7 +27,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
     private EcsPool<Move> moves;
     private EcsPool<Ticks> ticks;
     private EcsPool<Sprite> sprites;
-    private EcsPool<Velocity> velocities;
+    private EcsPool<Direction> directions;
     private EcsPool<Speed> speeds;
     private EcsPool<Expiration> expirations;
 
@@ -41,14 +41,14 @@ public class Input : IEcsInitSystem, IEcsRunSystem
         mouseRights = world.GetPool<MouseRight>();
         ticks = world.GetPool<Ticks>();
         sprites = world.GetPool<Sprite>();
-        velocities = world.GetPool<Velocity>();
+        directions = world.GetPool<Direction>();
         speeds = world.GetPool<Speed>();
         positions = world.GetPool<Position>();
         expirations = world.GetPool<Expiration>();
 
         var entity = world.NewEntity();
-        mouseLefts.AddOrReplace(entity);
-        mouseRights.AddOrReplace(entity);
+        mouseLefts.Replace(entity);
+        mouseRights.Replace(entity);
     }
 
     public void Run(EcsSystems systems, InputEvent @event)
@@ -110,7 +110,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
         {
             if (mouseRight)
             {
-                ref var move = ref moves.AddOrReplace(entity);
+                ref var move = ref moves.Replace(entity);
                 move.Destination = new Position
                 {
                     X = mousePosition.x,
@@ -121,7 +121,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
             if (mouseLeft)
             {
                 ref var position = ref positions.Get(entity);
-                var direction = new Vector2(position.X, position.Y)
+                var directionVec = new Vector2(position.X, position.Y)
                     .DirectionTo(mousePosition)
                     .Normalized();
 
@@ -129,13 +129,13 @@ public class Input : IEcsInitSystem, IEcsRunSystem
                 ref var sprite = ref sprites.AddEmit(bullet);
                 sprite.Image = "res://resources/tiles/tile663.png";
 
-                ref var bulletPosition = ref positions.Add(bullet);
+                ref var bulletPosition = ref positions.AddEmit(bullet);
                 bulletPosition.X = position.X;
                 bulletPosition.Y = position.Y;
 
-                ref var velocity = ref velocities.Add(bullet);
-                velocity.X = direction.x;
-                velocity.Y = direction.y;
+                ref var direction = ref directions.Add(bullet);
+                direction.X = directionVec.x;
+                direction.Y = directionVec.y;
 
                 ref var speed = ref speeds.Add(bullet);
                 speed.Value = 10f;

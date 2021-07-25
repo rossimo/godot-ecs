@@ -49,18 +49,14 @@ public class Renderer : IEcsRunSystem
     private AddEvents<Sprite> _spriteAdds;
     private AddEvents<Scale> _scaleAdds;
 
-    private DeleteEvents<Sprite> _spriteDels;
-
     private EcsPool<SpriteNode> spriteNodes;
     private EcsPool<Position> positions;
-     private EcsPool<Delete> deletes;
+    private EcsPool<Delete> deletes;
 
     public Renderer(EcsWorld world)
     {
         _spriteAdds = new AddEvents<Sprite>(world);
         _scaleAdds = new AddEvents<Scale>(world);
-
-        _spriteDels = new DeleteEvents<Sprite>(world);
 
         spriteNodes = world.GetPool<SpriteNode>();
         positions = world.GetPool<Position>();
@@ -77,7 +73,7 @@ public class Renderer : IEcsRunSystem
             ref var sprite = ref spriteNodes.Get(entity);
 
             var node = sprite.Node;
-            node.GetParent().RemoveChild(node);
+            game.RemoveChild(node);
             node.QueueFree();
         }
 
@@ -97,7 +93,7 @@ public class Renderer : IEcsRunSystem
             spriteNode.Node = node;
         }
 
-        foreach (int entity in world.Filter<Position>().Inc<SpriteNode>().End())
+        foreach (int entity in world.Filter<Event<Position, Add>>().Inc<SpriteNode>().End())
         {
             ref var spriteNode = ref spriteNodes.Get(entity);
             ref var position = ref positions.Get(entity);
