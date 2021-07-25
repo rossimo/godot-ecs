@@ -46,16 +46,16 @@ public struct Flash
 
 public class Renderer : IEcsRunSystem
 {
-    private UpdateQueue<Sprite> _spriteUpdates;
-    private UpdateQueue<Scale> _scaleUpdates;
+    private AddEvents<Sprite> _spriteAdds;
+    private AddEvents<Scale> _scaleAdds;
 
     private EcsPool<SpriteNode> spriteNodes;
     private EcsPool<Position> positions;
 
     public Renderer(EcsWorld world)
     {
-        _spriteUpdates = new UpdateQueue<Sprite>(world);
-        _scaleUpdates = new UpdateQueue<Scale>(world);
+        _spriteAdds = new AddEvents<Sprite>(world);
+        _scaleAdds = new AddEvents<Scale>(world);
 
         spriteNodes = world.GetPool<SpriteNode>();
         positions = world.GetPool<Position>();
@@ -66,9 +66,9 @@ public class Renderer : IEcsRunSystem
         var world = systems.GetWorld();
         var game = systems.GetShared<Game>();
 
-        foreach (int entity in _spriteUpdates)
+        foreach (int entity in _spriteAdds)
         {
-            ref var sprite = ref _spriteUpdates.Get(entity);
+            ref var sprite = ref _spriteAdds.Get(entity);
 
             var node = new Godot.Sprite()
             {
@@ -90,9 +90,9 @@ public class Renderer : IEcsRunSystem
             spriteNode.Node.Position = new Vector2(position.X, position.Y);
         }
 
-        foreach (int entity in _scaleUpdates)
+        foreach (int entity in _scaleAdds)
         {
-            ref var scale = ref _scaleUpdates.Get(entity);
+            ref var scale = ref _scaleAdds.Get(entity);
 
             var node = game.GetNodeOrNull<Godot.Sprite>($"{entity}");
             node.Scale = new Vector2(scale.X, scale.Y);

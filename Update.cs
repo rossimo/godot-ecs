@@ -2,52 +2,74 @@ using System;
 using Leopotam.EcsLite;
 using System.Runtime.CompilerServices;
 
-public struct Update<T>
+public struct Event<C, E>
+    where C : struct
+    where E : struct
 {
     public EcsPackedEntity Entity;
 }
 
-public class UpdateQueue<C>
-    where C : struct
-{
-    private EcsWorld World;
-    private EcsFilter Filter;
-    private EcsPool<C> ComponentsPool;
-    private EcsPool<Update<C>> UpdatePool;
+public struct Add { }
 
-    public UpdateQueue(EcsWorld world)
+public class AddEvents<C> : Events<C, Add> where C : struct
+{
+    public AddEvents(EcsWorld world) : base(world)
     {
-        World = world;
-        ComponentsPool = World.GetPool<C>();
-        UpdatePool = World.GetPool<Update<C>>();
-        Filter = World.Filter<C>().Inc<Update<C>>().End();
+    }
+}
+
+public struct Delete { }
+
+public class DeleteEvents<C> : Events<C, Delete> where C : struct
+{
+    public DeleteEvents(EcsWorld world) : base(world)
+    {
+    }
+}
+
+public class Events<C, E>
+    where C : struct
+    where E : struct
+{
+    private EcsWorld _world;
+    private EcsFilter _filter;
+    private EcsPool<C> _pool;
+    private EcsPool<Event<C, E>> _eventPool;
+
+    public Events(EcsWorld world)
+    {
+        _world = world;
+        _pool = _world.GetPool<C>();
+        _eventPool = _world.GetPool<Event<C, E>>();
+        _filter = _world.Filter<C>().Inc<Event<C, E>>().End();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Enumerator<C> GetEnumerator()
+    public EventEnumerator<C, E> GetEnumerator()
     {
-        return new Enumerator<C>(Filter.GetEnumerator(), World, UpdatePool);
+        return new EventEnumerator<C, E>(_filter.GetEnumerator(), _world, _eventPool);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref C Get(int entity)
     {
-        return ref ComponentsPool.Get(entity);
+        return ref _pool.Get(entity);
     }
 
-    public struct Enumerator<X> : IDisposable
-        where X : struct
+    public struct EventEnumerator<EC, EE> : IDisposable
+        where EC : struct
+        where EE : struct
     {
         EcsFilter.Enumerator _enumerator;
         int _current;
 
-        readonly EcsPool<Update<X>> _updatePool;
+        readonly EcsPool<Event<EC, EE>> _events;
         readonly EcsWorld _world;
 
-        public Enumerator(EcsFilter.Enumerator enumerator, EcsWorld world, EcsPool<Update<X>> updatePool)
+        public EventEnumerator(EcsFilter.Enumerator enumerator, EcsWorld world, EcsPool<Event<EC, EE>> events)
         {
             _enumerator = enumerator;
-            _updatePool = updatePool;
+            _events = events;
             _world = world;
             _current = -1;
         }
@@ -64,9 +86,9 @@ public class UpdateQueue<C>
             while (_enumerator.MoveNext())
             {
                 var current = _enumerator.Current;
-                var update = _updatePool.Get(current);
-                _updatePool.Del(current);
-                if (update.Entity.Unpack(_world, out var entity))
+                var @event = _events.Get(current);
+                _events.Del(current);
+                if (@event.Entity.Unpack(_world, out var entity))
                 {
                     _current = entity;
                     return true;
@@ -83,30 +105,33 @@ public class UpdateQueue<C>
     }
 }
 
-public static class UpdateUtils
+public static class EventUtils
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ref C AddEmit<C>(this EcsPool<C> pool, EcsWorld world, int entity)
         where C : struct
     {
         ref var component = ref pool.Add(entity);
-        UpdateEmit(pool, world, entity);
+        AddOrReplaceEmit(pool, world, entity);
         return ref component;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void UpdateEmit<C>(this EcsPool<C> pool, EcsWorld world, int entity)
+    public static void AddOrReplaceEmit<C>(this EcsPool<C> pool, EcsWorld world, int entity)
         where C : struct
     {
-        var updatePool = world.GetPool<Update<C>>();
-        updatePool.Del(entity);
+        var addEvents = world.GetPool<Event<C, Add>>();
+        addEvents.Del(entity);
 
-        ref var update = ref updatePool.Add(entity);
-        update.Entity = world.PackEntity(entity);
+        var delEvents = world.GetPool<Event<C, Delete>>();
+        delEvents.Del(entity);
+
+        ref var @event = ref addEvents.Add(entity);
+        @event.Entity = world.PackEntity(entity);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ref C Update<C>(this EcsPool<C> pool, int entity)
+    public static ref C AddOrReplace<C>(this EcsPool<C> pool, int entity)
         where C : struct
     {
         pool.Del(entity);

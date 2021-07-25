@@ -41,7 +41,7 @@ public class Game : Godot.YSort
             scale.X = 3;
             scale.Y = 3;
 
-            ref var speed = ref speeds.AddEmit(world, player);
+            ref var speed = ref speeds.Add(player);
             speed.Value = 3;
         }
 

@@ -45,8 +45,8 @@ public class Input : IEcsInitSystem, IEcsRunSystem
         positions = world.GetPool<Position>();
 
         var entity = world.NewEntity();
-        mouseLefts.Update(entity);
-        mouseRights.Update(entity);
+        mouseLefts.AddOrReplace(entity);
+        mouseRights.AddOrReplace(entity);
     }
 
     public void Run(EcsSystems systems, InputEvent @event)
@@ -108,7 +108,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
         {
             if (mouseRight)
             {
-                ref var move = ref moves.Update(entity);
+                ref var move = ref moves.AddOrReplace(entity);
                 move.Destination = new Position
                 {
                     X = mousePosition.x,

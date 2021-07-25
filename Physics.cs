@@ -115,7 +115,7 @@ public class Physics : IEcsRunSystem
                 .DirectionTo(new Vector2(move.Destination.X, move.Destination.Y))
                 .Normalized() * speed.Value;
 
-            ref var velocity = ref velocities.Update(entity);
+            ref var velocity = ref velocities.AddOrReplace(entity);
             velocity.X = newVelocity.x;
             velocity.Y = newVelocity.y;
         }
@@ -138,7 +138,7 @@ public class Physics : IEcsRunSystem
                 .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
 
             var withinReach = remainingDistance < moveDistance;
-            positions.UpdateEmit(world, entity);
+            positions.AddOrReplaceEmit(world, entity);
 
             if (withinReach)
             {
@@ -168,7 +168,7 @@ public class Physics : IEcsRunSystem
 
             node.Position = update;
 
-            positions.UpdateEmit(world, entity);
+            positions.AddOrReplaceEmit(world, entity);
             position.X = update.x;
             position.Y = update.y;
         }
