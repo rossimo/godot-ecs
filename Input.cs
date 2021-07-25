@@ -29,6 +29,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
     private EcsPool<Sprite> sprites;
     private EcsPool<Velocity> velocities;
     private EcsPool<Speed> speeds;
+    private EcsPool<Expiration> expirations;
 
     public void Init(EcsSystems systems)
     {
@@ -43,6 +44,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
         velocities = world.GetPool<Velocity>();
         speeds = world.GetPool<Speed>();
         positions = world.GetPool<Position>();
+        expirations = world.GetPool<Expiration>();
 
         var entity = world.NewEntity();
         mouseLefts.AddOrReplace(entity);
@@ -124,7 +126,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
                     .Normalized();
 
                 var bullet = world.NewEntity();
-                ref var sprite = ref sprites.AddEmit(world, bullet);
+                ref var sprite = ref sprites.AddEmit(bullet);
                 sprite.Image = "res://resources/tiles/tile663.png";
 
                 ref var bulletPosition = ref positions.Add(bullet);
@@ -137,6 +139,9 @@ public class Input : IEcsInitSystem, IEcsRunSystem
 
                 ref var speed = ref speeds.Add(bullet);
                 speed.Value = 10f;
+
+                ref var expiration = ref expirations.Add(bullet);
+                expiration.Tick = Physics.MillisToTicks(1 * 1000) + tick;
             }
         }
 

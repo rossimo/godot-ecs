@@ -1,39 +1,44 @@
-using SimpleEcs;
+using Leopotam.EcsLite;
 
-public record ExpirationEvent : Event
+public struct Expiration
 {
     public ulong Tick;
-
-    public ExpirationEvent(params Task[] tasks) => (Tasks) = (tasks);
-
-    public override string ToString()
-    {
-        return $"{this.GetType().Name} {{ Tick = {Tick}, {Utils.Log(nameof(Tasks), Tasks)} }}";
-    }
 }
 
-public static class Combat
+public class Combat : IEcsRunSystem, IEcsInitSystem
 {
-    public static State System(State previous, State state)
+    private EcsPool<Ticks> ticks;
+    private EcsPool<Expiration> expirations;
+    private EcsPool<Delete> deletes;
+
+    public void Init(EcsSystems systems)
     {
-        var tick = state.Get<Ticks>(Physics.ENTITY).Tick;
+        var world = systems.GetWorld();
 
-        foreach (var (id, ev) in state.Get<ExpirationEvent>())
+        ticks = world.GetPool<Ticks>();
+        expirations = world.GetPool<Expiration>();
+        deletes = world.GetPool<Delete>();
+    }
+
+    public void Run(EcsSystems systems)
+    {
+        var world = systems.GetWorld();
+
+        ulong tick = 0;
+
+        foreach (var entity in world.Filter<Ticks>().End())
         {
-            var expiration = ev as ExpirationEvent;
-            if (expiration.Tick <= tick)
-            {
-                var queued = (id, -3, expiration);
-
-                state = state.Without<ExpirationEvent>(id);
-
-                state = state.With(Events.ENTITY, new EventQueue()
-                {
-                    Events = state.Get<EventQueue>(Events.ENTITY).Events.With(queued)
-                });
-            }
+            tick = ticks.Get(entity).Tick;
         }
 
-        return state;
+        foreach (var entity in world.Filter<Expiration>().End())
+        {
+            ref var expiration = ref expirations.Get(entity);
+
+            if (expiration.Tick <= tick)
+            {
+                deletes.Add(entity);
+            }
+        }
     }
 }

@@ -105,21 +105,45 @@ public class Events<C, E>
     }
 }
 
+public class DeleteSystem : IEcsRunSystem
+{
+    private EcsPool<Delete> deletes;
+
+    public void Init(EcsSystems systems)
+    {
+        var world = systems.GetWorld();
+
+        deletes = world.GetPool<Delete>();
+    }
+
+    public void Run(EcsSystems systems)
+    {
+        var world = systems.GetWorld();
+
+        foreach (var entity in world.Filter<Delete>().End())
+        {
+            world.DelEntity(entity);
+        }
+    }
+}
+
 public static class EventUtils
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ref C AddEmit<C>(this EcsPool<C> pool, EcsWorld world, int entity)
+    public static ref C AddEmit<C>(this EcsPool<C> pool, int entity)
         where C : struct
     {
         ref var component = ref pool.Add(entity);
-        AddOrReplaceEmit(pool, world, entity);
+        pool.AddOrReplaceEmit(entity);
         return ref component;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void AddOrReplaceEmit<C>(this EcsPool<C> pool, EcsWorld world, int entity)
+    public static void AddOrReplaceEmit<C>(this EcsPool<C> pool, int entity)
         where C : struct
     {
+        var world = pool.GetWorld();
+
         var addEvents = world.GetPool<Event<C, Add>>();
         addEvents.Del(entity);
 

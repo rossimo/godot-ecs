@@ -52,7 +52,7 @@ public struct PhysicsNode
     public KinematicBody2D Node;
 }
 
-public class Physics : IEcsRunSystem
+public class Physics : IEcsInitSystem, IEcsRunSystem
 {
     public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_fps")}".ToFloat();
 
@@ -67,6 +67,15 @@ public class Physics : IEcsRunSystem
 
     }
 
+    public void Init(EcsSystems systems)
+    {
+        var world = systems.GetWorld();
+        var ticks = world.GetPool<Ticks>();
+        var physics = world.NewEntity();
+
+        ref var component = ref ticks.Add(physics);
+    }
+
     public void Run(EcsSystems systems)
     {
         var world = systems.GetWorld();
@@ -75,7 +84,8 @@ public class Physics : IEcsRunSystem
         var ticks = world.GetPool<Ticks>();
         foreach (var entity in world.Filter<Ticks>().End())
         {
-            ticks.Get(entity).Tick++;
+            ref var component = ref ticks.Get(entity);
+            component.Tick++;
         }
 
         var needPhysics = new HashSet<int>();
@@ -138,7 +148,7 @@ public class Physics : IEcsRunSystem
                 .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
 
             var withinReach = remainingDistance < moveDistance;
-            positions.AddOrReplaceEmit(world, entity);
+            positions.AddOrReplaceEmit(entity);
 
             if (withinReach)
             {
@@ -168,7 +178,7 @@ public class Physics : IEcsRunSystem
 
             node.Position = update;
 
-            positions.AddOrReplaceEmit(world, entity);
+            positions.AddOrReplaceEmit(entity);
             position.X = update.x;
             position.Y = update.y;
         }
