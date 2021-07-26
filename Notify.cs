@@ -3,22 +3,22 @@ using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
 using System.Runtime.CompilerServices;
 
-public struct Publish<C> { }
+public struct Notify<C> { }
 
-public static class PublishUtils
+public static class NotifyUtils
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ref Publish<C> Publish<C>(this EcsPool<C> pool, int entity)
+    public static ref Notify<C> Notify<C>(this EcsPool<C> pool, int entity)
         where C : struct
     {
-        return ref pool.GetWorld().GetPool<Publish<C>>().Replace(entity);
+        return ref pool.GetWorld().GetPool<Notify<C>>().Replace(entity);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ref C AddPublish<C>(this EcsPool<C> pool, int entity)
+    public static ref C AddNotify<C>(this EcsPool<C> pool, int entity)
         where C : struct
     {
-        pool.Publish(entity);
+        pool.Notify(entity);
         return ref pool.Add(entity);
     }
 }

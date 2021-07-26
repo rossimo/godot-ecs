@@ -110,7 +110,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
             game.AddChild(node);
         }
 
-        foreach (var entity in world.Filter<Move>().Inc<PhysicsNode>().Inc<Position>().Inc<Speed>().End())
+        foreach (var entity in world.Filter<PhysicsNode>().Inc<Move>().Inc<Position>().Inc<Speed>().End())
         {
             ref var position = ref positions.Get(entity);
             ref var move = ref moves.Get(entity);
@@ -126,7 +126,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
             var remainingDistance = new Vector2(position.X, position.Y)
                 .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
 
-            positions.Publish(entity);
+            positions.Notify(entity);
             if (remainingDistance <= moveDistance)
             {
                 position.X = move.Destination.X;
@@ -147,7 +147,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
             physicsNode.Node.Position = new Vector2(position.X, position.Y);
         }
 
-        foreach (var entity in world.Filter<Direction>().Inc<PhysicsNode>().Inc<Position>().Inc<Speed>().End())
+        foreach (var entity in world.Filter<PhysicsNode>().Inc<Direction>().Inc<Position>().Inc<Speed>().End())
         {
             ref var direction = ref directions.Get(entity);
             ref var physicsNode = ref physicsNodes.Get(entity);
@@ -160,9 +160,18 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
 
             node.Position = update;
 
-            positions.Publish(entity);
+            positions.Notify(entity);
             position.X = update.x;
             position.Y = update.y;
+        }
+
+        foreach (int entity in world.Filter<PhysicsNode>().Inc<Delete>().End())
+        {
+            ref var physicsNode = ref physicsNodes.Get(entity);
+
+            var node = physicsNode.Node;
+            game.RemoveChild(node);
+            node.QueueFree();
         }
 
         /*

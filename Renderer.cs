@@ -65,7 +65,7 @@ public class Renderer : IEcsRunSystem
             delta = deltas.Get(entity).Value;
         }
 
-        foreach (int entity in world.Filter<Publish<Sprite>>().End())
+        foreach (int entity in world.Filter<Notify<Sprite>>().End())
         {
             ref var sprite = ref sprites.Get(entity);
 
@@ -94,7 +94,7 @@ public class Renderer : IEcsRunSystem
             }
         }
 
-        foreach (int entity in world.Filter<Publish<Position>>().Inc<SpriteNode>().End())
+        foreach (int entity in world.Filter<SpriteNode>().Inc<Notify<Position>>().End())
         {
             ref var spriteNode = ref spriteNodes.Get(entity);
             ref var position = ref positions.Get(entity);
@@ -119,7 +119,7 @@ public class Renderer : IEcsRunSystem
             }
         }
 
-        foreach (int entity in world.Filter<Publish<Scale>>().Inc<SpriteNode>().End())
+        foreach (int entity in world.Filter<SpriteNode>().Inc<Notify<Scale>>().End())
         {
             ref var scale = ref scales.Get(entity);
 
@@ -127,7 +127,7 @@ public class Renderer : IEcsRunSystem
             node.Scale = new Vector2(scale.X, scale.Y);
         }
 
-        foreach (int entity in world.Filter<Delete>().Inc<SpriteNode>().End())
+        foreach (int entity in world.Filter<SpriteNode>().Inc<Delete>().End())
         {
             ref var sprite = ref spriteNodes.Get(entity);
 

@@ -22,9 +22,9 @@ public class Game : Godot.YSort
             .Add(new Combat())
             .Add(new Physics())
             .Add(new Renderer())
-            .Add(new ComponentDelete<Publish<Sprite>>())
-            .Add(new ComponentDelete<Publish<Position>>())
-            .Add(new ComponentDelete<Publish<Scale>>())
+            .Add(new ComponentDelete<Notify<Sprite>>())
+            .Add(new ComponentDelete<Notify<Position>>())
+            .Add(new ComponentDelete<Notify<Scale>>())
             .Add(new EntityDelete())
             .Inject()
             .Init();
@@ -40,14 +40,14 @@ public class Game : Godot.YSort
 
             players.Add(player);
 
-            ref var sprite = ref sprites.AddPublish(player);
+            ref var sprite = ref sprites.AddNotify(player);
             sprite.Image = "res://resources/tiles/tile072.png";
 
-            ref var position = ref positions.AddPublish(player);
+            ref var position = ref positions.AddNotify(player);
             position.X = 50;
             position.Y = 50;
 
-            ref var scale = ref scales.AddPublish(player);
+            ref var scale = ref scales.AddNotify(player);
             scale.X = 3;
             scale.Y = 3;
 
@@ -58,14 +58,14 @@ public class Game : Godot.YSort
         {
             var fire = world.NewEntity();
 
-            ref var sprite = ref sprites.AddPublish(fire);
+            ref var sprite = ref sprites.AddNotify(fire);
             sprite.Image = "res://resources/tiles/tile495.png";
 
-            ref var position = ref positions.AddPublish(fire);
+            ref var position = ref positions.AddNotify(fire);
             position.X = 400;
             position.Y = 200;
 
-            ref var scale = ref scales.AddPublish(fire);
+            ref var scale = ref scales.AddNotify(fire);
             scale.X = 2;
             scale.Y = 2;
         }
@@ -73,14 +73,14 @@ public class Game : Godot.YSort
         {
             var button = world.NewEntity();
 
-            ref var sprite = ref sprites.AddPublish(button);
+            ref var sprite = ref sprites.AddNotify(button);
             sprite.Image = "res://resources/tiles/tile481.png";
 
-            ref var position = ref positions.AddPublish(button);
+            ref var position = ref positions.AddNotify(button);
             position.X = 300;
             position.Y = 300;
 
-            ref var scale = ref scales.AddPublish(button);
+            ref var scale = ref scales.AddNotify(button);
             scale.X = 2;
             scale.Y = 2;
         }
@@ -88,14 +88,14 @@ public class Game : Godot.YSort
         {
             var potion = world.NewEntity();
 
-            ref var sprite = ref sprites.AddPublish(potion);
+            ref var sprite = ref sprites.AddNotify(potion);
             sprite.Image = "res://resources/tiles/tile570.png";
 
-            ref var position = ref positions.AddPublish(potion);
+            ref var position = ref positions.AddNotify(potion);
             position.X = 200;
             position.Y = 300;
 
-            ref var scale = ref scales.AddPublish(potion);
+            ref var scale = ref scales.AddNotify(potion);
             scale.X = 2;
             scale.Y = 2;
         }

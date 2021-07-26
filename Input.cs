@@ -113,10 +113,10 @@ public class Input : IEcsInitSystem, IEcsRunSystem
                     .Normalized();
 
                 var bullet = world.NewEntity();
-                ref var sprite = ref sprites.AddPublish(bullet);
+                ref var sprite = ref sprites.AddNotify(bullet);
                 sprite.Image = "res://resources/tiles/tile663.png";
 
-                ref var position = ref positions.AddPublish(bullet);
+                ref var position = ref positions.AddNotify(bullet);
                 position.X = playerPosition.X;
                 position.Y = playerPosition.Y;
 
