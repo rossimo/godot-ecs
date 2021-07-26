@@ -30,7 +30,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
     private EcsPool<Direction> directions;
     private EcsPool<Speed> speeds;
     private EcsPool<Expiration> expirations;
-     private EcsPool<LowRenderPriority> lowPriorities;
+    private EcsPool<LowRenderPriority> lowPriorities;
 
     public void Init(EcsSystems systems)
     {
@@ -148,22 +148,5 @@ public class Input : IEcsInitSystem, IEcsRunSystem
                 lowPriorities.Add(bullet);
             }
         }
-
-        /*
-        if (mouseLeft?.Pressed == true)
-        {
-            var direction = new Vector2(position.X, position.Y).DirectionTo(mousePosition).Normalized() * 10f;
-            if (direction.x != 0 && direction.y != 0)
-            {
-                state = state.With(state.CreateEntityId(),
-                    state.Get<Position>(playerId),
-                    new Sprite { Image = "res://resources/tiles/tile663.png" },
-                    new Velocity { X = direction.x, Y = direction.y },
-                    // new LowRenderPriority(),
-                    new ExpirationEvent(new RemoveEntity()) with { Tick = Physics.MillisToTicks(1 * 1000) + tick }
-                );
-            }
-        }
-        */
     }
 }

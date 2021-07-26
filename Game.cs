@@ -109,11 +109,6 @@ public class Game : Godot.YSort
     {
         delta.Run(systems, deltaValue);
         systems.Run();
-        //State = InputMonitor.System(Previous, State, this);
-        //State = Events.System(Previous, State);
-        //State = Combat.System(Previous, State);
-        //State = Physics.System(Previous, State, this, delta);
-        //State = Renderer.System(Previous, State, this, delta);
     }
 
     /*
