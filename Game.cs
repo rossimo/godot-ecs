@@ -1,5 +1,6 @@
 using Godot;
 using Leopotam.EcsLite;
+using Leopotam.EcsLite.Di;
 
 public class Game : Godot.YSort
 {
@@ -11,20 +12,22 @@ public class Game : Godot.YSort
     public override void _Ready()
     {
         world = new EcsWorld();
-        input = new Input();
         delta = new DeltaSystem();
+        input = new Input();
 
-        systems = new EcsSystems(world, this)
+        systems = new EcsSystems(world, this);
+        systems
             .Add(delta)
             .Add(input)
             .Add(new Combat())
             .Add(new Physics())
-            .Add(new Renderer(world))
+            .Add(new Renderer())
             .Add(new ComponentDelete<Publish<Sprite>>())
             .Add(new ComponentDelete<Publish<Position>>())
             .Add(new ComponentDelete<Publish<Scale>>())
-            .Add(new EntityDelete());
-        systems.Init();
+            .Add(new EntityDelete())
+            .Inject()
+            .Init();
 
         var sprites = world.GetPool<Sprite>();
         var positions = world.GetPool<Position>();

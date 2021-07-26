@@ -1,29 +1,20 @@
 using Leopotam.EcsLite;
+using Leopotam.EcsLite.Di;
 
 public struct Expiration
 {
     public ulong Tick;
 }
 
-public class Combat : IEcsRunSystem, IEcsInitSystem
+public class Combat : IEcsRunSystem
 {
-    private EcsPool<Ticks> ticks;
-    private EcsPool<Expiration> expirations;
-    private EcsPool<Delete> deletes;
-
-    public void Init(EcsSystems systems)
-    {
-        var world = systems.GetWorld();
-
-        ticks = world.GetPool<Ticks>();
-        expirations = world.GetPool<Expiration>();
-        deletes = world.GetPool<Delete>();
-    }
+    [EcsWorld] readonly EcsWorld world = default;
+    [EcsPool] readonly EcsPool<Ticks> ticks = default;
+    [EcsPool] readonly EcsPool<Expiration> expirations = default;
+    [EcsPool] readonly EcsPool<Delete> deletes = default;
 
     public void Run(EcsSystems systems)
     {
-        var world = systems.GetWorld();
-
         ulong tick = 0;
 
         foreach (var entity in world.Filter<Ticks>().End())

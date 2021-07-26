@@ -1,5 +1,6 @@
 using System;
 using Leopotam.EcsLite;
+using Leopotam.EcsLite.Di;
 using System.Runtime.CompilerServices;
 
 public struct Event<C, E>
@@ -84,7 +85,6 @@ public class Events<C, E>
     }
 }
 
-
 public static class EventUtils
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -103,21 +103,18 @@ public class EventDelete<C, E> : IEcsInitSystem, IEcsRunSystem
     where C : struct
     where E : struct
 {
-    private EcsPool<Event<C, E>> _pool;
     private EcsFilter _filter;
+    [EcsPool] readonly EcsPool<Event<C, E>> _pool = default;
 
     public void Init(EcsSystems systems)
     {
         var world = systems.GetWorld();
 
-        _pool = world.GetPool<Event<C, E>>();
         _filter = world.Filter<Event<C, E>>().End();
     }
 
     public void Run(EcsSystems systems)
     {
-        var world = systems.GetWorld();
-
         foreach (var entity in _filter)
         {
             _pool.Del(entity);

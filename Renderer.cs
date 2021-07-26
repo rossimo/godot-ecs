@@ -1,5 +1,6 @@
 using Godot;
 using Leopotam.EcsLite;
+using Leopotam.EcsLite.Di;
 
 public struct Sprite
 {
@@ -47,30 +48,17 @@ public struct Flash
 
 public class Renderer : IEcsRunSystem
 {
-    private EcsPool<Sprite> sprites;
-    private EcsPool<Scale> scales;
-    private EcsPool<SpriteNode> spriteNodes;
-    private EcsPool<Position> positions;
-    private EcsPool<Delete> deletes;
-    private EcsPool<Delta> deltas;
-    private EcsPool<LowRenderPriority> lowPriority;
-
-    public Renderer(EcsWorld world)
-    {
-        sprites = world.GetPool<Sprite>();
-        scales = world.GetPool<Scale>();
-        spriteNodes = world.GetPool<SpriteNode>();
-        positions = world.GetPool<Position>();
-        deletes = world.GetPool<Delete>();
-        deltas = world.GetPool<Delta>();
-        lowPriority = world.GetPool<LowRenderPriority>();
-    }
+    [EcsWorld] readonly EcsWorld world = default;
+    [EcsShared] readonly Game game = default;
+    [EcsPool] readonly EcsPool<Sprite> sprites = default;
+    [EcsPool] readonly EcsPool<Scale> scales = default;
+    [EcsPool] readonly EcsPool<SpriteNode> spriteNodes = default;
+    [EcsPool] readonly EcsPool<Position> positions = default;
+    [EcsPool] readonly EcsPool<Delta> deltas = default;
+    [EcsPool] readonly EcsPool<LowRenderPriority> lowPriority = default;
 
     public void Run(EcsSystems systems)
     {
-        var world = systems.GetWorld();
-        var game = systems.GetShared<Game>();
-
         float delta = 0;
         foreach (var entity in world.Filter<Delta>().End())
         {

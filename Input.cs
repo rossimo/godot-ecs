@@ -1,5 +1,6 @@
 using Godot;
 using Leopotam.EcsLite;
+using Leopotam.EcsLite.Di;
 
 public struct Player { }
 
@@ -20,33 +21,22 @@ public struct Move
 
 public class Input : IEcsInitSystem, IEcsRunSystem
 {
-    private EcsPool<MouseLeft> mouseLefts;
-    private EcsPool<MouseRight> mouseRights;
-    private EcsPool<Player> players;
-    private EcsPool<Position> positions;
-    private EcsPool<Move> moves;
-    private EcsPool<Ticks> ticks;
-    private EcsPool<Sprite> sprites;
-    private EcsPool<Direction> directions;
-    private EcsPool<Speed> speeds;
-    private EcsPool<Expiration> expirations;
-    private EcsPool<LowRenderPriority> lowPriorities;
+    [EcsWorld] readonly EcsWorld world = default;
+    [EcsShared] readonly Game game = default;
+    [EcsPool] readonly EcsPool<MouseLeft> mouseLefts = default;
+    [EcsPool] readonly EcsPool<MouseRight> mouseRights = default;
+    [EcsPool] readonly EcsPool<Position> positions = default;
+    [EcsPool] readonly EcsPool<Move> moves = default;
+    [EcsPool] readonly EcsPool<Ticks> ticks = default;
+    [EcsPool] readonly EcsPool<Sprite> sprites = default;
+    [EcsPool] readonly EcsPool<Direction> directions = default;
+    [EcsPool] readonly EcsPool<Speed> speeds = default;
+    [EcsPool] readonly EcsPool<Expiration> expirations = default;
+    [EcsPool] readonly EcsPool<LowRenderPriority> lowPriorities = default;
 
     public void Init(EcsSystems systems)
     {
         var world = systems.GetWorld();
-
-        players = world.GetPool<Player>();
-        moves = world.GetPool<Move>();
-        mouseLefts = world.GetPool<MouseLeft>();
-        mouseRights = world.GetPool<MouseRight>();
-        ticks = world.GetPool<Ticks>();
-        sprites = world.GetPool<Sprite>();
-        directions = world.GetPool<Direction>();
-        speeds = world.GetPool<Speed>();
-        positions = world.GetPool<Position>();
-        expirations = world.GetPool<Expiration>();
-        lowPriorities = world.GetPool<LowRenderPriority>();
 
         var entity = world.NewEntity();
         mouseLefts.Add(entity);
@@ -55,9 +45,6 @@ public class Input : IEcsInitSystem, IEcsRunSystem
 
     public void Run(EcsSystems systems, InputEvent @event)
     {
-        var world = systems.GetWorld();
-        var game = systems.GetShared<Game>();
-
         switch (@event)
         {
             case InputEventMouseButton mouseButton:
@@ -85,8 +72,6 @@ public class Input : IEcsInitSystem, IEcsRunSystem
 
     public void Run(EcsSystems systems)
     {
-        var world = systems.GetWorld();
-        var game = systems.GetShared<Game>();
         var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());
 
         var mouseLeft = false;

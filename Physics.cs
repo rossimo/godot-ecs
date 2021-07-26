@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using Leopotam.EcsLite;
+using Leopotam.EcsLite.Di;
 using System.Linq;
 using System.Collections.Generic;
 
@@ -61,39 +62,25 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
         return Convert.ToUInt64((Convert.ToSingle(millis) / 1000f) * PHYSICS_FPS);
     }
 
-    private EcsPool<Move> moves;
-    private EcsPool<Speed> speeds;
-    private EcsPool<Direction> directions;
-    private EcsPool<Position> positions;
-    private EcsPool<Ticks> ticks;
-    private EcsPool<PhysicsNode> physicsNodes;
-
-    public Physics()
-    {
-
-    }
+    [EcsWorld] readonly EcsWorld world = default;
+    [EcsShared] readonly Game game = default;
+    [EcsPool] readonly EcsPool<Move> moves = default;
+    [EcsPool] readonly EcsPool<Speed> speeds = default;
+    [EcsPool] readonly EcsPool<Direction> directions = default;
+    [EcsPool] readonly EcsPool<Position> positions = default;
+    [EcsPool] readonly EcsPool<Ticks> ticks = default;
+    [EcsPool] readonly EcsPool<PhysicsNode> physicsNodes = default;
 
     public void Init(EcsSystems systems)
     {
         var world = systems.GetWorld();
 
-        ticks = world.GetPool<Ticks>();
-        moves = world.GetPool<Move>();
-        speeds = world.GetPool<Speed>();
-        directions = world.GetPool<Direction>();
-        positions = world.GetPool<Position>();
-        physicsNodes = world.GetPool<PhysicsNode>();
-
         var physics = world.NewEntity();
-
-        ref var component = ref ticks.Add(physics);
+        ticks.Add(physics);
     }
 
     public void Run(EcsSystems systems)
     {
-        var world = systems.GetWorld();
-        var game = systems.GetShared<Game>();
-
         var ratio = (60f / PHYSICS_FPS);
 
         foreach (var entity in world.Filter<Ticks>().End())

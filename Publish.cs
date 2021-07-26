@@ -1,5 +1,6 @@
 using System;
 using Leopotam.EcsLite;
+using Leopotam.EcsLite.Di;
 using System.Runtime.CompilerServices;
 
 public struct Publish<C> { }
@@ -24,23 +25,13 @@ public static class PublishUtils
 
 public struct Delete { }
 
-public class EntityDelete : IEcsInitSystem, IEcsRunSystem
+public class EntityDelete : IEcsRunSystem
 {
-    private EcsPool<Delete> _pool;
-    private EcsFilter _filter;
-
-    public void Init(EcsSystems systems)
-    {
-        var world = systems.GetWorld();
-
-        _pool = world.GetPool<Delete>();
-        _filter = world.Filter<Delete>().End();
-    }
+    [EcsWorld] readonly EcsWorld world = default;
+    [EcsFilter(typeof(Delete))] readonly EcsFilter _filter = default;
 
     public void Run(EcsSystems systems)
     {
-        var world = systems.GetWorld();
-
         foreach (var entity in _filter)
         {
             world.DelEntity(entity);
@@ -51,21 +42,18 @@ public class EntityDelete : IEcsInitSystem, IEcsRunSystem
 public class ComponentDelete<C> : IEcsInitSystem, IEcsRunSystem
     where C : struct
 {
-    private EcsPool<C> _pool;
-    private EcsFilter _filter;
+    EcsFilter _filter;
+    [EcsPool] readonly EcsPool<C> _pool = default;
 
     public void Init(EcsSystems systems)
     {
         var world = systems.GetWorld();
 
-        _pool = world.GetPool<C>();
         _filter = world.Filter<C>().End();
     }
 
     public void Run(EcsSystems systems)
     {
-        var world = systems.GetWorld();
-
         foreach (var entity in _filter)
         {
             _pool.Del(entity);
