@@ -11,11 +11,10 @@ public struct Event<C, E>
 
 public struct Add { }
 
-public class AddEvents<C> : Events<C, Add> where C : struct
+public class AddEvents<C> : Events<C, Add>
+    where C : struct
 {
-    public AddEvents(EcsWorld world) : base(world)
-    {
-    }
+    public AddEvents(EcsWorld world) : base(world) { }
 }
 
 public class Events<C, E>
@@ -36,9 +35,9 @@ public class Events<C, E>
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public EventEnumerator<C, E> GetEnumerator()
+    public EventEnumerator GetEnumerator()
     {
-        return new EventEnumerator<C, E>(_filter.GetEnumerator(), _world, _eventPool);
+        return new EventEnumerator(_filter.GetEnumerator(), _world, _eventPool);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -47,20 +46,18 @@ public class Events<C, E>
         return ref _pool.Get(entity);
     }
 
-    public struct EventEnumerator<EC, EE> : IDisposable
-        where EC : struct
-        where EE : struct
+    public struct EventEnumerator : IDisposable
     {
         EcsFilter.Enumerator _enumerator;
         int _current;
 
-        readonly EcsPool<Event<EC, EE>> _events;
+        readonly EcsPool<Event<C, E>> _eventPool;
         readonly EcsWorld _world;
 
-        public EventEnumerator(EcsFilter.Enumerator enumerator, EcsWorld world, EcsPool<Event<EC, EE>> events)
+        public EventEnumerator(EcsFilter.Enumerator enumerator, EcsWorld world, EcsPool<Event<C, E>> events)
         {
             _enumerator = enumerator;
-            _events = events;
+            _eventPool = events;
             _world = world;
             _current = -1;
         }
@@ -76,9 +73,7 @@ public class Events<C, E>
         {
             while (_enumerator.MoveNext())
             {
-                var current = _enumerator.Current;
-                var @event = _events.Get(current);
-                _events.Del(current);
+                ref var @event = ref _eventPool.Get(_enumerator.Current);
                 if (@event.Entity.Unpack(_world, out var entity))
                 {
                     _current = entity;
@@ -98,61 +93,64 @@ public class Events<C, E>
 
 public struct Delete { }
 
-public class EntityCleanup : IEcsRunSystem
+public class EntityDelete : IEcsInitSystem, IEcsRunSystem
 {
-    private EcsPool<Delete> deletes;
+    private EcsPool<Delete> _pool;
+    private EcsFilter _filter;
 
     public void Init(EcsSystems systems)
     {
         var world = systems.GetWorld();
 
-        deletes = world.GetPool<Delete>();
+        _pool = world.GetPool<Delete>();
+        _filter = world.Filter<Delete>().End();
     }
 
     public void Run(EcsSystems systems)
     {
         var world = systems.GetWorld();
 
-        foreach (var entity in world.Filter<Delete>().End())
+        foreach (var entity in _filter)
         {
             world.DelEntity(entity);
         }
     }
 }
 
-public class EventCleanup<C, E> : IEcsInitSystem, IEcsRunSystem
+public class EventDelete<C, E> : IEcsInitSystem, IEcsRunSystem
     where C : struct
     where E : struct
 {
-    private EcsPool<Event<C, E>> pool;
+    private EcsPool<Event<C, E>> _pool;
+    private EcsFilter _filter;
 
     public void Init(EcsSystems systems)
     {
         var world = systems.GetWorld();
 
-        pool = world.GetPool<Event<C, E>>();
+        _pool = world.GetPool<Event<C, E>>();
+        _filter = world.Filter<Event<C, E>>().End();
     }
 
     public void Run(EcsSystems systems)
     {
         var world = systems.GetWorld();
 
-        foreach (var entity in world.Filter<Event<C, E>>().End())
+        foreach (var entity in _filter)
         {
-            pool.Del(entity);
+            _pool.Del(entity);
         }
     }
 }
 
-public static class EventUtils
+public static class AddUtils
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ref C AddEmit<C>(this EcsPool<C> pool, int entity)
         where C : struct
     {
-        ref var component = ref pool.Add(entity);
         pool.Emit(entity);
-        return ref component;
+        return ref pool.Add(entity);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -160,11 +158,7 @@ public static class EventUtils
         where C : struct
     {
         var world = pool.GetWorld();
-
-        var addEvents = world.GetPool<Event<C, Add>>();
-        addEvents.Del(entity);
-
-        ref var @event = ref addEvents.Add(entity);
+        ref var @event = ref world.GetPool<Event<C, Add>>().Replace(entity);
         @event.Entity = world.PackEntity(entity);
     }
 
@@ -173,7 +167,6 @@ public static class EventUtils
         where C : struct
     {
         pool.Del(entity);
-        ref var component = ref pool.Add(entity);
-        return ref component;
+        return ref pool.Add(entity);
     }
 }

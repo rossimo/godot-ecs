@@ -17,10 +17,10 @@ public class Game : Godot.YSort
             .Add(new Combat())
             .Add(new Physics())
             .Add(new Renderer(world))
-            .Add(new EventCleanup<Sprite, Add>())
-            .Add(new EventCleanup<Position, Add>())
-            .Add(new EventCleanup<Scale, Add>())
-            .Add(new EntityCleanup());
+            .Add(new EventDelete<Sprite, Add>())
+            .Add(new EventDelete<Position, Add>())
+            .Add(new EventDelete<Scale, Add>())
+            .Add(new EntityDelete());
         systems.Init();
 
         var sprites = world.GetPool<Sprite>();
