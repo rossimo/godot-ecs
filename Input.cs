@@ -126,10 +126,10 @@ public class Input : IEcsInitSystem, IEcsRunSystem
                     .Normalized();
 
                 var bullet = world.NewEntity();
-                ref var sprite = ref sprites.AddEmit(bullet);
+                ref var sprite = ref sprites.AddEvent(bullet);
                 sprite.Image = "res://resources/tiles/tile663.png";
 
-                ref var bulletPosition = ref positions.AddEmit(bullet);
+                ref var bulletPosition = ref positions.AddEvent(bullet);
                 bulletPosition.X = position.X;
                 bulletPosition.Y = position.Y;
 

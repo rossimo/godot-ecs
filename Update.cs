@@ -7,6 +7,7 @@ public struct Event<C, E>
     where E : struct
 {
     public EcsPackedEntity Entity;
+    public E Data;
 }
 
 public struct Add { }
@@ -143,30 +144,38 @@ public class EventDelete<C, E> : IEcsInitSystem, IEcsRunSystem
     }
 }
 
-public static class AddUtils
+public static class PoolUtils
 {
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ref C AddEmit<C>(this EcsPool<C> pool, int entity)
-        where C : struct
-    {
-        pool.Emit(entity);
-        return ref pool.Add(entity);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void Emit<C>(this EcsPool<C> pool, int entity)
-        where C : struct
-    {
-        var world = pool.GetWorld();
-        ref var @event = ref world.GetPool<Event<C, Add>>().Replace(entity);
-        @event.Entity = world.PackEntity(entity);
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ref C Replace<C>(this EcsPool<C> pool, int entity)
         where C : struct
     {
         pool.Del(entity);
+        return ref pool.Add(entity);
+    }
+}
+
+public static class EventUtils
+{
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ref Event<C, E> Event<C, E>(this EcsPool<C> pool, int entity)
+        where C : struct
+        where E : struct
+    {
+        var world = pool.GetWorld();
+        ref var @event = ref world.GetPool<Event<C, E>>().Replace(entity);
+        @event.Entity = world.PackEntity(entity);
+        return ref @event;
+    }
+}
+
+public static class AddUtils
+{
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ref C AddEvent<C>(this EcsPool<C> pool, int entity)
+        where C : struct
+    {
+        pool.Event<C, Add>(entity);
         return ref pool.Add(entity);
     }
 }

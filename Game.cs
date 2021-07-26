@@ -34,14 +34,14 @@ public class Game : Godot.YSort
 
             players.Add(player);
 
-            ref var sprite = ref sprites.AddEmit(player);
+            ref var sprite = ref sprites.AddEvent(player);
             sprite.Image = "res://resources/tiles/tile072.png";
 
-            ref var position = ref positions.AddEmit(player);
+            ref var position = ref positions.AddEvent(player);
             position.X = 50;
             position.Y = 50;
 
-            ref var scale = ref scales.AddEmit(player);
+            ref var scale = ref scales.AddEvent(player);
             scale.X = 3;
             scale.Y = 3;
 
@@ -52,14 +52,14 @@ public class Game : Godot.YSort
         {
             var fire = world.NewEntity();
 
-            ref var sprite = ref sprites.AddEmit(fire);
+            ref var sprite = ref sprites.AddEvent(fire);
             sprite.Image = "res://resources/tiles/tile495.png";
 
-            ref var position = ref positions.AddEmit(fire);
+            ref var position = ref positions.AddEvent(fire);
             position.X = 400;
             position.Y = 200;
 
-            ref var scale = ref scales.AddEmit(fire);
+            ref var scale = ref scales.AddEvent(fire);
             scale.X = 2;
             scale.Y = 2;
         }
@@ -67,14 +67,14 @@ public class Game : Godot.YSort
         {
             var button = world.NewEntity();
 
-            ref var sprite = ref sprites.AddEmit(button);
+            ref var sprite = ref sprites.AddEvent(button);
             sprite.Image = "res://resources/tiles/tile481.png";
 
-            ref var position = ref positions.AddEmit(button);
+            ref var position = ref positions.AddEvent(button);
             position.X = 300;
             position.Y = 300;
 
-            ref var scale = ref scales.AddEmit(button);
+            ref var scale = ref scales.AddEvent(button);
             scale.X = 2;
             scale.Y = 2;
         }
@@ -82,14 +82,14 @@ public class Game : Godot.YSort
         {
             var potion = world.NewEntity();
 
-            ref var sprite = ref sprites.AddEmit(potion);
+            ref var sprite = ref sprites.AddEvent(potion);
             sprite.Image = "res://resources/tiles/tile570.png";
 
-            ref var position = ref positions.AddEmit(potion);
+            ref var position = ref positions.AddEvent(potion);
             position.X = 200;
             position.Y = 300;
 
-            ref var scale = ref scales.AddEmit(potion);
+            ref var scale = ref scales.AddEvent(potion);
             scale.X = 2;
             scale.Y = 2;
         }
