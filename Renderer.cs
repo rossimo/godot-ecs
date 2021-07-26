@@ -9,6 +9,7 @@ public struct Sprite
 public struct SpriteNode
 {
     public Godot.Sprite Node;
+    public Godot.Tween PositionTween;
 }
 
 public struct Position
@@ -46,27 +47,97 @@ public struct Flash
 
 public class Renderer : IEcsRunSystem
 {
-    private AddEvents<Sprite> _spriteAdds;
-    private AddEvents<Scale> _scaleAdds;
-
+    private EcsPool<Sprite> sprites;
+    private EcsPool<Scale> scales;
     private EcsPool<SpriteNode> spriteNodes;
     private EcsPool<Position> positions;
     private EcsPool<Delete> deletes;
+    private EcsPool<Delta> deltas;
+    private EcsPool<LowRenderPriority> lowPriority;
 
     public Renderer(EcsWorld world)
     {
-        _spriteAdds = new AddEvents<Sprite>(world);
-        _scaleAdds = new AddEvents<Scale>(world);
-
+        sprites = world.GetPool<Sprite>();
+        scales = world.GetPool<Scale>();
         spriteNodes = world.GetPool<SpriteNode>();
         positions = world.GetPool<Position>();
         deletes = world.GetPool<Delete>();
+        deltas = world.GetPool<Delta>();
+        lowPriority = world.GetPool<LowRenderPriority>();
     }
 
     public void Run(EcsSystems systems)
     {
         var world = systems.GetWorld();
         var game = systems.GetShared<Game>();
+
+        float delta = 0;
+        foreach (var entity in world.Filter<Delta>().End())
+        {
+            delta = deltas.Get(entity).Value;
+        }
+
+        foreach (int entity in world.Filter<Publish<Sprite>>().End())
+        {
+            ref var sprite = ref sprites.Get(entity);
+
+            var node = new Godot.Sprite()
+            {
+                Name = $"{entity}",
+                Texture = GD.Load<Texture>(sprite.Image)
+            };
+
+            var positionTween = new Tween()
+            {
+                Name = "position"
+            };
+            node.AddChild(positionTween);
+
+            game.AddChild(node);
+
+            ref var spriteNode = ref spriteNodes.Add(entity);
+            spriteNode.Node = node;
+            spriteNode.PositionTween = positionTween;
+
+            if (positions.Has(entity))
+            {
+                ref var position = ref positions.Get(entity);
+                node.Position = new Vector2(position.X, position.Y);
+            }
+        }
+
+        foreach (int entity in world.Filter<Publish<Position>>().Inc<SpriteNode>().End())
+        {
+            ref var spriteNode = ref spriteNodes.Get(entity);
+            ref var position = ref positions.Get(entity);
+
+            var node = spriteNode.Node;
+
+
+            if (lowPriority.Has(entity))
+            {
+                node.Position = new Vector2(position.X, position.Y);
+            }
+            else
+            {
+                var tween = spriteNode.PositionTween;
+
+                tween.InterpolateProperty(node, "position",
+                    node.Position,
+                    new Vector2(position.X, position.Y),
+                    delta);
+
+                tween.Start();
+            }
+        }
+
+        foreach (int entity in world.Filter<Publish<Scale>>().Inc<SpriteNode>().End())
+        {
+            ref var scale = ref scales.Get(entity);
+
+            var node = game.GetNodeOrNull<Godot.Sprite>($"{entity}");
+            node.Scale = new Vector2(scale.X, scale.Y);
+        }
 
         foreach (int entity in world.Filter<Delete>().Inc<SpriteNode>().End())
         {
@@ -77,50 +148,7 @@ public class Renderer : IEcsRunSystem
             node.QueueFree();
         }
 
-        foreach (int entity in _spriteAdds)
-        {
-            ref var sprite = ref _spriteAdds.Get(entity);
-
-            var node = new Godot.Sprite()
-            {
-                Name = $"{entity}",
-                Texture = GD.Load<Texture>(sprite.Image)
-            };
-
-            game.AddChild(node);
-
-            ref var spriteNode = ref spriteNodes.Add(entity);
-            spriteNode.Node = node;
-        }
-
-        foreach (int entity in world.Filter<Event<Position, Add>>().Inc<SpriteNode>().End())
-        {
-            ref var spriteNode = ref spriteNodes.Get(entity);
-            ref var position = ref positions.Get(entity);
-
-            spriteNode.Node.Position = new Vector2(position.X, position.Y);
-        }
-
-        foreach (int entity in _scaleAdds)
-        {
-            ref var scale = ref _scaleAdds.Get(entity);
-
-            var node = game.GetNodeOrNull<Godot.Sprite>($"{entity}");
-            node.Scale = new Vector2(scale.X, scale.Y);
-        }
-
         /*
-
-        var scales = Diff<Scale>.Compare(previous, state);
-
-        foreach (var (id, sprite) in sprites.Removed)
-        {
-            var node = sprite.Node;
-            if (node == null) continue;
-
-            node.RemoveAndSkip();
-            node.QueueFree();
-        }
 
         foreach (var (id, component) in sprites.Updated)
         {
@@ -180,13 +208,6 @@ public class Renderer : IEcsRunSystem
             var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
             node.Scale = new Vector2(1, 1);
-        }
-
-        foreach (var (id, scale) in scales.Updated.Concat(scales.Changed))
-        {
-            var node = state.Get<Sprite>(id)?.Node;
-            if (node == null) continue;
-            node.Scale = new Vector2(scale.X, scale.Y);
         }
 
         foreach (var (id, rotation) in rotations.Removed)
@@ -254,42 +275,39 @@ public class Renderer : IEcsRunSystem
 
             tween.Start();
         }
-
-        foreach (var (id, position) in positions.Changed)
-        {
-            var sprite = state.Get<Sprite>(id);
-            var lowPriority = state.Get<LowRenderPriority>(id);
-            var node = sprite?.Node;
-            if (node == null) continue;
-
-            if (position.X != node.Position.x || position.Y != node.Position.y)
-            {
-                if (lowPriority == null)
-                {
-                    var tween = node.GetNodeOrNull<Tween>("move");
-                    if (tween == null)
-                    {
-                        tween = new Tween()
-                        {
-                            Name = "move"
-                        };
-                        node.AddChild(tween);
-                    }
-
-                    tween.InterpolateProperty(node, "position",
-                        node.Position,
-                        new Vector2(position.X, position.Y),
-                        delta);
-
-                    tween.Start();
-                }
-                else
-                {
-                    node.Position = new Vector2(position.X, position.Y);
-                }
-            }
-        }
         */
+    }
+}
+
+public struct Delta
+{
+    public float Value;
+}
+
+public class DeltaSystem : IEcsInitSystem
+{
+    private EcsPool<Delta> _pool;
+    private EcsFilter _filter;
+
+    public void Init(EcsSystems systems)
+    {
+        var world = systems.GetWorld();
+
+        _pool = world.GetPool<Delta>();
+        _filter = world.Filter<Delta>().End();
+
+        _pool.Add(world.NewEntity());
+    }
+
+    public void Run(EcsSystems systems, float delta)
+    {
+        var world = systems.GetWorld();
+
+        foreach (var entity in world.Filter<Delta>().End())
+        {
+            ref var component = ref _pool.Get(entity);
+            component.Value = delta;
+        }
     }
 }
 

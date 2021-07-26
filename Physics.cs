@@ -139,8 +139,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
             var remainingDistance = new Vector2(position.X, position.Y)
                 .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
 
-
-            positions.Event<Position, Add>(entity);
+            positions.Publish(entity);
             if (remainingDistance <= moveDistance)
             {
                 position.X = move.Destination.X;
@@ -174,7 +173,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
 
             node.Position = update;
 
-            positions.Event<Position, Add>(entity);
+            positions.Publish(entity);
             position.X = update.x;
             position.Y = update.y;
         }

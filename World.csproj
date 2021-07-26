@@ -4,7 +4,6 @@
     <LangVersion>9.0</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="Events.cs" />
     <Compile Remove="Items.cs" />
   </ItemGroup>
 </Project>

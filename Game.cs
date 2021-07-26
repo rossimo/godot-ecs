@@ -6,20 +6,23 @@ public class Game : Godot.YSort
     public EcsWorld world;
     public EcsSystems systems;
     public Input input;
+    public DeltaSystem delta;
 
     public override void _Ready()
     {
         world = new EcsWorld();
         input = new Input();
+        delta = new DeltaSystem();
 
         systems = new EcsSystems(world, this)
+            .Add(delta)
             .Add(input)
             .Add(new Combat())
             .Add(new Physics())
             .Add(new Renderer(world))
-            .Add(new EventDelete<Sprite, Add>())
-            .Add(new EventDelete<Position, Add>())
-            .Add(new EventDelete<Scale, Add>())
+            .Add(new ComponentDelete<Publish<Sprite>>())
+            .Add(new ComponentDelete<Publish<Position>>())
+            .Add(new ComponentDelete<Publish<Scale>>())
             .Add(new EntityDelete());
         systems.Init();
 
@@ -34,14 +37,14 @@ public class Game : Godot.YSort
 
             players.Add(player);
 
-            ref var sprite = ref sprites.AddEvent(player);
+            ref var sprite = ref sprites.AddPublish(player);
             sprite.Image = "res://resources/tiles/tile072.png";
 
-            ref var position = ref positions.AddEvent(player);
+            ref var position = ref positions.AddPublish(player);
             position.X = 50;
             position.Y = 50;
 
-            ref var scale = ref scales.AddEvent(player);
+            ref var scale = ref scales.AddPublish(player);
             scale.X = 3;
             scale.Y = 3;
 
@@ -52,14 +55,14 @@ public class Game : Godot.YSort
         {
             var fire = world.NewEntity();
 
-            ref var sprite = ref sprites.AddEvent(fire);
+            ref var sprite = ref sprites.AddPublish(fire);
             sprite.Image = "res://resources/tiles/tile495.png";
 
-            ref var position = ref positions.AddEvent(fire);
+            ref var position = ref positions.AddPublish(fire);
             position.X = 400;
             position.Y = 200;
 
-            ref var scale = ref scales.AddEvent(fire);
+            ref var scale = ref scales.AddPublish(fire);
             scale.X = 2;
             scale.Y = 2;
         }
@@ -67,14 +70,14 @@ public class Game : Godot.YSort
         {
             var button = world.NewEntity();
 
-            ref var sprite = ref sprites.AddEvent(button);
+            ref var sprite = ref sprites.AddPublish(button);
             sprite.Image = "res://resources/tiles/tile481.png";
 
-            ref var position = ref positions.AddEvent(button);
+            ref var position = ref positions.AddPublish(button);
             position.X = 300;
             position.Y = 300;
 
-            ref var scale = ref scales.AddEvent(button);
+            ref var scale = ref scales.AddPublish(button);
             scale.X = 2;
             scale.Y = 2;
         }
@@ -82,14 +85,14 @@ public class Game : Godot.YSort
         {
             var potion = world.NewEntity();
 
-            ref var sprite = ref sprites.AddEvent(potion);
+            ref var sprite = ref sprites.AddPublish(potion);
             sprite.Image = "res://resources/tiles/tile570.png";
 
-            ref var position = ref positions.AddEvent(potion);
+            ref var position = ref positions.AddPublish(potion);
             position.X = 200;
             position.Y = 300;
 
-            ref var scale = ref scales.AddEvent(potion);
+            ref var scale = ref scales.AddPublish(potion);
             scale.X = 2;
             scale.Y = 2;
         }
@@ -102,8 +105,9 @@ public class Game : Godot.YSort
         input.Run(systems, @event);
     }
 
-    public override void _PhysicsProcess(float delta)
+    public override void _PhysicsProcess(float deltaValue)
     {
+        delta.Run(systems, deltaValue);
         systems.Run();
         //State = InputMonitor.System(Previous, State, this);
         //State = Events.System(Previous, State);

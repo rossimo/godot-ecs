@@ -30,6 +30,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
     private EcsPool<Direction> directions;
     private EcsPool<Speed> speeds;
     private EcsPool<Expiration> expirations;
+     private EcsPool<LowRenderPriority> lowPriorities;
 
     public void Init(EcsSystems systems)
     {
@@ -45,10 +46,11 @@ public class Input : IEcsInitSystem, IEcsRunSystem
         speeds = world.GetPool<Speed>();
         positions = world.GetPool<Position>();
         expirations = world.GetPool<Expiration>();
+        lowPriorities = world.GetPool<LowRenderPriority>();
 
         var entity = world.NewEntity();
-        mouseLefts.Replace(entity);
-        mouseRights.Replace(entity);
+        mouseLefts.Add(entity);
+        mouseRights.Add(entity);
     }
 
     public void Run(EcsSystems systems, InputEvent @event)
@@ -120,18 +122,18 @@ public class Input : IEcsInitSystem, IEcsRunSystem
 
             if (mouseLeft)
             {
-                ref var position = ref positions.Get(entity);
-                var directionVec = new Vector2(position.X, position.Y)
+                ref var playerPosition = ref positions.Get(entity);
+                var directionVec = new Vector2(playerPosition.X, playerPosition.Y)
                     .DirectionTo(mousePosition)
                     .Normalized();
 
                 var bullet = world.NewEntity();
-                ref var sprite = ref sprites.AddEvent(bullet);
+                ref var sprite = ref sprites.AddPublish(bullet);
                 sprite.Image = "res://resources/tiles/tile663.png";
 
-                ref var bulletPosition = ref positions.AddEvent(bullet);
-                bulletPosition.X = position.X;
-                bulletPosition.Y = position.Y;
+                ref var position = ref positions.AddPublish(bullet);
+                position.X = playerPosition.X;
+                position.Y = playerPosition.Y;
 
                 ref var direction = ref directions.Add(bullet);
                 direction.X = directionVec.x;
@@ -142,6 +144,8 @@ public class Input : IEcsInitSystem, IEcsRunSystem
 
                 ref var expiration = ref expirations.Add(bullet);
                 expiration.Tick = Physics.MillisToTicks(1 * 1000) + tick;
+
+                lowPriorities.Add(bullet);
             }
         }
 
