@@ -97,7 +97,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
         {
             if (mouseRight)
             {
-                ref var move = ref moves.Replace(entity);
+                ref var move = ref moves.Ensure(entity);
                 move.Destination = new Position
                 {
                     X = mousePosition.x,
