@@ -11,7 +11,7 @@ public static class NotifyUtils
     public static ref Notify<C> Notify<C>(this EcsPool<C> pool, int entity)
         where C : struct
     {
-        return ref pool.GetWorld().GetPool<Notify<C>>().Replace(entity);
+        return ref pool.GetWorld().GetPool<Notify<C>>().Ensure(entity);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -63,6 +63,20 @@ public class ComponentDelete<C> : IEcsInitSystem, IEcsRunSystem
 
 public static class PoolUtils
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ref C Ensure<C>(this EcsPool<C> pool, int entity)
+        where C : struct
+    {
+        if (pool.Has(entity))
+        {
+            return ref pool.Get(entity);
+        }
+        else
+        {
+            return ref pool.Add(entity);
+        }
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ref C Replace<C>(this EcsPool<C> pool, int entity)
         where C : struct

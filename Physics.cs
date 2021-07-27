@@ -72,6 +72,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<Speed> speeds = default;
     [EcsPool] readonly EcsPool<Direction> directions = default;
     [EcsPool] readonly EcsPool<Position> positions = default;
+    [EcsPool] readonly EcsPool<Notify<Position>> notifyPositions = default;
     [EcsPool] readonly EcsPool<Ticks> ticks = default;
     [EcsPool] readonly EcsPool<PhysicsNode> physicsNodes = default;
     [EcsPool] readonly EcsPool<Area> areas = default;
@@ -146,7 +147,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
             var remainingDistance = new Vector2(position.X, position.Y)
                 .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
 
-            positions.Notify(entity);
+            notifyPositions.Ensure(entity);
             if (remainingDistance <= moveDistance)
             {
                 position.X = move.Destination.X;
@@ -180,7 +181,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
 
             node.Position = update;
 
-            positions.Notify(entity);
+            notifyPositions.Ensure(entity);
             position.X = update.x;
             position.Y = update.y;
         }

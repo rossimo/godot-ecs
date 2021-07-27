@@ -93,7 +93,7 @@ public static class EventUtils
         where E : struct
     {
         var world = pool.GetWorld();
-        ref var @event = ref world.GetPool<Event<C, E>>().Replace(entity);
+        ref var @event = ref world.GetPool<Event<C, E>>().Ensure(entity);
         @event.Entity = world.PackEntity(entity);
         return ref @event;
     }
