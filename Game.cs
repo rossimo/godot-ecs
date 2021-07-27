@@ -4,117 +4,124 @@ using Leopotam.EcsLite.Di;
 
 public class Game : Godot.YSort
 {
-    public EcsWorld world;
-    public EcsSystems systems;
-    public Input input;
-    public DeltaSystem delta;
+	public EcsWorld world;
+	public EcsSystems systems;
+	public Input input;
+	public DeltaSystem delta;
 
-    public override void _Ready()
-    {
-        world = new EcsWorld();
-        delta = new DeltaSystem();
-        input = new Input();
+	public override void _Ready()
+	{
+		world = new EcsWorld();
+		delta = new DeltaSystem();
+		input = new Input();
 
-        systems = new EcsSystems(world, this);
-        systems
-            .Add(delta)
-            .Add(input)
-            .Add(new Combat())
-            .Add(new Physics())
-            .Add(new Renderer())
-            .Add(new ComponentDelete<Notify<Sprite>>())
-            .Add(new ComponentDelete<Notify<Position>>())
-            .Add(new ComponentDelete<Notify<Scale>>())
-            .Add(new EntityDelete())
-            .Inject()
-            .Init();
+		systems = new EcsSystems(world, this);
+		systems
+			.Add(delta)
+			.Add(input)
+			.Add(new Combat())
+			.Add(new Physics())
+			.Add(new Renderer())
+			.Add(new ComponentDelete<Notify<Sprite>>())
+			.Add(new ComponentDelete<Notify<Position>>())
+			.Add(new ComponentDelete<Notify<Scale>>())
+			.Add(new EntityDelete())
+			.Inject()
+			.Init();
 
-        var sprites = world.GetPool<Sprite>();
-        var positions = world.GetPool<Position>();
-        var scales = world.GetPool<Scale>();
-        var players = world.GetPool<Player>();
-        var speeds = world.GetPool<Speed>();
+		var sprites = world.GetPool<Sprite>();
+		var positions = world.GetPool<Position>();
+		var scales = world.GetPool<Scale>();
+		var players = world.GetPool<Player>();
+		var speeds = world.GetPool<Speed>();
+		var areas = world.GetPool<Area>();
 
-        {
-            var player = world.NewEntity();
+		{
+			var player = world.NewEntity();
 
-            players.Add(player);
+			players.Add(player);
 
-            ref var sprite = ref sprites.AddNotify(player);
-            sprite.Image = "res://resources/tiles/tile072.png";
+			ref var sprite = ref sprites.AddNotify(player);
+			sprite.Image = "res://resources/tiles/tile072.png";
 
-            ref var position = ref positions.AddNotify(player);
-            position.X = 50;
-            position.Y = 50;
+			ref var position = ref positions.AddNotify(player);
+			position.X = 50;
+			position.Y = 50;
 
-            ref var scale = ref scales.AddNotify(player);
-            scale.X = 3;
-            scale.Y = 3;
+			ref var scale = ref scales.AddNotify(player);
+			scale.X = 3;
+			scale.Y = 3;
 
-            ref var speed = ref speeds.Add(player);
-            speed.Value = 3f;
-        }
+			ref var speed = ref speeds.Add(player);
+			speed.Value = 3f;
 
-        {
-            var fire = world.NewEntity();
+			areas.Add(player);
+		}
 
-            ref var sprite = ref sprites.AddNotify(fire);
-            sprite.Image = "res://resources/tiles/tile495.png";
+		{
+			var fire = world.NewEntity();
 
-            ref var position = ref positions.AddNotify(fire);
-            position.X = 400;
-            position.Y = 200;
+			ref var sprite = ref sprites.AddNotify(fire);
+			sprite.Image = "res://resources/tiles/tile495.png";
 
-            ref var scale = ref scales.AddNotify(fire);
-            scale.X = 2;
-            scale.Y = 2;
-        }
+			ref var position = ref positions.AddNotify(fire);
+			position.X = 400;
+			position.Y = 200;
 
-        {
-            var button = world.NewEntity();
+			ref var scale = ref scales.AddNotify(fire);
+			scale.X = 2;
+			scale.Y = 2;
+		}
 
-            ref var sprite = ref sprites.AddNotify(button);
-            sprite.Image = "res://resources/tiles/tile481.png";
+		{
+			var button = world.NewEntity();
 
-            ref var position = ref positions.AddNotify(button);
-            position.X = 300;
-            position.Y = 300;
+			ref var sprite = ref sprites.AddNotify(button);
+			sprite.Image = "res://resources/tiles/tile481.png";
 
-            ref var scale = ref scales.AddNotify(button);
-            scale.X = 2;
-            scale.Y = 2;
-        }
+			ref var position = ref positions.AddNotify(button);
+			position.X = 300;
+			position.Y = 300;
 
-        {
-            var potion = world.NewEntity();
+			ref var scale = ref scales.AddNotify(button);
+			scale.X = 2;
+			scale.Y = 2;
 
-            ref var sprite = ref sprites.AddNotify(potion);
-            sprite.Image = "res://resources/tiles/tile570.png";
+			areas.Add(button);
+		}
 
-            ref var position = ref positions.AddNotify(potion);
-            position.X = 200;
-            position.Y = 300;
+		{
+			var potion = world.NewEntity();
 
-            ref var scale = ref scales.AddNotify(potion);
-            scale.X = 2;
-            scale.Y = 2;
-        }
+			ref var sprite = ref sprites.AddNotify(potion);
+			sprite.Image = "res://resources/tiles/tile570.png";
 
-        systems.Init();
-    }
+			ref var position = ref positions.AddNotify(potion);
+			position.X = 200;
+			position.Y = 300;
 
-    public override void _Input(InputEvent @event)
-    {
-        input.Run(systems, @event);
-    }
+			ref var scale = ref scales.AddNotify(potion);
+			scale.X = 2;
+			scale.Y = 2;
 
-    public override void _PhysicsProcess(float deltaValue)
-    {
-        delta.Run(systems, deltaValue);
-        systems.Run();
-    }
+			areas.Add(potion);
+		}
 
-    /*
+		systems.Init();
+	}
+
+	public override void _Input(InputEvent @event)
+	{
+		input.Run(systems, @event);
+	}
+
+	public override void _PhysicsProcess(float deltaValue)
+	{
+		delta.Run(systems, deltaValue);
+		systems.Run();
+	}
+
+	/*
 	public void QueueEvent(Event @event, int source, int target)
 	{
 
