@@ -222,13 +222,13 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
                 if (collisionTriggers.Has(entity))
                 {
                     ref var trigger = ref collisionTriggers.Get(entity);
-                    TaskUtils.Run(trigger.Tasks, world, entity, other);
+                    trigger.Tasks.Run(world, entity, other);
                 }
 
                 if (collisionTriggers.Has(other))
                 {
                     ref var trigger = ref collisionTriggers.Get(other);
-                    TaskUtils.Run(trigger.Tasks, world, other, entity);
+                    trigger.Tasks.Run(world, other, entity);
                 }
             }
         }

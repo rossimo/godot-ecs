@@ -130,7 +130,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
                 ref var expiration = ref expirations.Add(bullet);
                 expiration.Tick = Physics.MillisToTicks(1 * 1000) + tick;
 
-                lowPriorities.Add(bullet);
+                //lowPriorities.Add(bullet);
             }
         }
     }

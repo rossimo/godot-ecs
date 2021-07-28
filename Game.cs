@@ -25,9 +25,9 @@ public class Game : Godot.YSort
             .Add(new ComponentDelete<Notify<Sprite>>())
             .Add(new ComponentDelete<Notify<Position>>())
             .Add(new ComponentDelete<Notify<Scale>>())
-			.Add(new ComponentDelete<Notify<Flash>>())
-			.Add(new ComponentDelete<Notify<Collision>>())
-			.Add(new ComponentDelete<Notify<Area>>())
+            .Add(new ComponentDelete<Notify<Flash>>())
+            .Add(new ComponentDelete<Notify<Collision>>())
+            .Add(new ComponentDelete<Notify<Area>>())
             .Add(new EntityDelete())
             .Inject()
             .Init();
@@ -61,6 +61,7 @@ public class Game : Godot.YSort
             speed.Value = 3f;
 
             areas.AddNotify(player);
+            
             collisions.AddNotify(player);
         }
 
@@ -87,7 +88,7 @@ public class Game : Godot.YSort
                         Color = new Color() { Red = 2f, Green = 2f, Blue = 2f }
                     }
                 },
-				new AddNotifyOther<Flash>() {
+                new AddNotifyOther<Flash>() {
                     Component = new Flash() {
                         Color = new Color() { Red = 2f, Green = 0f, Blue = 0f }
                     }
