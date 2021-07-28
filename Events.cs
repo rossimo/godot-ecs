@@ -122,6 +122,45 @@ public class EventDelete<C, E> : IEcsInitSystem, IEcsRunSystem
     }
 }
 
+public struct Trigger<T>
+    where T : struct
+{
+    public Task[] Tasks;
+}
+
+public interface Task
+{
+    public void Run(EcsWorld world, int self, int other);
+}
+
+public struct AddNotifySelf<C> : Task
+    where C : struct
+{
+    public C Component;
+
+    public void Run(EcsWorld world, int self, int other)
+    {
+        var pool = world.GetPool<C>();
+        ref var component = ref pool.Ensure<C>(self);
+        pool.Notify(self);
+        component = Component;
+    }
+}
+
+public struct AddNotifyOther<C> : Task
+    where C : struct
+{
+    public C Component;
+
+    public void Run(EcsWorld world, int self, int other)
+    {
+        var pool = world.GetPool<C>();
+        ref var component = ref pool.Ensure<C>(other);
+        pool.Notify(other);
+        component = Component;
+    }
+}
+
 /*
 public static class Target
 {

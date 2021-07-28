@@ -11,6 +11,7 @@ public struct SpriteNode
 {
     public Godot.Sprite Node;
     public Godot.Tween PositionTween;
+    public Godot.Tween ModulateTween;
 }
 
 public struct Position
@@ -56,6 +57,7 @@ public class Renderer : IEcsRunSystem
     [EcsPool] readonly EcsPool<Position> positions = default;
     [EcsPool] readonly EcsPool<Delta> deltas = default;
     [EcsPool] readonly EcsPool<LowRenderPriority> lowPriority = default;
+    [EcsPool] readonly EcsPool<Flash> flashes = default;
 
     public void Run(EcsSystems systems)
     {
@@ -81,11 +83,18 @@ public class Renderer : IEcsRunSystem
             };
             node.AddChild(positionTween);
 
+            var modulateTween = new Tween()
+            {
+                Name = "modulate"
+            };
+            node.AddChild(modulateTween);
+
             game.AddChild(node);
 
             ref var spriteNode = ref spriteNodes.Add(entity);
             spriteNode.Node = node;
             spriteNode.PositionTween = positionTween;
+            spriteNode.ModulateTween = modulateTween;
 
             if (positions.Has(entity))
             {
@@ -127,6 +136,24 @@ public class Renderer : IEcsRunSystem
             node.Scale = new Vector2(scale.X, scale.Y);
         }
 
+        foreach (var entity in world.Filter<SpriteNode>().Inc<Notify<Flash>>().End())
+        {
+            ref var spriteNode = ref spriteNodes.Get(entity);
+
+            var flash = flashes.Get(entity);
+            flashes.Del(entity);
+
+            var node = spriteNode.Node;
+            var tween = spriteNode.ModulateTween;
+
+            tween.InterpolateProperty(node, "modulate",
+                new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue),
+                new Godot.Color(1, 1, 1),
+                .33f);
+
+            tween.Start();
+        }
+
         foreach (int entity in world.Filter<SpriteNode>().Inc<Delete>().End())
         {
             ref var sprite = ref spriteNodes.Get(entity);
@@ -136,8 +163,7 @@ public class Renderer : IEcsRunSystem
             node.QueueFree();
         }
 
-        /*
-
+        /*=
         foreach (var (id, component) in sprites.Updated)
         {
             var position = state.Get<Position>(id);
@@ -235,33 +261,6 @@ public class Renderer : IEcsRunSystem
             node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() {
                 id, new GodotWrapper(click)
             });
-        }
-
-        foreach (var (id, flash) in flashes.Updated.Concat(flashes.Changed))
-        {
-            state = state.Without<Flash>(id);
-
-            var position = state.Get<Position>(id);
-            position = position ?? new Position { X = 0, Y = 0 };
-
-            var node = state.Get<Sprite>(id)?.Node;
-            var tween = game.GetNodeOrNull<Tween>($"{id}/modulate");
-
-            if (node == null) continue;
-
-            tween.RemoveAll();
-
-            if (tween.IsConnected("tween_all_completed", game, nameof(game._Event)))
-            {
-                tween.Disconnect("tween_all_completed", game, nameof(game._Event));
-            }
-
-            tween.InterpolateProperty(node, "modulate",
-                new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue),
-                new Godot.Color(1, 1, 1),
-                .33f);
-
-            tween.Start();
         }
         */
     }

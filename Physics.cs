@@ -28,15 +28,6 @@ public struct Direction
 
 public struct Collision { }
 
-/*
-public struct CollisionEvent : Event
-{
-    public CollisionEvent(params Task[] tasks) => (Tasks) = (tasks);
-
-    public override string ToString() => base.ToString();
-}
-*/
-
 public struct Area { }
 
 /*
@@ -80,6 +71,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<Sprite> sprites = default;
     [EcsPool] readonly EcsPool<Scale> scales = default;
     [EcsPool] readonly EcsPool<Collision> collisions = default;
+    [EcsPool] readonly EcsPool<Trigger<Collision>> collisionTriggers = default;
 
     public void Init(EcsSystems systems)
     {
@@ -131,41 +123,58 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
             game.AddChild(node);
         }
 
+        foreach (var entity in world.Filter<PhysicsNode>().Inc<Notify<Collision>>().Inc<Sprite>().End())
+        {
+            ref var physicsNode = ref physicsNodes.Get(entity);
+            ref var sprite = ref sprites.Get(entity);
+
+            var node = physicsNode.Node;
+
+            var scale = scales.Has(entity)
+                ? scales.Get(entity)
+                : new Scale { X = 1, Y = 1 };
+
+            var collision = node.GetNodeOrNull<Node2D>("collision");
+            if (collision != null)
+            {
+                collision.RemoveAndSkip();
+                collision.QueueFree();
+            }
+
+            var texture = GD.Load<Texture>(sprite.Image);
+
+            var shape = new CollisionShape2D()
+            {
+                Name = "collision",
+                Shape = new RectangleShape2D()
+                {
+                    Extents = new Vector2(
+                        texture.GetHeight() * scale.X,
+                        texture.GetWidth() * scale.Y) / 2f
+                }
+            };
+            node.AddChild(shape);
+
+            shape.AddChild(new RectangleNode()
+            {
+                Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
+                Color = new Godot.Color(1, 0, 0)
+            });
+        }
+
         foreach (var entity in world.Filter<PhysicsNode>().Inc<Move>().Inc<Position>().Inc<Speed>().End())
         {
             ref var position = ref positions.Get(entity);
             ref var move = ref moves.Get(entity);
             ref var speed = ref speeds.Get(entity);
 
-            var direction = new Vector2(position.X, position.Y)
+            var directionVec = new Vector2(position.X, position.Y)
                 .DirectionTo(new Vector2(move.Destination.X, move.Destination.Y))
                 .Normalized();
 
-            var movement = direction * speed.Value * ratio;
-
-            var moveDistance = movement.DistanceTo(new Vector2(0, 0));
-            var remainingDistance = new Vector2(position.X, position.Y)
-                .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
-
-            notifyPositions.Ensure(entity);
-            if (remainingDistance <= moveDistance)
-            {
-                position.X = move.Destination.X;
-                position.Y = move.Destination.Y;
-
-                moves.Del(entity);
-                directions.Del(entity);
-            }
-            else
-            {
-                var update = new Vector2(position.X, position.Y) + movement;
-
-                position.X = update.x;
-                position.Y = update.y;
-            }
-
-            ref var physicsNode = ref physicsNodes.Get(entity);
-            physicsNode.Node.Position = new Vector2(position.X, position.Y);
+            ref var direction = ref directions.Ensure(entity);
+            direction.X = directionVec.x;
+            direction.Y = directionVec.y;
         }
 
         foreach (var entity in world.Filter<PhysicsNode>().Inc<Direction>().Inc<Position>().Inc<Speed>().End())
@@ -174,16 +183,60 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
             ref var physicsNode = ref physicsNodes.Get(entity);
             ref var position = ref positions.Get(entity);
             ref var speed = ref speeds.Get(entity);
+
             var node = physicsNode.Node;
 
-            var movement = new Vector2(direction.X, direction.Y) * speed.Value * ratio;
-            var update = new Vector2(position.X, position.Y) + movement;
+            var velocity = new Vector2(direction.X, direction.Y) * speed.Value * ratio;
 
-            node.Position = update;
+            if (moves.Has(entity))
+            {
+                ref var move = ref moves.Get(entity);
 
+                var tickDistance = velocity.DistanceTo(new Vector2(0, 0));
+                var moveDistance = new Vector2(position.X, position.Y)
+                    .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
+
+                if (moveDistance < tickDistance)
+                {
+                    velocity *= moveDistance / tickDistance;
+
+                    moves.Del(entity);
+                    directions.Del(entity);
+                }
+            }
+
+            var collision = node.MoveAndCollide(velocity);
+
+            var positionVec = node.Position;
             notifyPositions.Ensure(entity);
-            position.X = update.x;
-            position.Y = update.y;
+            position.X = positionVec.x;
+            position.Y = positionVec.y;
+
+            if (collision != null)
+            {
+                moves.Del(entity);
+                directions.Del(entity);
+
+                var other = Convert.ToInt32((collision.Collider as Node).Name.Split('-').First());
+
+                if (collisionTriggers.Has(entity))
+                {
+                    ref var trigger = ref collisionTriggers.Get(entity);
+                    foreach (var task in trigger.Tasks)
+                    {
+                        task.Run(world, entity, other);
+                    }
+                }
+
+                if (collisionTriggers.Has(other))
+                {
+                    ref var trigger = ref collisionTriggers.Get(other);
+                    foreach (var task in trigger.Tasks)
+                    {
+                        task.Run(world, other, entity);
+                    }
+                }
+            }
         }
 
         foreach (var entity in world.Filter<PhysicsNode>().Inc<Area>().Inc<Sprite>().Exc<AreaNode>().End())
@@ -284,122 +337,6 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
                 collision.RemoveAndSkip();
                 collision.QueueFree();
             }
-        }
-
-        foreach (var (id, component) in collisions.Changed.Concat(collisions.Added))
-        {
-            var node = state.Get<PhysicsNode>(id)?.Node;
-            if (node == null) continue;
-
-            var sprite = state.Get<Sprite>(id);
-            var scale = state.Get<Scale>(id);
-            scale = scale ?? new Scale { X = 1, Y = 1 };
-
-            var collision = node.GetNodeOrNull<Node2D>("collision");
-            if (collision != null)
-            {
-                collision.RemoveAndSkip();
-                collision.QueueFree();
-            }
-
-            if (sprite != null)
-            {
-                var texture = GD.Load<Texture>(sprite.Image);
-
-                var shape = new CollisionShape2D()
-                {
-                    Name = "collision",
-                    Shape = new RectangleShape2D()
-                    {
-                        Extents = new Vector2(
-                            texture.GetHeight() * scale.X,
-                            texture.GetWidth() * scale.Y) / 2f
-                    }
-                };
-                node.AddChild(shape);
-
-                shape.AddChild(new RectangleNode()
-                {
-                    Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
-                    Color = new Godot.Color(1, 0, 0)
-                });
-            }
-        }
-
-        var positionBatch = new Dictionary<int, Position>();
-
-        foreach (var (id, component) in state.Get<Velocity>())
-        {
-            var velocity = component as Velocity;
-            var destination = state.Get<Destination>(id);
-            var position = state.Get<Position>(id);
-            var collision = state.Get<Collision>(id);
-            var area = state.Get<Area>(id);
-
-            var physics = state.Get<PhysicsNode>(id)?.Node;
-            if (physics == null) continue;
-
-            var travel = new Vector2(velocity.X, velocity.Y) * (60f / PHYSICS_FPS);
-            var withinReach = false;
-
-            if (destination != null)
-            {
-                var moveDistance = travel.DistanceTo(new Vector2(0, 0));
-                var remainingDistance = new Vector2(position.X, position.Y)
-                    .DistanceTo(new Vector2(destination.Position.X, destination.Position.Y));
-
-                withinReach = remainingDistance < moveDistance;
-            }
-
-            KinematicCollision2D collided = null;
-
-            if (collision != null || area != null)
-            {
-                collided = physics.MoveAndCollide(travel);
-            }
-            else
-            {
-                physics.Position += travel;
-            }
-
-            if (withinReach || collided != null)
-            {
-                state = state.Without<Destination>(id);
-                state = state.Without<Velocity>(id);
-
-                if (collided == null)
-                {
-                    physics.Position = new Vector2(destination.Position.X, destination.Position.Y);
-                }
-                else
-                {
-                    var collideId = Convert.ToInt32((collided.Collider as Node).Name.Split("-").First());
-
-                    var ev = state.Get<CollisionEvent>(id);
-                    if (ev != null)
-                    {
-                        var queue = (id, collideId, ev as Event);
-                        state = state.With(Events.ENTITY, new EventQueue()
-                        {
-                            Events = state.Get<EventQueue>(Events.ENTITY).Events.With(queue)
-                        });
-                    }
-
-                    var otherEv = state.Get<CollisionEvent>(collideId);
-                    if (otherEv != null)
-                    {
-                        var queue = (collideId, id, otherEv as Event);
-
-                        state = state.With(Events.ENTITY, new EventQueue()
-                        {
-                            Events = state.Get<EventQueue>(Events.ENTITY).Events.With(queue)
-                        });
-                    }
-                }
-            }
-
-            var physicsPosition = physics.Position;
-            positionBatch.Add(id, new Position { X = physicsPosition.x, Y = physicsPosition.y });
         }
         */
     }
