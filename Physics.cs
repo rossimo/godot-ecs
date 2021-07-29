@@ -30,14 +30,6 @@ public struct Collision { }
 
 public struct Area { }
 
-/*
-public struct AreaEnterEvent : Event
-{
-    public AreaEnterEvent(params Task[] tasks) => (Tasks) = (tasks);
-
-    public override string ToString() => base.ToString();
-}
-*/
 public struct PhysicsNode
 {
     public EntityKinematicBody2D Node;
@@ -72,6 +64,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<Scale> scales = default;
     [EcsPool] readonly EcsPool<Collision> collisions = default;
     [EcsPool] readonly EcsPool<Trigger<Collision>> collisionTriggers = default;
+    [EcsPool] readonly EcsPool<Trigger<Area>> areaTriggers = default;
 
     public void Init(EcsSystems systems)
     {
@@ -228,13 +221,13 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
                 if (collisionTriggers.Has(entity))
                 {
                     ref var trigger = ref collisionTriggers.Get(entity);
-                    TaskUtils.Run(trigger.Tasks, world, entity, other);
+                    trigger.Tasks.Run(world, entity, other);
                 }
 
                 if (collisionTriggers.Has(other))
                 {
                     ref var trigger = ref collisionTriggers.Get(other);
-                    TaskUtils.Run(trigger.Tasks, world, other, entity);
+                    trigger.Tasks.Run(world, other, entity);
                 }
             }
         }
@@ -276,6 +269,23 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
 
             ref var areaNode = ref areaNodes.Add(entity);
             areaNode.Node = node;
+        }
+
+
+        foreach (var entity in world.Filter<AreaNode>().Inc<Notify<Trigger<Area>>>().End())
+        {
+            ref var areaNode = ref areaNodes.Get(entity);
+            ref var trigger = ref areaTriggers.Get(entity);
+            var node = areaNode.Node;
+
+            if (node.IsConnected("area_entered", game, nameof(game._Event)))
+            {
+                node.Disconnect("area_entered", game, nameof(game._Event));
+            }
+
+            node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
+                new GodotWrapper(world.PackEntity(entity)), new GodotWrapper(trigger.Tasks)
+            });
         }
 
         foreach (int entity in world.Filter<PhysicsNode>().Inc<AreaNode>().Inc<Delete>().End())
