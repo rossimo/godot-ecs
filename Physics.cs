@@ -40,7 +40,7 @@ public struct AreaEnterEvent : Event
 */
 public struct PhysicsNode
 {
-    public KinematicBody2D Node;
+    public EntityKinematicBody2D Node;
 }
 
 public struct AreaNode
@@ -101,9 +101,10 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
 
         foreach (var entity in needPhysics)
         {
-            var node = new KinematicBody2D()
+            var node = new EntityKinematicBody2D()
             {
-                Name = entity + "-physics"
+                Name = entity + "-physics",
+                Entity = world.PackEntity(entity)
             };
 
             if (!areas.Has(entity) && !collisions.Has(entity))
@@ -217,7 +218,12 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
                 moves.Del(entity);
                 directions.Del(entity);
 
-                var other = Convert.ToInt32((collision.Collider as Node).Name.Split('-').First());
+                var other = -1;
+
+                if (collision.Collider is EntityNode otherNode)
+                {
+                    otherNode.Entity.Unpack(world, out other);
+                }
 
                 if (collisionTriggers.Has(entity))
                 {

@@ -164,7 +164,7 @@ public struct AddNotifyOther<C> : Task
 /* Boxing optimization */
 public static class TaskUtils
 {
-    public static void Run(Task[] tasks, EcsWorld world, int self, int other)
+    public static void Run(Task[] tasks, EcsWorld world, int self, int other = 0)
     {
         for (int i = 0; i < tasks.Length; i++)
         {
@@ -173,7 +173,7 @@ public static class TaskUtils
         }
     }
 
-    public static void Run<T>(ref T task, EcsWorld world, int self, int other) where T : Task
+    public static void Run<T>(ref T task, EcsWorld world, int self, int other = 0) where T : Task
     {
         task.Run(world, self, other);
     }
