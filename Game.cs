@@ -37,9 +37,10 @@ public class Game : Godot.YSort
         var scales = world.GetPool<Scale>();
         var players = world.GetPool<Player>();
         var speeds = world.GetPool<Speed>();
-        var areas = world.GetPool<Area>();
         var collisions = world.GetPool<Collision>();
         var collisionTriggers = world.GetPool<Trigger<Collision>>();
+        var areas = world.GetPool<Area>();
+        var areaTriggers = world.GetPool<Trigger<Area>>();
 
         {
             var player = world.NewEntity();
@@ -81,7 +82,7 @@ public class Game : Godot.YSort
 
             collisions.AddNotify(fire);
 
-            ref var triggers = ref collisionTriggers.Add(fire);
+            ref var triggers = ref collisionTriggers.AddNotify(fire);
             triggers.Tasks = new Task[] {
                 new AddNotifySelf<Flash>() {
                     Component = new Flash() {
@@ -110,7 +111,16 @@ public class Game : Godot.YSort
             scale.X = 2;
             scale.Y = 2;
 
-            areas.Add(button);
+            areas.AddNotify(button);
+
+            ref var triggers = ref areaTriggers.AddNotify(button);
+            triggers.Tasks = new Task[] {
+                new AddNotifySelf<Flash>() {
+                    Component = new Flash() {
+                        Color = new Color() { Red = 2f, Green = 2f, Blue = 2f }
+                    }
+                }
+            };
         }
 
         {
@@ -127,7 +137,7 @@ public class Game : Godot.YSort
             scale.X = 2;
             scale.Y = 2;
 
-            areas.Add(potion);
+            areas.AddNotify(potion);
         }
 
         systems.Init();
@@ -159,12 +169,21 @@ public class Game : Godot.YSort
 	{
 		QueueEvent(@event.Get<Event>(), Convert.ToInt32(source.Split("-").FirstOrDefault()), -2);
 	}
+    */
 
-	public void _Event(Node target, string source, GodotWrapper @event)
-	{
-		QueueEvent(@event.Get<Event>(),
-			Convert.ToInt32(source.Split("-").FirstOrDefault()),
-			Convert.ToInt32(target.GetParent().Name?.Split("-").FirstOrDefault()));
-	}
-	*/
+    public void _Event(Node otherNode, GodotWrapper sourceWrapper, GodotWrapper tasksWrapper)
+    {
+        var selfEntity = -1;
+        var otherEntity = -1;
+        var tasks = tasksWrapper.Get<Task[]>();
+
+        sourceWrapper.Get<EcsPackedEntity>().Unpack(world, out selfEntity);
+
+        if (otherNode is EntityNode otherEntityNode)
+        {
+            otherEntityNode.Entity.Unpack(world, out otherEntity);
+        }
+
+        tasks.Run(world, selfEntity, otherEntity);
+    }
 }

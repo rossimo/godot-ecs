@@ -140,6 +140,8 @@ public struct AddNotifySelf<C> : Task
 
     public void Run(EcsWorld world, int self, int other)
     {
+        if (self == -1) return;
+
         var pool = world.GetPool<C>();
         ref var component = ref pool.Ensure<C>(self);
         pool.Notify(self);
@@ -154,6 +156,8 @@ public struct AddNotifyOther<C> : Task
 
     public void Run(EcsWorld world, int self, int other)
     {
+        if (other == -1) return;
+
         var pool = world.GetPool<C>();
         ref var component = ref pool.Ensure<C>(other);
         pool.Notify(other);

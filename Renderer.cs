@@ -163,43 +163,7 @@ public class Renderer : IEcsRunSystem
             node.QueueFree();
         }
 
-        /*=
-        foreach (var (id, component) in sprites.Updated)
-        {
-            var position = state.Get<Position>(id);
-            position = position ?? new Position { X = 0, Y = 0 };
-
-            var node = game.GetNodeOrNull<ClickableSprite>($"{id}");
-            if (node != null) continue;
-
-            node = new ClickableSprite()
-            {
-                Name = $"{id}",
-                Texture = GD.Load<Texture>(component.Image),
-                Position = new Vector2(position.X, position.Y)
-            };
-            game.AddChild(node);
-
-            var path = new Tween()
-            {
-                Name = "path"
-            };
-            node.AddChild(path);
-
-            var modulate = new Tween()
-            {
-                Name = "modulate"
-            };
-            node.AddChild(modulate);
-
-            if (component.Node != node)
-            {
-                state = state.With(id, component with
-                {
-                    Node = node
-                });
-            }
-        }
+        /*
 
         foreach (var (id, component) in sprites.Changed)
         {
@@ -222,45 +186,6 @@ public class Renderer : IEcsRunSystem
             var node = state.Get<Sprite>(id)?.Node;
             if (node == null) continue;
             node.Scale = new Vector2(1, 1);
-        }
-
-        foreach (var (id, rotation) in rotations.Removed)
-        {
-            var node = state.Get<Sprite>(id)?.Node;
-            if (node == null) continue;
-            node.RotationDegrees = 0;
-        }
-
-        foreach (var (id, rotation) in rotations.Updated.Concat(rotations.Changed))
-        {
-            var node = state.Get<Sprite>(id)?.Node;
-            if (node == null) continue;
-            node.RotationDegrees = rotation.Degrees;
-        }
-
-        foreach (var (id, click) in clicks.Removed)
-        {
-            var node = state.Get<Sprite>(id)?.Node;
-            if (node == null) continue;
-
-            if (node.IsConnected("pressed", game, nameof(game._Event)))
-            {
-                node.Disconnect("pressed", game, nameof(game._Event));
-            }
-        }
-
-        foreach (var (id, click) in clicks.Updated.Concat(clicks.Changed))
-        {
-            var node = state.Get<Sprite>(id)?.Node;
-            if (node == null) continue;
-
-            if (node.IsConnected("pressed", game, nameof(game._Event)))
-            {
-                node.Disconnect("pressed", game, nameof(game._Event));
-            }
-            node.Connect("pressed", game, nameof(game._Event), new Godot.Collections.Array() {
-                id, new GodotWrapper(click)
-            });
         }
         */
     }
