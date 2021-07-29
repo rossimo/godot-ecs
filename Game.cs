@@ -41,6 +41,7 @@ public class Game : Godot.YSort
         var collisionTriggers = world.GetPool<Trigger<Collision>>();
         var areas = world.GetPool<Area>();
         var areaTriggers = world.GetPool<Trigger<Area>>();
+        var taskQueues = world.GetPool<QueuedTasks>();
 
         {
             var player = world.NewEntity();
@@ -117,7 +118,7 @@ public class Game : Godot.YSort
             triggers.Tasks = new Task[] {
                 new AddNotifySelf<Flash>() {
                     Component = new Flash() {
-                        Color = new Color() { Red = 2f, Green = 2f, Blue = 2f }
+                        Color = new Color() { Red = 0.33f, Green = 0.33f, Blue = 0.33f }
                     }
                 }
             };

@@ -3,6 +3,110 @@ using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
 using System.Runtime.CompilerServices;
 
+public struct QueuedTasks
+{
+    public QueuedTask[] Tasks;
+}
+
+public struct QueuedTask
+{
+    public EcsPackedEntity Source;
+    public EcsPackedEntity Target;
+    public Task Task;
+}
+
+public struct Trigger<T>
+    where T : struct
+{
+    public Task[] Tasks;
+}
+
+public interface Task
+{
+    public void Run(EcsWorld world, int self, int other);
+}
+
+public struct AddNotifySelf<C> : Task
+    where C : struct
+{
+    public C Component;
+
+    public void Run(EcsWorld world, int self, int other)
+    {
+        if (self == -1) return;
+
+        var pool = world.GetPool<C>();
+        ref var component = ref pool.Ensure<C>(self);
+        pool.Notify(self);
+        component = Component;
+    }
+}
+
+public struct AddNotifyOther<C> : Task
+    where C : struct
+{
+    public C Component;
+
+    public void Run(EcsWorld world, int self, int other)
+    {
+        if (other == -1) return;
+
+        var pool = world.GetPool<C>();
+        ref var component = ref pool.Ensure<C>(other);
+        pool.Notify(other);
+        component = Component;
+    }
+}
+
+/* Boxing optimization */
+public static class TaskUtils
+{
+    public static void Run(this Task[] tasks, EcsWorld world, int self, int other)
+    {
+        for (int i = 0; i < tasks.Length; i++)
+        {
+            ref var task = ref tasks[i];
+            Run(ref task, world, self, other);
+        }
+    }
+
+    public static void Run<T>(ref T task, EcsWorld world, int self, int other)
+        where T : Task
+    {
+        task.Run(world, self, other);
+    }
+}
+
+public class Events : IEcsRunSystem
+{
+    [EcsWorld] readonly EcsWorld world = default;
+    [EcsPool] readonly EcsPool<QueuedTasks> queuedTasks = default;
+
+    public void Run(EcsSystems systems)
+    {
+        foreach (var entity in world.Filter<QueuedTasks>().End())
+        {
+            ref var component = ref queuedTasks.Get(entity);
+
+            for (var i = 0; i < component.Tasks.Length; i++)
+            {
+                var queued = component.Tasks[i];
+
+                queued.Source.Unpack(world, out var source);
+                queued.Target.Unpack(world, out var target);
+
+                if (source != -1 || target != -1)
+                {
+                    TaskUtils.Run(ref queued.Task, world, source, target);
+                }
+            }
+
+            component.Tasks = new QueuedTask[] { };
+        }
+    }
+}
+
+/*
 public struct Event<C, E>
     where C : struct
     where E : struct
@@ -121,68 +225,7 @@ public class EventDelete<C, E> : IEcsInitSystem, IEcsRunSystem
         }
     }
 }
-
-public struct Trigger<T>
-    where T : struct
-{
-    public Task[] Tasks;
-}
-
-public interface Task
-{
-    public void Run(EcsWorld world, int self, int other);
-}
-
-public struct AddNotifySelf<C> : Task
-    where C : struct
-{
-    public C Component;
-
-    public void Run(EcsWorld world, int self, int other)
-    {
-        if (self == -1) return;
-
-        var pool = world.GetPool<C>();
-        ref var component = ref pool.Ensure<C>(self);
-        pool.Notify(self);
-        component = Component;
-    }
-}
-
-public struct AddNotifyOther<C> : Task
-    where C : struct
-{
-    public C Component;
-
-    public void Run(EcsWorld world, int self, int other)
-    {
-        if (other == -1) return;
-
-        var pool = world.GetPool<C>();
-        ref var component = ref pool.Ensure<C>(other);
-        pool.Notify(other);
-        component = Component;
-    }
-}
-
-/* Boxing optimization */
-public static class TaskUtils
-{
-    public static void Run(this Task[] tasks, EcsWorld world, int self, int other)
-    {
-        for (int i = 0; i < tasks.Length; i++)
-        {
-            ref var task = ref tasks[i];
-            Run(ref task, world, self, other);
-        }
-    }
-
-    public static void Run<T>(ref T task, EcsWorld world, int self, int other)
-        where T : Task
-    {
-        task.Run(world, self, other);
-    }
-}
+*/
 
 /*
 public static class Target
