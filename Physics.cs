@@ -5,9 +5,9 @@ using Leopotam.EcsLite.Di;
 using System.Linq;
 using System.Collections.Generic;
 
-public struct Ticks
+public struct Tick
 {
-    public ulong Tick;
+    public ulong Value;
 }
 
 public struct Speed
@@ -40,7 +40,7 @@ public struct AreaNode
     public Area2D Node;
 }
 
-public class Physics : IEcsInitSystem, IEcsRunSystem
+public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
 {
     public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_fps")}".ToFloat();
 
@@ -56,7 +56,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<Direction> directions = default;
     [EcsPool] readonly EcsPool<Position> positions = default;
     [EcsPool] readonly EcsPool<Notify<Position>> notifyPositions = default;
-    [EcsPool] readonly EcsPool<Ticks> ticks = default;
+    [EcsPool] readonly EcsPool<Tick> ticks = default;
     [EcsPool] readonly EcsPool<PhysicsNode> physicsNodes = default;
     [EcsPool] readonly EcsPool<Area> areas = default;
     [EcsPool] readonly EcsPool<AreaNode> areaNodes = default;
@@ -65,13 +65,14 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<Collision> collisions = default;
     [EcsPool] readonly EcsPool<Trigger<Collision>> collisionTriggers = default;
     [EcsPool] readonly EcsPool<Trigger<Area>> areaTriggers = default;
-    [EcsPool] readonly EcsPool<QueuedTasks> queuedTasks = default;
+    [EcsPool] readonly EcsPool<EventQueue> eventQueues = default;
 
     public void Init(EcsSystems systems)
     {
         var world = systems.GetWorld();
+        var shared = systems.GetShared<Shared>();
 
-        var physics = world.NewEntity();
+        var physics = shared.Physics = world.NewEntity();
         ticks.Add(physics);
     }
 
@@ -80,11 +81,8 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
         var game = shared.Game;
         var ratio = (60f / PHYSICS_FPS);
 
-        foreach (var entity in world.Filter<Ticks>().End())
-        {
-            ref var component = ref ticks.Get(entity);
-            component.Tick++;
-        }
+        ref var ticks = ref this.ticks.Get(shared.Physics);
+        ticks.Value++;
 
         var needPhysics = new HashSet<int>();
         foreach (var entity in world.Filter<Area>().Exc<PhysicsNode>().End())
@@ -213,33 +211,33 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
                 moves.Del(entity);
                 directions.Del(entity);
 
-                var other = -1;
+                var target = -1;
 
                 if (collision.Collider is EntityNode otherNode)
                 {
-                    otherNode.Entity.Unpack(world, out other);
+                    otherNode.Entity.Unpack(world, out target);
                 }
 
-                ref var queued = ref queuedTasks.Get(shared.Events);
+                ref var eventQueue = ref eventQueues.Get(shared.Events);
 
                 if (collisionTriggers.Has(entity))
                 {
                     ref var trigger = ref collisionTriggers.Get(entity);
-                    queued.Tasks.AddRange(trigger.Tasks.Select(task => new QueuedTask()
+                    eventQueue.Events.AddRange(trigger.Tasks.Select(task => new Event()
                     {
                         Task = task,
                         Source = world.PackEntity(entity),
-                        Target = other == -1 ? default : world.PackEntity(other)
+                        Target = target == -1 ? default : world.PackEntity(target)
                     }));
                 }
 
-                if (collisionTriggers.Has(other))
+                if (collisionTriggers.Has(target))
                 {
-                    ref var trigger = ref collisionTriggers.Get(other);
-                    queued.Tasks.AddRange(trigger.Tasks.Select(task => new QueuedTask()
+                    ref var trigger = ref collisionTriggers.Get(target);
+                    eventQueue.Events.AddRange(trigger.Tasks.Select(task => new Event()
                     {
                         Task = task,
-                        Source = other == -1 ? default : world.PackEntity(other),
+                        Source = target == -1 ? default : world.PackEntity(target),
                         Target = world.PackEntity(entity)
                     }));
                 }
@@ -322,35 +320,6 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
         }
 
         /*
-
-        foreach (var (id, ev) in areaEnterEvents.Removed)
-        {
-            var node = state.Get<PhysicsNode>(id)?.Node;
-            var area = node?.GetNodeOrNull<Node2D>("area");
-            if (area == null) continue;
-
-            if (area.IsConnected("area_entered", game, nameof(game._Event)))
-            {
-                area.Disconnect("area_entered", game, nameof(game._Event));
-            }
-        }
-
-        foreach (var (id, ev) in areaEnterEvents.Added.Concat(areaEnterEvents.Changed))
-        {
-            var node = state.Get<PhysicsNode>(id)?.Node;
-            var area = node?.GetNodeOrNull<Node2D>("area");
-            if (area == null) continue;
-
-            if (area.IsConnected("area_entered", game, nameof(game._Event)))
-            {
-                area.Disconnect("area_entered", game, nameof(game._Event));
-            }
-
-            area.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
-                    id, new GodotWrapper(ev)
-                });
-        }
-
         foreach (var (id, component) in collisions.Removed)
         {
             var node = state.Get<PhysicsNode>(id)?.Node;

@@ -19,7 +19,7 @@ public struct Move
     public Position Destination;
 }
 
-public class Input : IEcsInitSystem, IEcsRunSystem
+public class InputSystem : IEcsInitSystem, IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
     [EcsShared] readonly Shared shared = default;
@@ -27,12 +27,11 @@ public class Input : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<MouseRight> mouseRights = default;
     [EcsPool] readonly EcsPool<Position> positions = default;
     [EcsPool] readonly EcsPool<Move> moves = default;
-    [EcsPool] readonly EcsPool<Ticks> ticks = default;
+    [EcsPool] readonly EcsPool<Tick> ticks = default;
     [EcsPool] readonly EcsPool<Sprite> sprites = default;
     [EcsPool] readonly EcsPool<Direction> directions = default;
     [EcsPool] readonly EcsPool<Speed> speeds = default;
     [EcsPool] readonly EcsPool<Expiration> expirations = default;
-    [EcsPool] readonly EcsPool<LowRenderPriority> lowPriorities = default;
 
     public void Init(EcsSystems systems)
     {
@@ -77,12 +76,8 @@ public class Input : IEcsInitSystem, IEcsRunSystem
 
         var mouseLeft = false;
         var mouseRight = false;
-        ulong tick = 0;
 
-        foreach (var entity in world.Filter<Ticks>().End())
-        {
-            tick = ticks.Get(entity).Tick;
-        }
+        var tick = ticks.Get(shared.Physics).Value;
 
         foreach (var entity in world.Filter<MouseLeft>().End())
         {
@@ -129,9 +124,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
                 speed.Value = 10f;
 
                 ref var expiration = ref expirations.Add(bullet);
-                expiration.Tick = Physics.MillisToTicks(1 * 1000) + tick;
-
-                //lowPriorities.Add(bullet);
+                expiration.Tick = PhysicsSystem.MillisToTicks(1 * 1000) + tick;
             }
         }
     }

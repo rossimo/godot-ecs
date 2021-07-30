@@ -47,7 +47,7 @@ public struct Flash
 
 // public record ClickEvent : Event;
 
-public class Renderer : IEcsRunSystem
+public class RendererSystem : IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
     [EcsShared] readonly Shared shared = default;
@@ -55,7 +55,7 @@ public class Renderer : IEcsRunSystem
     [EcsPool] readonly EcsPool<Scale> scales = default;
     [EcsPool] readonly EcsPool<SpriteNode> spriteNodes = default;
     [EcsPool] readonly EcsPool<Position> positions = default;
-    [EcsPool] readonly EcsPool<Delta> deltas = default;
+    [EcsPool] readonly EcsPool<FrameTime> deltas = default;
     [EcsPool] readonly EcsPool<LowRenderPriority> lowPriority = default;
     [EcsPool] readonly EcsPool<Flash> flashes = default;
 
@@ -63,7 +63,7 @@ public class Renderer : IEcsRunSystem
     {
         var game = shared.Game;
         float delta = 0;
-        foreach (var entity in world.Filter<Delta>().End())
+        foreach (var entity in world.Filter<FrameTime>().End())
         {
             delta = deltas.Get(entity).Value;
         }
@@ -192,22 +192,22 @@ public class Renderer : IEcsRunSystem
     }
 }
 
-public struct Delta
+public struct FrameTime
 {
     public float Value;
 }
 
-public class DeltaSystem : IEcsInitSystem
+public class FrameTimeSystem : IEcsInitSystem
 {
-    private EcsPool<Delta> _pool;
+    private EcsPool<FrameTime> _pool;
     private EcsFilter _filter;
 
     public void Init(EcsSystems systems)
     {
         var world = systems.GetWorld();
 
-        _pool = world.GetPool<Delta>();
-        _filter = world.Filter<Delta>().End();
+        _pool = world.GetPool<FrameTime>();
+        _filter = world.Filter<FrameTime>().End();
 
         _pool.Add(world.NewEntity());
     }
@@ -216,7 +216,7 @@ public class DeltaSystem : IEcsInitSystem
     {
         var world = systems.GetWorld();
 
-        foreach (var entity in world.Filter<Delta>().End())
+        foreach (var entity in world.Filter<FrameTime>().End())
         {
             ref var component = ref _pool.Get(entity);
             component.Value = delta;

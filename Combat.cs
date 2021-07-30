@@ -6,21 +6,17 @@ public struct Expiration
     public ulong Tick;
 }
 
-public class Combat : IEcsRunSystem
+public class CombatSystem : IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
-    [EcsPool] readonly EcsPool<Ticks> ticks = default;
+    [EcsShared] readonly Shared shared = default;
+    [EcsPool] readonly EcsPool<Tick> ticks = default;
     [EcsPool] readonly EcsPool<Expiration> expirations = default;
     [EcsPool] readonly EcsPool<Delete> deletes = default;
 
     public void Run(EcsSystems systems)
     {
-        ulong tick = 0;
-
-        foreach (var entity in world.Filter<Ticks>().End())
-        {
-            tick = ticks.Get(entity).Tick;
-        }
+        ulong tick = ticks.Get(shared.Physics).Value;
 
         foreach (var entity in world.Filter<Expiration>().End())
         {

@@ -1,34 +1,31 @@
-using System;
-using System.Linq;
-using System.Collections.Generic;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
-using System.Runtime.CompilerServices;
+using System.Collections.Generic;
 
-public struct QueuedTasks
+public struct EventQueue
 {
-    public List<QueuedTask> Tasks;
+    public List<Event> Events;
 }
 
-public struct QueuedTask
+public struct Event
 {
     public EcsPackedEntity Source;
     public EcsPackedEntity Target;
-    public Task Task;
+    public EventTask Task;
 }
 
 public struct Trigger<T>
     where T : struct
 {
-    public Task[] Tasks;
+    public EventTask[] Tasks;
 }
 
-public interface Task
+public interface EventTask
 {
     public void Run(EcsWorld world, int self, int other);
 }
 
-public struct AddNotifySelf<C> : Task
+public struct AddNotifySelf<C> : EventTask
     where C : struct
 {
     public C Component;
@@ -44,7 +41,7 @@ public struct AddNotifySelf<C> : Task
     }
 }
 
-public struct AddNotifyOther<C> : Task
+public struct AddNotifyOther<C> : EventTask
     where C : struct
 {
     public C Component;
@@ -61,9 +58,9 @@ public struct AddNotifyOther<C> : Task
 }
 
 /* Boxing optimization */
-public static class TaskUtils
+public static class EventUtils
 {
-    public static void Run(this Task[] tasks, EcsWorld world, int self, int other)
+    public static void Run(this EventTask[] tasks, EcsWorld world, int self, int other)
     {
         for (int i = 0; i < tasks.Length; i++)
         {
@@ -73,16 +70,17 @@ public static class TaskUtils
     }
 
     public static void Run<T>(ref T task, EcsWorld world, int self, int other)
-        where T : Task
+        where T : EventTask
     {
         task.Run(world, self, other);
     }
 }
 
-public class Events : IEcsInitSystem, IEcsRunSystem
+public class EventSystem : IEcsInitSystem, IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
-    [EcsPool] readonly EcsPool<QueuedTasks> queuedTasks = default;
+    [EcsShared] readonly Shared shared = default;
+    [EcsPool] readonly EcsPool<EventQueue> eventQueues = default;
 
     public void Init(EcsSystems systems)
     {
@@ -90,190 +88,80 @@ public class Events : IEcsInitSystem, IEcsRunSystem
         var shared = systems.GetShared<Shared>();
 
         var events = world.NewEntity();
-        ref var queuedTask = ref queuedTasks.Add(events);
-        queuedTask.Tasks = new List<QueuedTask>();
+        ref var queuedTask = ref eventQueues.Add(events);
+        queuedTask.Events = new List<Event>();
 
         shared.Events = events;
     }
 
+    public void Queue(Event ev)
+    {
+        ref var eventQueue = ref eventQueues.Get(shared.Events);
+
+        eventQueue.Events.Add(ev);
+    }
+
     public void Run(EcsSystems systems)
     {
-        foreach (var entity in world.Filter<QueuedTasks>().End())
+        ref var eventQueue = ref eventQueues.Get(shared.Events);
+
+        for (var i = 0; i < eventQueue.Events.Count; i++)
         {
-            ref var component = ref queuedTasks.Get(entity);
+            var ev = eventQueue.Events[i];
 
-            for (var i = 0; i < component.Tasks.Count; i++)
-            {
-                var queued = component.Tasks[i];
+            ev.Source.Unpack(world, out var source);
+            ev.Target.Unpack(world, out var target);
 
-                queued.Source.Unpack(world, out var source);
-                queued.Target.Unpack(world, out var target);
-
-                if (source != -1 || target != -1)
-                {
-                    TaskUtils.Run(ref queued.Task, world, source, target);
-                }
-            }
-
-            component.Tasks.Clear();
+            EventUtils.Run(ref ev.Task, world, source, target);
         }
+
+        eventQueue.Events.Clear();
     }
 }
 
 /*
-public struct Event<C, E>
-    where C : struct
-    where E : struct
+public struct EventEnumerator : IDisposable
 {
-    public EcsPackedEntity Entity;
-    public E Data;
-}
+    EcsFilter.Enumerator _enumerator;
+    int _current;
 
-public class Events<C, E>
-    where C : struct
-    where E : struct
-{
-    private EcsWorld _world;
-    private EcsFilter _filter;
-    private EcsPool<C> _pool;
-    private EcsPool<Event<C, E>> _eventPool;
+    readonly EcsPool<Event<C, E>> _eventPool;
+    readonly EcsWorld _world;
 
-    public Events(EcsWorld world)
+    public EventEnumerator(EcsFilter.Enumerator enumerator, EcsWorld world, EcsPool<Event<C, E>> events)
     {
+        _enumerator = enumerator;
+        _eventPool = events;
         _world = world;
-        _pool = _world.GetPool<C>();
-        _eventPool = _world.GetPool<Event<C, E>>();
-        _filter = _world.Filter<C>().Inc<Event<C, E>>().End();
+        _current = -1;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public EventEnumerator GetEnumerator()
+    public int Current
     {
-        return new EventEnumerator(_filter.GetEnumerator(), _world, _eventPool);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ref C Get(int entity)
-    {
-        return ref _pool.Get(entity);
-    }
-
-    public struct EventEnumerator : IDisposable
-    {
-        EcsFilter.Enumerator _enumerator;
-        int _current;
-
-        readonly EcsPool<Event<C, E>> _eventPool;
-        readonly EcsWorld _world;
-
-        public EventEnumerator(EcsFilter.Enumerator enumerator, EcsWorld world, EcsPool<Event<C, E>> events)
-        {
-            _enumerator = enumerator;
-            _eventPool = events;
-            _world = world;
-            _current = -1;
-        }
-
-        public int Current
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _current;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool MoveNext()
+        get => _current;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool MoveNext()
+    {
+        while (_enumerator.MoveNext())
         {
-            while (_enumerator.MoveNext())
+            ref var @event = ref _eventPool.Get(_enumerator.Current);
+            if (@event.Entity.Unpack(_world, out var entity))
             {
-                ref var @event = ref _eventPool.Get(_enumerator.Current);
-                if (@event.Entity.Unpack(_world, out var entity))
-                {
-                    _current = entity;
-                    return true;
-                }
+                _current = entity;
+                return true;
             }
-            return false;
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Dispose()
-        {
-            _enumerator.Dispose();
-        }
+        return false;
     }
-}
 
-public static class EventUtils
-{
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ref Event<C, E> Event<C, E>(this EcsPool<C> pool, int entity)
-        where C : struct
-        where E : struct
+    public void Dispose()
     {
-        var world = pool.GetWorld();
-        ref var @event = ref world.GetPool<Event<C, E>>().Ensure(entity);
-        @event.Entity = world.PackEntity(entity);
-        return ref @event;
+        _enumerator.Dispose();
     }
-}
-
-public class EventDelete<C, E> : IEcsInitSystem, IEcsRunSystem
-    where C : struct
-    where E : struct
-{
-    private EcsFilter _filter;
-    [EcsPool] readonly EcsPool<Event<C, E>> _pool = default;
-
-    public void Init(EcsSystems systems)
-    {
-        var world = systems.GetWorld();
-
-        _filter = world.Filter<Event<C, E>>().End();
-    }
-
-    public void Run(EcsSystems systems)
-    {
-        foreach (var entity in _filter)
-        {
-            _pool.Del(entity);
-        }
-    }
-}
-*/
-
-/*
-public static class Target
-{
-    public static int Other = -1;
-    public static int Self = -2;
-}
-
-public record Task
-{
-    public int Target = -2;
-}
-
-public record Event : Component
-{
-    public Task[] Tasks = new Task[] { };
-
-    public Event(params Task[] tasks)
-        => (Tasks) = (tasks);
-
-    public override string ToString()
-    {
-        return $"{this.GetType().Name} {{ {Utils.Log(nameof(Tasks), Tasks)} }}";
-    }
-}
-
-public record Add : Task
-{
-    public Component Component;
-
-    public Add() { }
-
-    public Add(Component component, int target = -2)
-        => (Component, Target) = (component, target);
 }
 
 public record Remove : Task
@@ -298,20 +186,6 @@ public record AddEntity : Task
 }
 
 public record RemoveEntity : Task;
-
-public record EventQueue : Component
-{
-    public (int Source, int Target, Event Event)[] Events =
-        new (int Source, int Target, Event Event)[] { };
-
-    public EventQueue(params (int Source, int Target, Event Event)[] queue)
-        => (Events) = (queue);
-
-    public override string ToString()
-    {
-        return $"{this.GetType().Name} {{ {Utils.Log(nameof(Events), Events)} }}";
-    }
-}
 
 public static class Events
 {

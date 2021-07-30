@@ -6,34 +6,40 @@ public class Game : Godot.YSort
 {
     public EcsWorld world;
     public EcsSystems systems;
-    public Input input;
-    public DeltaSystem delta;
+    public Shared shared;
+    public InputSystem input;
+    public FrameTimeSystem frameTime;
+    public EventSystem events;
 
     public override void _Ready()
     {
         world = new EcsWorld();
-        delta = new DeltaSystem();
-        input = new Input();
 
-        systems = new EcsSystems(world, new Shared()
+        shared = new Shared()
         {
             Game = this
-        });
+        };
+
+        frameTime = new FrameTimeSystem();
+        input = new InputSystem();
+        events = new EventSystem();
+
+        systems = new EcsSystems(world, shared);
 
         systems
-            .Add(delta)
+            .Add(frameTime)
             .Add(input)
-            .Add(new Events())
-            .Add(new Combat())
-            .Add(new Physics())
-            .Add(new Renderer())
-            .Add(new ComponentDelete<Notify<Sprite>>())
-            .Add(new ComponentDelete<Notify<Position>>())
-            .Add(new ComponentDelete<Notify<Scale>>())
-            .Add(new ComponentDelete<Notify<Flash>>())
-            .Add(new ComponentDelete<Notify<Collision>>())
-            .Add(new ComponentDelete<Notify<Area>>())
-            .Add(new EntityDelete())
+            .Add(events)
+            .Add(new CombatSystem())
+            .Add(new PhysicsSystem())
+            .Add(new RendererSystem())
+            .Add(new ComponentDeleteSystem<Notify<Sprite>>())
+            .Add(new ComponentDeleteSystem<Notify<Position>>())
+            .Add(new ComponentDeleteSystem<Notify<Scale>>())
+            .Add(new ComponentDeleteSystem<Notify<Flash>>())
+            .Add(new ComponentDeleteSystem<Notify<Collision>>())
+            .Add(new ComponentDeleteSystem<Notify<Area>>())
+            .Add(new EntityDeleteSystem())
             .Inject()
             .Init();
 
@@ -88,7 +94,7 @@ public class Game : Godot.YSort
             collisions.AddNotify(fire);
 
             ref var triggers = ref collisionTriggers.AddNotify(fire);
-            triggers.Tasks = new Task[] {
+            triggers.Tasks = new EventTask[] {
                 new AddNotifySelf<Flash>() {
                     Component = new Flash() {
                         Color = new Color() { Red = 2f, Green = 2f, Blue = 2f }
@@ -119,7 +125,7 @@ public class Game : Godot.YSort
             areas.AddNotify(button);
 
             ref var triggers = ref areaTriggers.AddNotify(button);
-            triggers.Tasks = new Task[] {
+            triggers.Tasks = new EventTask[] {
                 new AddNotifySelf<Flash>() {
                     Component = new Flash() {
                         Color = new Color() { Red = 0.33f, Green = 0.33f, Blue = 0.33f }
@@ -155,7 +161,7 @@ public class Game : Godot.YSort
 
     public override void _PhysicsProcess(float deltaValue)
     {
-        delta.Run(systems, deltaValue);
+        frameTime.Run(systems, deltaValue);
         systems.Run();
     }
 
@@ -176,19 +182,25 @@ public class Game : Godot.YSort
 	}
     */
 
-    public void _Event(Node otherNode, GodotWrapper sourceWrapper, GodotWrapper tasksWrapper)
+    public void _Event(Node targetNode, GodotWrapper sourceWrapper, GodotWrapper tasksWrapper)
     {
-        var selfEntity = -1;
-        var otherEntity = -1;
-        var tasks = tasksWrapper.Get<Task[]>();
+        EcsPackedEntity source = sourceWrapper.Get<EcsPackedEntity>();
+        EcsPackedEntity target = default;
+        var tasks = tasksWrapper.Get<EventTask[]>();
 
-        sourceWrapper.Get<EcsPackedEntity>().Unpack(world, out selfEntity);
-
-        if (otherNode is EntityNode otherEntityNode)
+        if (targetNode is EntityNode targetEntityNode)
         {
-            otherEntityNode.Entity.Unpack(world, out otherEntity);
+            target = targetEntityNode.Entity;
         }
 
-        tasks.Run(world, selfEntity, otherEntity);
+        foreach (var task in tasks)
+        {
+            events.Queue(new Event()
+            {
+                Task = task,
+                Source = source,
+                Target = target
+            });
+        }
     }
 }
