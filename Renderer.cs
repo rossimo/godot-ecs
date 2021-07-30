@@ -50,7 +50,7 @@ public struct Flash
 public class Renderer : IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
-    [EcsShared] readonly Game game = default;
+    [EcsShared] readonly Shared shared = default;
     [EcsPool] readonly EcsPool<Sprite> sprites = default;
     [EcsPool] readonly EcsPool<Scale> scales = default;
     [EcsPool] readonly EcsPool<SpriteNode> spriteNodes = default;
@@ -61,6 +61,7 @@ public class Renderer : IEcsRunSystem
 
     public void Run(EcsSystems systems)
     {
+        var game = shared.Game;
         float delta = 0;
         foreach (var entity in world.Filter<Delta>().End())
         {

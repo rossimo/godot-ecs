@@ -1,11 +1,13 @@
 using System;
+using System.Linq;
+using System.Collections.Generic;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
 using System.Runtime.CompilerServices;
 
 public struct QueuedTasks
 {
-    public QueuedTask[] Tasks;
+    public List<QueuedTask> Tasks;
 }
 
 public struct QueuedTask
@@ -77,10 +79,22 @@ public static class TaskUtils
     }
 }
 
-public class Events : IEcsRunSystem
+public class Events : IEcsInitSystem, IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
     [EcsPool] readonly EcsPool<QueuedTasks> queuedTasks = default;
+
+    public void Init(EcsSystems systems)
+    {
+        var world = systems.GetWorld();
+        var shared = systems.GetShared<Shared>();
+
+        var events = world.NewEntity();
+        ref var queuedTask = ref queuedTasks.Add(events);
+        queuedTask.Tasks = new List<QueuedTask>();
+
+        shared.Events = events;
+    }
 
     public void Run(EcsSystems systems)
     {
@@ -88,7 +102,7 @@ public class Events : IEcsRunSystem
         {
             ref var component = ref queuedTasks.Get(entity);
 
-            for (var i = 0; i < component.Tasks.Length; i++)
+            for (var i = 0; i < component.Tasks.Count; i++)
             {
                 var queued = component.Tasks[i];
 
@@ -101,7 +115,7 @@ public class Events : IEcsRunSystem
                 }
             }
 
-            component.Tasks = new QueuedTask[] { };
+            component.Tasks.Clear();
         }
     }
 }

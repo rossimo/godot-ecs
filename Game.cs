@@ -15,10 +15,15 @@ public class Game : Godot.YSort
         delta = new DeltaSystem();
         input = new Input();
 
-        systems = new EcsSystems(world, this);
+        systems = new EcsSystems(world, new Shared()
+        {
+            Game = this
+        });
+
         systems
             .Add(delta)
             .Add(input)
+            .Add(new Events())
             .Add(new Combat())
             .Add(new Physics())
             .Add(new Renderer())
@@ -41,7 +46,6 @@ public class Game : Godot.YSort
         var collisionTriggers = world.GetPool<Trigger<Collision>>();
         var areas = world.GetPool<Area>();
         var areaTriggers = world.GetPool<Trigger<Area>>();
-        var taskQueues = world.GetPool<QueuedTasks>();
 
         {
             var player = world.NewEntity();
@@ -63,7 +67,7 @@ public class Game : Godot.YSort
             speed.Value = 3f;
 
             areas.AddNotify(player);
-            
+
             collisions.AddNotify(player);
         }
 

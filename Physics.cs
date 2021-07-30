@@ -50,7 +50,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
     }
 
     [EcsWorld] readonly EcsWorld world = default;
-    [EcsShared] readonly Game game = default;
+    [EcsShared] readonly Shared shared = default;
     [EcsPool] readonly EcsPool<Move> moves = default;
     [EcsPool] readonly EcsPool<Speed> speeds = default;
     [EcsPool] readonly EcsPool<Direction> directions = default;
@@ -65,6 +65,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<Collision> collisions = default;
     [EcsPool] readonly EcsPool<Trigger<Collision>> collisionTriggers = default;
     [EcsPool] readonly EcsPool<Trigger<Area>> areaTriggers = default;
+    [EcsPool] readonly EcsPool<QueuedTasks> queuedTasks = default;
 
     public void Init(EcsSystems systems)
     {
@@ -76,6 +77,7 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
 
     public void Run(EcsSystems systems)
     {
+        var game = shared.Game;
         var ratio = (60f / PHYSICS_FPS);
 
         foreach (var entity in world.Filter<Ticks>().End())
@@ -218,16 +220,28 @@ public class Physics : IEcsInitSystem, IEcsRunSystem
                     otherNode.Entity.Unpack(world, out other);
                 }
 
+                ref var queued = ref queuedTasks.Get(shared.Events);
+
                 if (collisionTriggers.Has(entity))
                 {
                     ref var trigger = ref collisionTriggers.Get(entity);
-                    trigger.Tasks.Run(world, entity, other);
+                    queued.Tasks.AddRange(trigger.Tasks.Select(task => new QueuedTask()
+                    {
+                        Task = task,
+                        Source = world.PackEntity(entity),
+                        Target = other == -1 ? default : world.PackEntity(other)
+                    }));
                 }
 
                 if (collisionTriggers.Has(other))
                 {
                     ref var trigger = ref collisionTriggers.Get(other);
-                    trigger.Tasks.Run(world, other, entity);
+                    queued.Tasks.AddRange(trigger.Tasks.Select(task => new QueuedTask()
+                    {
+                        Task = task,
+                        Source = other == -1 ? default : world.PackEntity(other),
+                        Target = world.PackEntity(entity)
+                    }));
                 }
             }
         }

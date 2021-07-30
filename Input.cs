@@ -22,7 +22,7 @@ public struct Move
 public class Input : IEcsInitSystem, IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
-    [EcsShared] readonly Game game = default;
+    [EcsShared] readonly Shared shared = default;
     [EcsPool] readonly EcsPool<MouseLeft> mouseLefts = default;
     [EcsPool] readonly EcsPool<MouseRight> mouseRights = default;
     [EcsPool] readonly EcsPool<Position> positions = default;
@@ -72,6 +72,7 @@ public class Input : IEcsInitSystem, IEcsRunSystem
 
     public void Run(EcsSystems systems)
     {
+        var game = shared.Game;
         var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());
 
         var mouseLeft = false;
