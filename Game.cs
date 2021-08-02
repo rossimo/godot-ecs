@@ -15,10 +15,7 @@ public class Game : Godot.YSort
     {
         world = new EcsWorld();
 
-        shared = new Shared()
-        {
-            Game = this
-        };
+        shared = new Shared() { Game = this };
 
         frameTime = new FrameTimeSystem();
         input = new InputSystem();
@@ -95,12 +92,14 @@ public class Game : Godot.YSort
 
             ref var triggers = ref collisionTriggers.AddNotify(fire);
             triggers.Tasks = new EventTask[] {
-                new AddNotifySelf<Flash>() {
+                new AddSelf<Flash>() {
+                    Notify = true,
                     Component = new Flash() {
                         Color = new Color() { Red = 2f, Green = 2f, Blue = 2f }
                     }
                 },
-                new AddNotifyOther<Flash>() {
+                new AddOther<Flash>() {
+                    Notify = true,
                     Component = new Flash() {
                         Color = new Color() { Red = 2f, Green = 0f, Blue = 0f }
                     }
@@ -126,7 +125,8 @@ public class Game : Godot.YSort
 
             ref var triggers = ref areaTriggers.AddNotify(button);
             triggers.Tasks = new EventTask[] {
-                new AddNotifySelf<Flash>() {
+                new AddSelf<Flash>() {
+                    Notify = true,
                     Component = new Flash() {
                         Color = new Color() { Red = 0.33f, Green = 0.33f, Blue = 0.33f }
                     }
@@ -149,6 +149,13 @@ public class Game : Godot.YSort
             scale.Y = 2;
 
             areas.AddNotify(potion);
+
+            ref var triggers = ref areaTriggers.AddNotify(potion);
+            triggers.Tasks = new EventTask[] {
+                new AddSelf<Delete>() {
+                    Component = new Delete() {}
+                }
+            };
         }
 
         systems.Init();
@@ -184,14 +191,9 @@ public class Game : Godot.YSort
 
     public void _Event(Node targetNode, GodotWrapper sourceWrapper, GodotWrapper tasksWrapper)
     {
-        EcsPackedEntity source = sourceWrapper.Get<EcsPackedEntity>();
-        EcsPackedEntity target = default;
         var tasks = tasksWrapper.Get<EventTask[]>();
-
-        if (targetNode is EntityNode targetEntityNode)
-        {
-            target = targetEntityNode.Entity;
-        }
+        var source = sourceWrapper.Get<EcsPackedEntity>();
+        var target = targetNode is EntityNode entityNode ? entityNode.Entity : default;
 
         foreach (var task in tasks)
         {

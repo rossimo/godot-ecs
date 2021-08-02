@@ -25,10 +25,11 @@ public interface EventTask
     public void Run(EcsWorld world, int self, int other);
 }
 
-public struct AddNotifySelf<C> : EventTask
+public struct AddSelf<C> : EventTask
     where C : struct
 {
     public C Component;
+    public bool Notify;
 
     public void Run(EcsWorld world, int self, int other)
     {
@@ -36,15 +37,19 @@ public struct AddNotifySelf<C> : EventTask
 
         var pool = world.GetPool<C>();
         ref var component = ref pool.Ensure<C>(self);
-        pool.Notify(self);
+        if (Notify)
+        {
+            pool.Notify(self);
+        }
         component = Component;
     }
 }
 
-public struct AddNotifyOther<C> : EventTask
+public struct AddOther<C> : EventTask
     where C : struct
 {
     public C Component;
+    public bool Notify;
 
     public void Run(EcsWorld world, int self, int other)
     {
@@ -52,7 +57,10 @@ public struct AddNotifyOther<C> : EventTask
 
         var pool = world.GetPool<C>();
         ref var component = ref pool.Ensure<C>(other);
-        pool.Notify(other);
+        if (Notify)
+        {
+            pool.Notify(other);
+        }
         component = Component;
     }
 }
