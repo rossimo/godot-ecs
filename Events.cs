@@ -14,7 +14,7 @@ public struct Event
     public EventTask Task;
 }
 
-public struct Trigger<T>
+public struct EventTrigger<T>
     where T : struct
 {
     public EventTask[] Tasks;

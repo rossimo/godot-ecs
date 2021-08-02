@@ -49,9 +49,9 @@ public class Game : Godot.YSort
         var players = world.GetPool<Player>();
         var speeds = world.GetPool<Speed>();
         var collisions = world.GetPool<Collision>();
-        var collisionTriggers = world.GetPool<Trigger<Collision>>();
+        var collisionTriggers = world.GetPool<EventTrigger<Collision>>();
         var areas = world.GetPool<Area>();
-        var areaTriggers = world.GetPool<Trigger<Area>>();
+        var areaTriggers = world.GetPool<EventTrigger<Area>>();
 
         {
             var player = world.NewEntity();

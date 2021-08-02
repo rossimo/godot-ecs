@@ -63,8 +63,8 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<Sprite> sprites = default;
     [EcsPool] readonly EcsPool<Scale> scales = default;
     [EcsPool] readonly EcsPool<Collision> collisions = default;
-    [EcsPool] readonly EcsPool<Trigger<Collision>> collisionTriggers = default;
-    [EcsPool] readonly EcsPool<Trigger<Area>> areaTriggers = default;
+    [EcsPool] readonly EcsPool<EventTrigger<Collision>> collisionTriggers = default;
+    [EcsPool] readonly EcsPool<EventTrigger<Area>> areaTriggers = default;
     [EcsPool] readonly EcsPool<EventQueue> eventQueues = default;
 
     public void Init(EcsSystems systems)
@@ -284,7 +284,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
         }
 
 
-        foreach (var entity in world.Filter<AreaNode>().Inc<Notify<Trigger<Area>>>().End())
+        foreach (var entity in world.Filter<AreaNode>().Inc<Notify<EventTrigger<Area>>>().End())
         {
             ref var areaNode = ref areaNodes.Get(entity);
             ref var trigger = ref areaTriggers.Get(entity);
