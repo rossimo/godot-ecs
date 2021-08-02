@@ -92,14 +92,15 @@ public class Game : Godot.YSort
 
             ref var triggers = ref collisionTriggers.AddNotify(fire);
             triggers.Tasks = new EventTask[] {
-                new AddSelf<Flash>() {
+                new Add<Flash>() {
                     Notify = true,
                     Component = new Flash() {
                         Color = new Color() { Red = 2f, Green = 2f, Blue = 2f }
                     }
                 },
-                new AddOther<Flash>() {
+                new Add<Flash>() {
                     Notify = true,
+                    Target = Target.Other,
                     Component = new Flash() {
                         Color = new Color() { Red = 2f, Green = 0f, Blue = 0f }
                     }
@@ -125,7 +126,7 @@ public class Game : Godot.YSort
 
             ref var triggers = ref areaTriggers.AddNotify(button);
             triggers.Tasks = new EventTask[] {
-                new AddSelf<Flash>() {
+                new Add<Flash>() {
                     Notify = true,
                     Component = new Flash() {
                         Color = new Color() { Red = 0.33f, Green = 0.33f, Blue = 0.33f }
@@ -152,9 +153,7 @@ public class Game : Godot.YSort
 
             ref var triggers = ref areaTriggers.AddNotify(potion);
             triggers.Tasks = new EventTask[] {
-                new AddSelf<Delete>() {
-                    Component = new Delete() {}
-                }
+                new Add<Delete>()
             };
         }
 

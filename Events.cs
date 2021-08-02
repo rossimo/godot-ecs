@@ -25,43 +25,39 @@ public interface EventTask
     public void Run(EcsWorld world, int self, int other);
 }
 
-public struct AddSelf<C> : EventTask
-    where C : struct
+public enum Target
 {
-    public C Component;
-    public bool Notify;
-
-    public void Run(EcsWorld world, int self, int other)
-    {
-        if (self == -1) return;
-
-        var pool = world.GetPool<C>();
-        ref var component = ref pool.Ensure<C>(self);
-        if (Notify)
-        {
-            pool.Notify(self);
-        }
-        component = Component;
-    }
+    Self,
+    Other
 }
 
-public struct AddOther<C> : EventTask
+public struct Add<C> : EventTask
     where C : struct
 {
     public C Component;
     public bool Notify;
+    public Target Target;
 
     public void Run(EcsWorld world, int self, int other)
     {
-        if (other == -1) return;
+        var target = -1;
+
+        if (Target == Target.Self)
+        {
+            target = self;
+        }
+        else if (Target == Target.Other)
+        {
+            target = other;
+        }
+
+        if (target == -1) return;
 
         var pool = world.GetPool<C>();
-        ref var component = ref pool.Ensure<C>(other);
-        if (Notify)
-        {
-            pool.Notify(other);
-        }
+        ref var component = ref pool.Ensure<C>(target);
         component = Component;
+
+        if (Notify) pool.Notify(target);
     }
 }
 
