@@ -155,7 +155,7 @@ public class RendererSystem : IEcsRunSystem
             tween.Start();
         }
 
-        foreach (int entity in world.Filter<SpriteNode>().Inc<Delete>().End())
+        foreach (int entity in world.Filter<SpriteNode>().Inc<DeleteEntity>().End())
         {
             ref var sprite = ref spriteNodes.Get(entity);
 

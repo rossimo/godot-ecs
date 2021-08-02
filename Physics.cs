@@ -300,7 +300,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             });
         }
 
-        foreach (int entity in world.Filter<PhysicsNode>().Inc<AreaNode>().Inc<Delete>().End())
+        foreach (int entity in world.Filter<PhysicsNode>().Inc<AreaNode>().Inc<DeleteEntity>().End())
         {
             ref var physicsNode = ref physicsNodes.Get(entity);
             ref var areaNode = ref areaNodes.Get(entity);
@@ -310,7 +310,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             node.QueueFree();
         }
 
-        foreach (int entity in world.Filter<PhysicsNode>().Inc<Delete>().End())
+        foreach (int entity in world.Filter<PhysicsNode>().Inc<DeleteEntity>().End())
         {
             ref var physicsNode = ref physicsNodes.Get(entity);
 

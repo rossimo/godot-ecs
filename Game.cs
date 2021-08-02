@@ -30,13 +30,13 @@ public class Game : Godot.YSort
             .Add(new CombatSystem())
             .Add(new PhysicsSystem())
             .Add(new RendererSystem())
-            .Add(new ComponentDeleteSystem<Notify<Sprite>>())
-            .Add(new ComponentDeleteSystem<Notify<Position>>())
-            .Add(new ComponentDeleteSystem<Notify<Scale>>())
-            .Add(new ComponentDeleteSystem<Notify<Flash>>())
-            .Add(new ComponentDeleteSystem<Notify<Collision>>())
-            .Add(new ComponentDeleteSystem<Notify<Area>>())
-            .Add(new EntityDeleteSystem())
+            .Add(new DeleteComponentSystem<Notify<Sprite>>())
+            .Add(new DeleteComponentSystem<Notify<Position>>())
+            .Add(new DeleteComponentSystem<Notify<Scale>>())
+            .Add(new DeleteComponentSystem<Notify<Flash>>())
+            .Add(new DeleteComponentSystem<Notify<Collision>>())
+            .Add(new DeleteComponentSystem<Notify<Area>>())
+            .Add(new DeleteEntitySystem())
             .Inject()
             .Init();
 
@@ -153,7 +153,7 @@ public class Game : Godot.YSort
 
             ref var triggers = ref areaTriggers.AddNotify(potion);
             triggers.Tasks = new EventTask[] {
-                new Add<Delete>()
+                new Add<DeleteEntity>()
             };
         }
 

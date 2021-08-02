@@ -12,7 +12,7 @@ public class CombatSystem : IEcsRunSystem
     [EcsShared] readonly Shared shared = default;
     [EcsPool] readonly EcsPool<Tick> ticks = default;
     [EcsPool] readonly EcsPool<Expiration> expirations = default;
-    [EcsPool] readonly EcsPool<Delete> deletes = default;
+    [EcsPool] readonly EcsPool<DeleteEntity> deletes = default;
 
     public void Run(EcsSystems systems)
     {

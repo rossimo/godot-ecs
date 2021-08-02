@@ -23,12 +23,12 @@ public static class NotifyUtils
     }
 }
 
-public struct Delete { }
+public struct DeleteEntity { }
 
-public class EntityDeleteSystem : IEcsRunSystem
+public class DeleteEntitySystem : IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
-    [EcsFilter(typeof(Delete))] readonly EcsFilter _filter = default;
+    [EcsFilter(typeof(DeleteEntity))] readonly EcsFilter _filter = default;
 
     public void Run(EcsSystems systems)
     {
@@ -39,7 +39,7 @@ public class EntityDeleteSystem : IEcsRunSystem
     }
 }
 
-public class ComponentDeleteSystem<C> : IEcsInitSystem, IEcsRunSystem
+public class DeleteComponentSystem<C> : IEcsInitSystem, IEcsRunSystem
     where C : struct
 {
     EcsFilter _filter;
