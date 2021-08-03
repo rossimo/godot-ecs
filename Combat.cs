@@ -24,7 +24,7 @@ public class CombatSystem : IEcsRunSystem
 
             if (expiration.Tick <= tick)
             {
-                deletes.Add(entity);
+                deletes.Ensure(entity);
             }
         }
     }
