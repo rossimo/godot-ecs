@@ -13,6 +13,10 @@ config_version=4
 config/name="World"
 run/main_scene="res://Game.tscn"
 
+[editor_plugins]
+
+enabled=PoolStringArray( "res://addons/ecsplugin/plugin.cfg" )
+
 [global]
 
 default_clear_color=Color( 0, 0, 0, 1 )
@@ -20,7 +24,6 @@ batch=false
 
 [physics]
 
-common/physics_fps=60
 common/enable_pause_aware_picking=true
 
 [rendering]
