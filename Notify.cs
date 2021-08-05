@@ -23,6 +23,7 @@ public static class NotifyUtils
     }
 }
 
+[Component]
 public struct DeleteEntity { }
 
 public class DeleteEntitySystem : IEcsRunSystem

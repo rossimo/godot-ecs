@@ -2,6 +2,7 @@ using Godot;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
 
+[Component]
 public struct Player { }
 
 public struct MouseLeft
@@ -14,6 +15,7 @@ public struct MouseRight
     public bool Pressed;
 }
 
+[Component]
 public struct Move
 {
     public Position Destination;

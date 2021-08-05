@@ -10,31 +10,38 @@ public struct Tick
     public ulong Value;
 }
 
+[Component]
 public struct Speed
 {
     public float Value;
 }
 
+[Component]
 public struct Destination
 {
     public Position Position;
 }
 
+[Component]
 public struct Direction
 {
     public float X;
     public float Y;
 }
 
+[Component]
 public struct Collision { }
 
+[Component]
 public struct Area { }
 
+[Component]
 public struct PhysicsNode
 {
     public EntityKinematicBody2D Node;
 }
 
+[Component]
 public struct AreaNode
 {
     public Area2D Node;
