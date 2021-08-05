@@ -3,7 +3,4 @@
     <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
     <LangVersion>9.0</LangVersion>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Remove="Items.cs" />
-  </ItemGroup>
 </Project>
