@@ -7,101 +7,115 @@ using System.Linq;
 [Tool]
 public class EcsPlugin : EditorPlugin
 {
-    private Control dock;
-    private List<Type> components = new List<Type>();
-    private List<Type> available = GetComponents().ToList();
-    private Node current;
+	private Control dock;
+	private List<Type> components = new List<Type>();
+	private List<Type> available = GetComponents().ToList();
+	private Node current;
 
-    public override void _EnterTree()
-    {
-        dock = new Panel() { Name = "Components" };
-        AddControlToDock(DockSlot.RightUl, dock);
+	public override void _EnterTree()
+	{
+		dock = new Panel() { Name = "Components" };
+		AddControlToDock(DockSlot.RightUl, dock);
 
-        RenderComponents();
+		RenderComponents();
 
-        var selector = GetEditorInterface().GetSelection();
-        selector.Connect("selection_changed", this, nameof(SelectedNode));
-    }
+		var selector = GetEditorInterface().GetSelection();
+		selector.Connect("selection_changed", this, nameof(SelectedNode));
 
-    public override void _ExitTree()
-    {
-        RemoveControlFromDocks(dock);
-        dock.QueueFree();
-    }
+		current = selector.GetSelectedNodes().ToArray<Node>()?.FirstOrDefault();
+	}
 
-    public void SelectedNode()
-    {
-        var selector = GetEditorInterface().GetSelection();
+	public override void _ExitTree()
+	{
+		RemoveControlFromDocks(dock);
+		dock.QueueFree();
+	}
 
-        current = selector.GetSelectedNodes().ToArray<Node>().FirstOrDefault();
-		current.GetMetaList();
-    }
+	public void SelectedNode()
+	{
+		var selector = GetEditorInterface().GetSelection();
+		current = selector.GetSelectedNodes().ToArray<Node>()?.FirstOrDefault();
+	}
 
-    public void RenderComponents()
-    {
-        foreach (Node child in dock.GetChildren())
-        {
-            dock.RemoveChild(child);
-            child.QueueFree();
-        }
+	public void RenderComponents()
+	{
+		foreach (Node child in dock.GetChildren())
+		{
+			dock.RemoveChild(child);
+			child.QueueFree();
+		}
 
-        var layout = new VBoxContainer();
-        layout.AnchorRight = 1;
-        dock.AddChild(layout);
 
-        foreach (var component in components)
-        {
-            var componentLayout = new HBoxContainer();
-            componentLayout.SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill;
-            layout.AddChild(componentLayout);
+		if (current != null)
+		{
+			foreach (var metadata in current.GetMetaList())
+			{
+				var path = metadata.Split('/');
+				if (path.FirstOrDefault() != "component") continue;
 
-            var componentLabel = new Label() { Text = component.Name };
-            componentLabel.SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill;
-            componentLabel.SizeFlagsVertical = 0;
-            componentLayout.AddChild(componentLabel);
+				var name = path[0];
+				var component = GetComponents().FirstOrDefault(component => component.Name.ToLower() == name.ToLower());
+				if (component == null) continue;
+			}
+		}
 
-            var fieldsLayout = new VBoxContainer();
-            fieldsLayout.SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill;
-            fieldsLayout.SizeFlagsVertical = 0;
-            componentLayout.AddChild(fieldsLayout);
+		var layout = new VBoxContainer();
+		layout.AnchorRight = 1;
+		dock.AddChild(layout);
 
-            foreach (var field in component.GetFields())
-            {
-                var fieldLabel = new Label() { Text = field.Name };
-                fieldsLayout.AddChild(fieldLabel);
-            }
-        }
+		foreach (var component in components)
+		{
+			var componentLayout = new HBoxContainer();
+			componentLayout.SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill;
+			layout.AddChild(componentLayout);
 
-        var picker = new OptionButton() { Text = "Add Component" };
-        layout.AddChild(picker);
-        picker.Connect("item_selected", this, nameof(AddComponent));
+			var componentLabel = new Label() { Text = component.Name };
+			componentLabel.SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill;
+			componentLabel.SizeFlagsVertical = 0;
+			componentLayout.AddChild(componentLabel);
 
-        for (var i = 0; i < available.Count; i++)
-        {
-            var component = available[i];
-            if (components.Contains(component)) continue;
+			var fieldsLayout = new VBoxContainer();
+			fieldsLayout.SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill;
+			fieldsLayout.SizeFlagsVertical = 0;
+			componentLayout.AddChild(fieldsLayout);
 
-            picker.GetPopup().AddItem(component.Name, i);
-        }
-    }
+			foreach (var field in component.GetFields())
+			{
+				var fieldLabel = new Label() { Text = field.Name };
+				fieldsLayout.AddChild(fieldLabel);
+			}
+		}
 
-    public void AddComponent(int index)
-    {
-        var component = available[index];
-        components.Add(component);
-        components = components.OrderBy(component => component.Name).ToList();
+		var picker = new OptionButton() { Text = "Add Component" };
+		layout.AddChild(picker);
+		picker.Connect("item_selected", this, nameof(AddComponent));
 
-        available = GetComponents().Where(component => !components.Contains(component)).ToList();
+		for (var i = 0; i < available.Count; i++)
+		{
+			var component = available[i];
+			if (components.Contains(component)) continue;
 
-        RenderComponents();
-    }
+			picker.GetPopup().AddItem(component.Name, i);
+		}
+	}
 
-    public static Type[] GetComponents()
-    {
-        return AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(assembly => assembly.GetTypes())
-            .Where(type => type.GetCustomAttributes(typeof(EditorComponent), false)?.Length > 0)
-            .OrderBy(component => component.Name)
-            .ToArray();
-    }
+	public void AddComponent(int index)
+	{
+		var component = available[index];
+		components.Add(component);
+		components = components.OrderBy(component => component.Name).ToList();
+
+		available = GetComponents().Where(component => !components.Contains(component)).ToList();
+
+		RenderComponents();
+	}
+
+	public static Type[] GetComponents()
+	{
+		return AppDomain.CurrentDomain.GetAssemblies()
+			.SelectMany(assembly => assembly.GetTypes())
+			.Where(type => type.GetCustomAttributes(typeof(EditorComponent), false)?.Length > 0)
+			.OrderBy(component => component.Name)
+			.ToArray();
+	}
 }
