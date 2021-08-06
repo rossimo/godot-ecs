@@ -2,13 +2,11 @@ using Godot;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
 
-[Component]
 public struct Sprite
 {
     public string Image;
 }
 
-[Component]
 public struct SpriteNode
 {
     public Godot.Sprite Node;
@@ -16,30 +14,30 @@ public struct SpriteNode
     public Godot.Tween ModulateTween;
 }
 
-[Component]
+[EditorComponent]
 public struct Position
 {
     public float X;
     public float Y;
 }
 
-[Component]
+[EditorComponent]
 public struct LowRenderPriority { }
 
-[Component]
+[EditorComponent]
 public struct Rotation
 {
     public float Degrees;
 }
 
-[Component]
+[EditorComponent]
 public struct Scale
 {
     public float X;
     public float Y;
 }
 
-[Component]
+[EditorComponent]
 public struct Color
 {
     public float Red;
@@ -47,7 +45,7 @@ public struct Color
     public float Blue;
 }
 
-[Component]
+[EditorComponent]
 public struct Flash
 {
     public Color Color;
@@ -200,7 +198,6 @@ public class RendererSystem : IEcsRunSystem
     }
 }
 
-[Component]
 public struct FrameTime
 {
     public float Value;

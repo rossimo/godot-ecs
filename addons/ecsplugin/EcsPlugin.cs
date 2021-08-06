@@ -7,39 +7,68 @@ using System.Linq;
 [Tool]
 public class EcsPlugin : EditorPlugin
 {
-    private EditorInspectorPlugin inspector;
-    private Control dock;
+	private EditorInspectorPlugin inspector;
+	private Control dock;
 
-    public override void _EnterTree()
-    {
-        inspector = GD.Load<CSharpScript>("res://addons/ecsplugin/EcsInspector.cs").New() as EditorInspectorPlugin;
-        AddInspectorPlugin(inspector);
+	public override void _EnterTree()
+	{
+		inspector = GD.Load<CSharpScript>("res://addons/ecsplugin/EcsInspector.cs").New() as EditorInspectorPlugin;
+		AddInspectorPlugin(inspector);
 
-        dock = new Control() { Name = "Components" };
+		dock = new Panel() { Name = "Components" };
+		AddControlToDock(DockSlot.RightUl, dock);
 
-		var components = GetComponents();
+		CreateComponentList();
+	}
 
-		var componentList = new Godot.Label()
+	public override void _ExitTree()
+	{
+		RemoveInspectorPlugin(inspector);
+
+		RemoveControlFromDocks(dock);
+		dock.QueueFree();
+	}
+
+	public void CreateComponentList()
+	{
+		foreach (Node child in dock.GetChildren())
 		{
-			Text = String.Join("\n", components.Select(component => component.Name))
-		};
-		dock.AddChild(componentList);
+			dock.RemoveChild(child);
+			child.QueueFree();
+		}
 
-        AddControlToDock(DockSlot.RightUl, dock);
-    }
 
-    public override void _ExitTree()
-    {
-        RemoveInspectorPlugin(inspector);
+		var layout = new VBoxContainer();
+		layout.AnchorRight = 1;
+		dock.AddChild(layout);
 
-        RemoveControlFromDocks(dock);
-        dock.QueueFree();
-    }
+		foreach (var component in GetComponents())
+		{
+			var componentLayout = new HBoxContainer();
+			componentLayout.SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill;
+			layout.AddChild(componentLayout);
 
-    public static IEnumerable<Type> GetComponents()
-    {
-        return AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(assembly => assembly.GetTypes())
-            .Where(type => type.GetCustomAttributes(typeof(Component), false)?.Length > 0);
-    }
+			var componentLabel = new Label() { Text = component.Name };
+			componentLabel.SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill;
+			componentLayout.AddChild(componentLabel);
+
+			var fieldsLayout = new VBoxContainer();
+			fieldsLayout.SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill;
+			componentLayout.AddChild(fieldsLayout);
+
+			foreach (var field in component.GetFields())
+			{
+				var fieldLabel = new Label() { Text = field.Name };
+				fieldsLayout.AddChild(fieldLabel);
+			}
+		}
+	}
+
+	public static IEnumerable<Type> GetComponents()
+	{
+		return AppDomain.CurrentDomain.GetAssemblies()
+			.SelectMany(assembly => assembly.GetTypes())
+			.Where(type => type.GetCustomAttributes(typeof(EditorComponent), false)?.Length > 0)
+			.OrderBy(component => component.Name);
+	}
 }
