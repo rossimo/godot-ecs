@@ -29,7 +29,7 @@ public static class Utils
             var value = fieldInfo.GetValue(obj);
             var fieldType = fieldInfo.FieldType;
 
-            if (fieldType.IsPrimitive || value is string)
+            if (fieldType.IsEditable())
             {
                 metadata.Add(key, value);
             }
@@ -40,6 +40,11 @@ public static class Utils
         }
 
         return metadata;
+    }
+
+    public static bool IsEditable(this Type type)
+    {
+        return type.IsPrimitive || type == typeof(string);
     }
 
     public static Dictionary<string, object> ToFlat(this Dictionary<string, object> input, string sep, string prefix = "")
@@ -102,11 +107,14 @@ public static class Utils
     public static void SetField(object target, string property, object setTo)
     {
         var parts = property.Split('/');
+        if (parts.Length == 0) return;
+
         var prop = target.GetType().GetFields().FirstOrDefault(el => el.Name.ToLower() == parts[0].ToLower());
+        if (prop == null) return;
 
         if (parts.Length == 1)
         {
-            prop.SetValue(target, setTo);
+            prop.SetValue(target, Convert.ChangeType(setTo, prop.FieldType));
         }
         else
         {
