@@ -7,9 +7,9 @@ using System.Collections.Generic;
 public class EcsPlugin : EditorPlugin
 {
     private Control dock;
-    private List<Type> components = new List<Type>();
-    private List<Type> available = GetComponents().ToList();
     private Node current;
+
+    private List<Type> COMPONENTS = GetComponents().ToList();
 
     public override void _EnterTree()
     {
@@ -17,12 +17,6 @@ public class EcsPlugin : EditorPlugin
         AddControlToDock(DockSlot.RightUl, dock);
 
         RenderComponents();
-
-        var test = new Move() { Destination = new Position() { X = 10, Y = 30 } };
-        foreach (var entry in test.ToFieldMap().ToFlat("/"))
-        {
-            Console.WriteLine($"{entry.Key} = {entry.Value}");
-        }
 
         var selector = GetEditorInterface().GetSelection();
         selector.Connect("selection_changed", this, nameof(SelectedNode));
@@ -40,6 +34,7 @@ public class EcsPlugin : EditorPlugin
     {
         var selector = GetEditorInterface().GetSelection();
         current = selector.GetSelectedNodes().ToArray<Node>()?.FirstOrDefault();
+        RenderComponents();
     }
 
     public void RenderComponents()
@@ -60,10 +55,10 @@ public class EcsPlugin : EditorPlugin
             if (path.Length < 2) continue;
 
             var prefix = path[0];
-            if (path[0] != "component") continue;
+            if (path[0] != "components") continue;
 
             var name = path[1];
-            var component = GetComponents()
+            var component = COMPONENTS
                 .FirstOrDefault(component => component.Name.ToLower() == name.ToLower());
             if (component == null) continue;
 
@@ -92,22 +87,34 @@ public class EcsPlugin : EditorPlugin
         layout.AddChild(picker);
         picker.Connect("item_selected", this, nameof(AddComponent));
 
-        for (var i = 0; i < available.Count; i++)
+        for (var i = 0; i < COMPONENTS.Count; i++)
         {
-            var component = available[i];
-            if (components.Contains(component)) continue;
-
-            picker.GetPopup().AddItem(component.Name, i);
+            var componentType = COMPONENTS[i];
+            picker.GetPopup().AddItem(componentType.Name, i);
         }
     }
 
     public void AddComponent(int index)
     {
-        var component = available[index];
-        components.Add(component);
-        components = components.OrderBy(component => component.Name).ToList();
+        if (current != null)
+        {
+            var componentType = COMPONENTS[index];
+            var component = Activator.CreateInstance(componentType);
 
-        available = GetComponents().Where(component => !components.Contains(component)).ToList();
+            var metadata = new Dictionary<string, object>() {
+                { "components", new Dictionary<string, object>() {
+                    { componentType.Name.ToLower(), component.ToFieldMap() }
+                }}
+            }.ToFlat("/");
+
+            foreach (var entry in metadata)
+            {
+                current.SetMeta(entry.Key, entry.Value);
+            }
+
+            GetUndoRedo().CreateAction($"Add {componentType.Name}");
+            GetUndoRedo().CommitAction();
+        }
 
         RenderComponents();
     }
