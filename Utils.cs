@@ -4,6 +4,8 @@ using System.Collections.Generic;
 
 public static class Utils
 {
+    public static readonly List<Type> COMPONENTS = GetComponents().ToList();
+
     public static T[] ToArray<T>(this Godot.Collections.Array array)
     {
         var list = new List<T>();
@@ -67,5 +69,58 @@ public static class Utils
         }
 
         return output;
+    }
+
+    public static object[] ToComponents(this Godot.Node node)
+    {
+        var components = new Dictionary<Type, object>();
+
+        foreach (var key in node.GetMetaList() ?? new string[] { })
+        {
+            var path = key.Split('/');
+            if (path.Length < 2) continue;
+
+            var prefix = path[0];
+            if (path[0] != "components") continue;
+
+            var name = path[1];
+            var type = COMPONENTS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower());
+            if (type == null) continue;
+
+            var component = components.ContainsKey(type)
+                ? components[type]
+                : Activator.CreateInstance(type);
+
+            SetField(component, String.Join('/', path.Skip(2)), node.GetMeta(key));
+
+            components[type] = component;
+        }
+
+        return components.Values.ToArray();
+    }
+
+    public static void SetField(object target, string property, object setTo)
+    {
+        var parts = property.Split('/');
+        var prop = target.GetType().GetFields().FirstOrDefault(el => el.Name.ToLower() == parts[0].ToLower());
+
+        if (parts.Length == 1)
+        {
+            prop.SetValue(target, setTo);
+        }
+        else
+        {
+            var value = prop.GetValue(target);
+            SetField(value, String.Join('/', parts.Skip(1)), setTo);
+        }
+    }
+
+    public static Type[] GetComponents()
+    {
+        return AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(assembly => assembly.GetTypes())
+            .Where(type => type.GetCustomAttributes(typeof(EditorComponent), false)?.Length > 0)
+            .OrderBy(component => component.Name)
+            .ToArray();
     }
 }
