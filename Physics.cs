@@ -135,11 +135,10 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             });
         }
 
-        foreach (var entity in world.Filter<KinematicBody2DNode>().Inc<Move>().Inc<Speed>().End())
+        foreach (var entity in world.Filter<KinematicBody2DNode>().Inc<Move>().End())
         {
             ref var nodeComponent = ref physicsNodes.Get(entity);
             ref var move = ref moves.Get(entity);
-            ref var speed = ref speeds.Get(entity);
 
             var directionVec = nodeComponent.Node.Position
                 .DirectionTo(new Vector2(move.Destination.X, move.Destination.Y))
@@ -150,121 +149,88 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             direction.Y = directionVec.y;
         }
 
-        foreach (var entity in world.Filter<KinematicBody2DNode>().Inc<Direction>().Inc<PositionTween>().Inc<Speed>().End())
+        foreach (var entity in world.Filter<Node2DComponent>().Inc<Direction>().Inc<PositionTween>().End())
         {
             ref var direction = ref directions.Get(entity);
-            ref var physicsNode = ref physicsNodes.Get(entity);
-            ref var speed = ref speeds.Get(entity);
-
-            var node = physicsNode.Node;
-
-            var velocity = new Vector2(direction.X, direction.Y) * speed.Value * ratio;
-
-            if (moves.Has(entity))
-            {
-                ref var move = ref moves.Get(entity);
-
-                var tickDistance = velocity.DistanceTo(new Vector2(0, 0));
-                var moveDistance = node.Position
-                    .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
-
-                if (moveDistance < tickDistance)
-                {
-                    velocity *= moveDistance / tickDistance;
-
-                    moves.Del(entity);
-                    directions.Del(entity);
-                }
-            }
-
-            var collision = node.MoveAndCollide(velocity, true, true, false);
-
-            var travel = collision == null
-                ? velocity
-                : collision.Travel;
-
-            var newPosition = node.Position + travel;
-
-            ref var tweenComponent = ref positionTweens.Get(entity);
-
-            tweenComponent.Tween.InterpolateProperty(node, "position",
-                node.Position,
-                newPosition,
-                delta);
-
-            tweenComponent.Tween.Start();
-
-            if (collision != null)
-            {
-                moves.Del(entity);
-                directions.Del(entity);
-
-                var target = -1;
-
-                if (collision.Collider is EntityNode otherNode)
-                {
-                    otherNode.Entity.Unpack(world, out target);
-                }
-
-                ref var eventQueue = ref eventQueues.Get(shared.Events);
-
-                if (collisionTriggers.Has(entity))
-                {
-                    ref var trigger = ref collisionTriggers.Get(entity);
-                    eventQueue.Events.AddRange(trigger.Tasks.Select(task => new Event()
-                    {
-                        Task = task,
-                        Source = world.PackEntity(entity),
-                        Target = target == -1 ? default : world.PackEntity(target)
-                    }));
-                }
-
-                if (collisionTriggers.Has(target))
-                {
-                    ref var trigger = ref collisionTriggers.Get(target);
-                    eventQueue.Events.AddRange(trigger.Tasks.Select(task => new Event()
-                    {
-                        Task = task,
-                        Source = target == -1 ? default : world.PackEntity(target),
-                        Target = world.PackEntity(entity)
-                    }));
-                }
-            }
-        }
-
-        foreach (var entity in world.Filter<Node2DComponent>().Exc<KinematicBody2DNode>().Inc<Direction>().Inc<PositionTween>().End())
-        {
-            ref var direction = ref directions.Get(entity);
-            ref var nodeComponent = ref node2dComponents.Get(entity);
-            var node = nodeComponent.Node;
+            ref var node2d = ref node2dComponents.Get(entity);
             var speed = speeds.Has(entity)
                 ? speeds.Get(entity)
                 : new Speed() { Value = 1f };
 
-            var velocity = new Vector2(direction.X, direction.Y) * speed.Value * ratio;
+            var node = node2d.Node;
+
+            var travel = new Vector2(direction.X, direction.Y) * speed.Value * ratio;
 
             if (moves.Has(entity))
             {
                 ref var move = ref moves.Get(entity);
 
-                var tickDistance = velocity.DistanceTo(new Vector2(0, 0));
-                var moveDistance = node.Position
+                var tickDistance = travel.DistanceTo(new Vector2(0, 0));
+                var moveDistance = node.GlobalPosition
                     .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
 
                 if (moveDistance < tickDistance)
                 {
-                    velocity *= moveDistance / tickDistance;
+                    travel *= moveDistance / tickDistance;
 
                     moves.Del(entity);
                     directions.Del(entity);
                 }
             }
 
+            if (physicsNodes.Has(entity))
+            {
+                ref var physics = ref physicsNodes.Get(entity);
+
+                var collision = physics.Node.MoveAndCollide(travel, true, true, false);
+
+                travel = collision == null
+                    ? travel
+                    : collision.Travel;
+
+                if (collision != null)
+                {
+                    moves.Del(entity);
+                    directions.Del(entity);
+
+                    var target = -1;
+
+                    if (collision.Collider is EntityNode otherNode)
+                    {
+                        otherNode.Entity.Unpack(world, out target);
+                    }
+
+                    ref var eventQueue = ref eventQueues.Get(shared.Events);
+
+                    if (collisionTriggers.Has(entity))
+                    {
+                        ref var trigger = ref collisionTriggers.Get(entity);
+                        eventQueue.Events.AddRange(trigger.Tasks.Select(task => new Event()
+                        {
+                            Task = task,
+                            Source = world.PackEntity(entity),
+                            Target = target == -1 ? default : world.PackEntity(target)
+                        }));
+                    }
+
+                    if (collisionTriggers.Has(target))
+                    {
+                        ref var trigger = ref collisionTriggers.Get(target);
+                        eventQueue.Events.AddRange(trigger.Tasks.Select(task => new Event()
+                        {
+                            Task = task,
+                            Source = target == -1 ? default : world.PackEntity(target),
+                            Target = world.PackEntity(entity)
+                        }));
+                    }
+                }
+            }
+
             ref var tweenComponent = ref positionTweens.Get(entity);
 
-            tweenComponent.Tween.InterpolateProperty(node, "position",
-                node.Position,
-                node.Position + velocity,
+            tweenComponent.Tween.InterpolateProperty(node, "global_position",
+                node.GlobalPosition,
+                node.GlobalPosition + travel,
                 delta);
 
             tweenComponent.Tween.Start();
