@@ -97,7 +97,7 @@ public static class Utils
                 ? components[type]
                 : Activator.CreateInstance(type);
 
-            SetField(ref component, String.Join('/', path.Skip(2)), node.GetMeta(key));
+            component = SetField(component, String.Join('/', path.Skip(2)), node.GetMeta(key));
 
             components[type] = component;
         }
@@ -105,26 +105,27 @@ public static class Utils
         return components.Values.ToArray();
     }
 
-    public static void SetField(ref object obj, string path, object value)
+    public static object SetField(object obj, string path, object value)
     {
         var parts = path.Split('/');
-        if (parts.Length == 0) return;
+        if (parts.Length == 0) return obj;
 
-        FieldInfo fieldInfo = null;
-        object current = obj;
+        var fieldInfo = obj.GetType().GetFields()
+            .FirstOrDefault(el => el.Name.ToLower() == parts[0].ToLower());
+        if (fieldInfo == null) return obj;
 
-        for (int i = 0; i < parts.Length; i++)
+        var field = fieldInfo.GetValue(obj);
+
+        if (parts.Length == 1)
         {
-            fieldInfo = current.GetType().GetFields()
-                .FirstOrDefault(el => el.Name.ToLower() == parts[i].ToLower());
-            if (i == parts.Length - 1) break;
-            current = fieldInfo.GetValue(current);
+            fieldInfo.SetValue(obj, Convert.ChangeType(value, fieldInfo.FieldType));
+        }
+        else
+        {
+            fieldInfo.SetValue(obj, SetField(field, String.Join('/', parts.Skip(1)), value));
         }
 
-        if (fieldInfo != null)
-        {
-            fieldInfo.SetValue(current, Convert.ChangeType(value, fieldInfo.FieldType));
-        }
+        return obj;
     }
 
     public static Type[] GetComponents()
