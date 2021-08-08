@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Reflection;
 
 public static class Utils
 {
@@ -96,7 +97,7 @@ public static class Utils
                 ? components[type]
                 : Activator.CreateInstance(type);
 
-            SetField(component, String.Join('/', path.Skip(2)), node.GetMeta(key));
+            SetField(ref component, String.Join('/', path.Skip(2)), node.GetMeta(key));
 
             components[type] = component;
         }
@@ -104,22 +105,25 @@ public static class Utils
         return components.Values.ToArray();
     }
 
-    public static void SetField(object target, string property, object setTo)
+    public static void SetField(ref object obj, string path, object value)
     {
-        var parts = property.Split('/');
+        var parts = path.Split('/');
         if (parts.Length == 0) return;
 
-        var prop = target.GetType().GetFields().FirstOrDefault(el => el.Name.ToLower() == parts[0].ToLower());
-        if (prop == null) return;
+        FieldInfo fieldInfo = null;
+        object current = obj;
 
-        if (parts.Length == 1)
+        for (int i = 0; i < parts.Length; i++)
         {
-            prop.SetValue(target, Convert.ChangeType(setTo, prop.FieldType));
+            fieldInfo = current.GetType().GetFields()
+                .FirstOrDefault(el => el.Name.ToLower() == parts[i].ToLower());
+            if (i == parts.Length - 1) break;
+            current = fieldInfo.GetValue(current);
         }
-        else
+
+        if (fieldInfo != null)
         {
-            var value = prop.GetValue(target);
-            SetField(value, String.Join('/', parts.Skip(1)), setTo);
+            fieldInfo.SetValue(current, Convert.ChangeType(value, fieldInfo.FieldType));
         }
     }
 
