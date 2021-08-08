@@ -97,7 +97,18 @@ public static class Utils
                 ? components[type]
                 : Activator.CreateInstance(type);
 
-            component = SetField(component, String.Join('/', path.Skip(2)), node.GetMeta(key));
+            var fieldPath = String.Join('/', path.Skip(2));
+            var value = node.GetMeta(key);
+
+            try
+            {
+                component = SetField(component, fieldPath, node.GetMeta(key));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Unable to set {type.Name} {fieldPath} to {value}");
+                Console.WriteLine(ex.Message);
+            }
 
             components[type] = component;
         }
