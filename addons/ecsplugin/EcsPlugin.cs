@@ -106,7 +106,7 @@ public class EcsPlugin : EditorPlugin
                     fieldLayout.AddChild(editor);
 
                     editor.Connect("text_entered", this, nameof(FieldChanged),
-                        new Godot.Collections.Array { name });
+                        new Godot.Collections.Array { name, new GodotWrapper(fieldInfo.FieldType) });
                 }
                 else
                 {
@@ -149,13 +149,13 @@ public class EcsPlugin : EditorPlugin
         }
     }
 
-    public void FieldChanged(string value, string path)
+    public void FieldChanged(string value, string path, GodotWrapper typeWrapper)
     {
         if (current == null) return;
 
-		Console.WriteLine($"{path} = {value}");
+        var type = typeWrapper.Get<Type>();
+        current.SetMeta(path, Convert.ChangeType(value, type));
 
-        current.SetMeta(path, value);
         GetUndoRedo().CreateAction($"Edited {path}");
         GetUndoRedo().CommitAction();
     }
