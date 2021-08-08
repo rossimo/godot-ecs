@@ -1,6 +1,7 @@
 using Godot;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
+using System.Linq;
 
 public class Game : Godot.YSort
 {
@@ -10,13 +11,6 @@ public class Game : Godot.YSort
     public InputSystem input;
     public FrameTimeSystem frameTime;
     public EventSystem events;
-
-    public static void ReflectionAdd<T>(EcsPool<T> pool, int entity, T value)
-        where T : struct
-    {
-        ref var reference = ref pool.Add(entity);
-        reference = value;
-    }
 
     public override void _Ready()
     {
@@ -47,7 +41,10 @@ public class Game : Godot.YSort
             .Inject()
             .Init();
 
-        foreach (Godot.Node child in GetChildren())
+        var positions = world.GetPool<Position>();
+        var scales = world.GetPool<Scale>();
+
+        foreach (var child in GetChildren().ToArray<Godot.Object>().OfType<Godot.Node2D>())
         {
             var components = child.ToComponents();
             if (components.Length == 0) continue;
@@ -60,10 +57,18 @@ public class Game : Godot.YSort
                     .MakeGenericMethod(component.GetType());
                 var pool = getPool.Invoke(world, null);
 
-                var add = typeof(Game).GetMethod("ReflectionAdd")
+                var addNotify = typeof(Game).GetMethod("ReflectionAddNotify")
                     .MakeGenericMethod(component.GetType());
-                add.Invoke(null, new[] { pool, entity, component });
+                addNotify.Invoke(null, new[] { pool, entity, component });
             };
+
+            ref var position = ref positions.Add(entity);
+            position.X = child.Position.x;
+            position.Y = child.Position.y;
+
+            ref var scale = ref scales.Add(entity);
+            scale.X = child.Scale.x;
+            scale.Y = child.Scale.y;
         }
 
         /*
@@ -231,5 +236,12 @@ public class Game : Godot.YSort
                 Target = target
             });
         }
+    }
+
+    public static void ReflectionAddNotify<T>(EcsPool<T> pool, int entity, T value)
+    	where T : struct
+    {
+        ref var reference = ref pool.AddNotify(entity);
+        reference = value;
     }
 }
