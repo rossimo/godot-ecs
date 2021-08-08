@@ -48,24 +48,21 @@ public static class Utils
         return type.IsPrimitive || type == typeof(string);
     }
 
-    public static Dictionary<string, object> ToFlat(this Dictionary<string, object> input, string sep, string prefix = "")
+    public static Dictionary<string, object> ToFlat(this Dictionary<string, object> dict, string sep, string prefix = "")
     {
         var output = new Dictionary<string, object>();
 
-        foreach (var entry in input)
+        foreach (var entry in dict)
         {
             var key = entry.Key;
             var value = entry.Value;
             var name = String.Join(sep, new[] { prefix, key }.Where(el => el.Length > 0));
 
-            if (value is Dictionary<string, object> inner)
+            if (value is Dictionary<string, object> childDict)
             {
-                foreach (var innerEntry in ToFlat(inner, sep, name))
+                foreach (var child in ToFlat(childDict, sep, name))
                 {
-                    var innerKey = innerEntry.Key;
-                    var innerValue = innerEntry.Value;
-
-                    output.Add(innerKey, innerValue);
+                    output.Add(child.Key, child.Value);
                 }
             }
             else

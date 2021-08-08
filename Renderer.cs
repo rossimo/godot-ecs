@@ -7,9 +7,9 @@ public struct Sprite
     public string Image;
 }
 
-public struct SpriteNode
+public struct Node2DComponent
 {
-    public Godot.Sprite Node;
+    public Godot.Node2D Node;
     public Godot.Tween PositionTween;
     public Godot.Tween ModulateTween;
 }
@@ -57,9 +57,9 @@ public class RendererSystem : IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
     [EcsShared] readonly Shared shared = default;
-    [EcsPool] readonly EcsPool<Sprite> sprites = default;
     [EcsPool] readonly EcsPool<Scale> scales = default;
-    [EcsPool] readonly EcsPool<SpriteNode> spriteNodes = default;
+    [EcsPool] readonly EcsPool<Sprite> sprites = default;
+    [EcsPool] readonly EcsPool<Node2DComponent> node2DComponents = default;
     [EcsPool] readonly EcsPool<Position> positions = default;
     [EcsPool] readonly EcsPool<FrameTime> deltas = default;
     [EcsPool] readonly EcsPool<LowRenderPriority> lowPriority = default;
@@ -98,7 +98,7 @@ public class RendererSystem : IEcsRunSystem
 
             game.AddChild(node);
 
-            ref var spriteNode = ref spriteNodes.Add(entity);
+            ref var spriteNode = ref node2DComponents.Add(entity);
             spriteNode.Node = node;
             spriteNode.PositionTween = positionTween;
             spriteNode.ModulateTween = modulateTween;
@@ -110,9 +110,9 @@ public class RendererSystem : IEcsRunSystem
             }
         }
 
-        foreach (int entity in world.Filter<SpriteNode>().Inc<Notify<Position>>().End())
+        foreach (int entity in world.Filter<Node2DComponent>().Inc<Notify<Position>>().End())
         {
-            ref var spriteNode = ref spriteNodes.Get(entity);
+            ref var spriteNode = ref node2DComponents.Get(entity);
             ref var position = ref positions.Get(entity);
 
             var node = spriteNode.Node;
@@ -135,7 +135,7 @@ public class RendererSystem : IEcsRunSystem
             }
         }
 
-        foreach (int entity in world.Filter<SpriteNode>().Inc<Notify<Scale>>().End())
+        foreach (int entity in world.Filter<Node2DComponent>().Inc<Notify<Scale>>().End())
         {
             ref var scale = ref scales.Get(entity);
 
@@ -143,9 +143,9 @@ public class RendererSystem : IEcsRunSystem
             node.Scale = new Vector2(scale.X, scale.Y);
         }
 
-        foreach (var entity in world.Filter<SpriteNode>().Inc<Notify<Flash>>().End())
+        foreach (var entity in world.Filter<Node2DComponent>().Inc<Notify<Flash>>().End())
         {
-            ref var spriteNode = ref spriteNodes.Get(entity);
+            ref var spriteNode = ref node2DComponents.Get(entity);
 
             var flash = flashes.Get(entity);
             flashes.Del(entity);
@@ -161,40 +161,14 @@ public class RendererSystem : IEcsRunSystem
             tween.Start();
         }
 
-        foreach (int entity in world.Filter<SpriteNode>().Inc<DeleteEntity>().End())
+        foreach (int entity in world.Filter<Node2DComponent>().Inc<DeleteEntity>().End())
         {
-            ref var sprite = ref spriteNodes.Get(entity);
+            ref var sprite = ref node2DComponents.Get(entity);
 
             var node = sprite.Node;
             game.RemoveChild(node);
             node.QueueFree();
         }
-
-        /*
-
-        foreach (var (id, component) in sprites.Changed)
-        {
-            var node = game.GetNodeOrNull<ClickableSprite>($"{id}");
-            if (node == null) continue;
-
-            node.Texture = GD.Load<Texture>(component.Image);
-
-            if (node != component.Node)
-            {
-                state = state.With(id, component with
-                {
-                    Node = node
-                });
-            }
-        }
-
-        foreach (var (id, scale) in scales.Removed)
-        {
-            var node = state.Get<Sprite>(id)?.Node;
-            if (node == null) continue;
-            node.Scale = new Vector2(1, 1);
-        }
-        */
     }
 }
 
