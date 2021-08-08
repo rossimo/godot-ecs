@@ -18,7 +18,7 @@ public struct MouseRight
 [EditorComponent]
 public struct Move
 {
-    public Position Destination;
+    public Destination Destination;
 }
 
 public class InputSystem : IEcsInitSystem, IEcsRunSystem
@@ -27,13 +27,13 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
     [EcsShared] readonly Shared shared = default;
     [EcsPool] readonly EcsPool<MouseLeft> mouseLefts = default;
     [EcsPool] readonly EcsPool<MouseRight> mouseRights = default;
-    [EcsPool] readonly EcsPool<Position> positions = default;
     [EcsPool] readonly EcsPool<Move> moves = default;
     [EcsPool] readonly EcsPool<Tick> ticks = default;
-    [EcsPool] readonly EcsPool<Sprite> sprites = default;
+    [EcsPool] readonly EcsPool<PositionTween> positionTweens = default;
     [EcsPool] readonly EcsPool<Direction> directions = default;
     [EcsPool] readonly EcsPool<Speed> speeds = default;
     [EcsPool] readonly EcsPool<Expiration> expirations = default;
+    [EcsPool] readonly EcsPool<Node2DComponent> node2ds = default;
 
     public void Init(EcsSystems systems)
     {
@@ -91,32 +91,35 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
             mouseRight |= mouseRights.Get(entity).Pressed;
         }
 
-        foreach (var entity in world.Filter<Player>().Inc<Position>().End())
+        foreach (var entity in world.Filter<Player>().Inc<Node2DComponent>().End())
         {
             if (mouseRight)
             {
                 ref var move = ref moves.Ensure(entity);
-                move.Destination = new Position
-                {
-                    X = mousePosition.x,
-                    Y = mousePosition.y
-                };
+                move.Destination.X = mousePosition.x;
+                move.Destination.Y = mousePosition.y;
             }
 
             if (mouseLeft)
             {
-                ref var playerPosition = ref positions.Get(entity);
-                var directionVec = new Vector2(playerPosition.X, playerPosition.Y)
+                var playerNode = node2ds.Get(entity).Node;
+                var directionVec = playerNode.Position
                     .DirectionTo(mousePosition)
                     .Normalized();
 
                 var bullet = world.NewEntity();
-                ref var sprite = ref sprites.AddNotify(bullet);
-                sprite.Image = "res://resources/tiles/tile663.png";
 
-                ref var position = ref positions.AddNotify(bullet);
-                position.X = playerPosition.X;
-                position.Y = playerPosition.Y;
+                ref var node2dComponent = ref node2ds.Add(bullet);
+                node2dComponent.Node = new Godot.Sprite()
+                {
+                    Texture = GD.Load<Texture>("res://resources/tiles/tile663.png"),
+                    Position = playerNode.Position
+                };
+                game.AddChild(node2dComponent.Node);
+
+                ref var positionTweenComponent = ref positionTweens.Add(bullet);
+                positionTweenComponent.Tween = new Tween() { Name = "position" };
+                node2dComponent.Node.AddChild(positionTweenComponent.Tween);
 
                 ref var direction = ref directions.Add(bullet);
                 direction.X = directionVec.x;

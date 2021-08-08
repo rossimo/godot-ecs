@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=2]
+[gd_scene load_steps=7 format=2]
 
 [ext_resource path="res://Game.cs" type="Script" id=1]
 [ext_resource path="res://resources/tiles/tile072.png" type="Texture" id=2]
@@ -6,16 +6,11 @@
 [ext_resource path="res://resources/tiles/tile481.png" type="Texture" id=4]
 [ext_resource path="res://resources/tiles/tile570.png" type="Texture" id=5]
 
+[sub_resource type="CircleShape2D" id=1]
+radius = 20.0
+
 [node name="Game" type="YSort"]
 script = ExtResource( 1 )
-
-[node name="player" type="Sprite" parent="."]
-position = Vector2( 50, 50 )
-scale = Vector2( 3, 3 )
-texture = ExtResource( 2 )
-__meta__ = {
-"components/player": true
-}
 
 [node name="fire" type="Sprite" parent="."]
 position = Vector2( 400, 200 )
@@ -31,3 +26,16 @@ texture = ExtResource( 5 )
 position = Vector2( 300, 300 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 4 )
+
+[node name="player" type="KinematicBody2D" parent="."]
+position = Vector2( 50, 50 )
+__meta__ = {
+"components/player": true
+}
+
+[node name="collision" type="CollisionShape2D" parent="player"]
+shape = SubResource( 1 )
+
+[node name="sprite" type="Sprite" parent="player"]
+scale = Vector2( 3, 3 )
+texture = ExtResource( 2 )

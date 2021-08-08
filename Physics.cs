@@ -3,7 +3,6 @@ using System;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
 using System.Linq;
-using System.Collections.Generic;
 
 public struct Tick
 {
@@ -19,7 +18,8 @@ public struct Speed
 [EditorComponent]
 public struct Destination
 {
-    public Position Position;
+    public float X;
+    public float Y;
 }
 
 [EditorComponent]
@@ -35,9 +35,14 @@ public struct Collision { }
 [EditorComponent]
 public struct Area { }
 
-public struct PhysicsNode
+public struct KinematicBody2DNode
 {
-    public EntityKinematicBody2D Node;
+    public KinematicBody2D Node;
+}
+
+public struct PositionTween
+{
+    public Tween Tween;
 }
 
 public struct AreaNode
@@ -59,18 +64,18 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<Move> moves = default;
     [EcsPool] readonly EcsPool<Speed> speeds = default;
     [EcsPool] readonly EcsPool<Direction> directions = default;
-    [EcsPool] readonly EcsPool<Position> positions = default;
-    [EcsPool] readonly EcsPool<Notify<Position>> notifyPositions = default;
     [EcsPool] readonly EcsPool<Tick> ticks = default;
-    [EcsPool] readonly EcsPool<PhysicsNode> physicsNodes = default;
+    [EcsPool] readonly EcsPool<KinematicBody2DNode> physicsNodes = default;
+    [EcsPool] readonly EcsPool<Node2DComponent> node2dComponents = default;
+    [EcsPool] readonly EcsPool<PositionTween> positionTweens = default;
     [EcsPool] readonly EcsPool<Area> areas = default;
     [EcsPool] readonly EcsPool<AreaNode> areaNodes = default;
     [EcsPool] readonly EcsPool<Sprite> sprites = default;
-    [EcsPool] readonly EcsPool<Scale> scales = default;
     [EcsPool] readonly EcsPool<Collision> collisions = default;
     [EcsPool] readonly EcsPool<EventTrigger<Collision>> collisionTriggers = default;
     [EcsPool] readonly EcsPool<EventTrigger<Area>> areaTriggers = default;
     [EcsPool] readonly EcsPool<EventQueue> eventQueues = default;
+    [EcsPool] readonly EcsPool<FrameTime> deltas = default;
 
     public void Init(EcsSystems systems)
     {
@@ -86,52 +91,21 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
         var game = shared.Game;
         var ratio = (60f / PHYSICS_FPS);
 
+        float delta = 0;
+        foreach (var entity in world.Filter<FrameTime>().End())
+        {
+            delta = deltas.Get(entity).Value;
+        }
+
         ref var ticks = ref this.ticks.Get(shared.Physics);
         ticks.Value++;
 
-        var needPhysics = new HashSet<int>();
-        foreach (var entity in world.Filter<Area>().Exc<PhysicsNode>().End())
-            needPhysics.Add(entity);
-        foreach (var entity in world.Filter<Position>().Exc<PhysicsNode>().End())
-            needPhysics.Add(entity);
-        foreach (var entity in world.Filter<Collision>().Exc<PhysicsNode>().End())
-            needPhysics.Add(entity);
-
-        foreach (var entity in needPhysics)
-        {
-            var node = new EntityKinematicBody2D()
-            {
-                Name = entity + "-physics",
-                Entity = world.PackEntity(entity)
-            };
-
-            if (!areas.Has(entity) && !collisions.Has(entity))
-            {
-                node.CollisionMask = 0;
-            }
-
-            if (positions.Has(entity))
-            {
-                ref var position = ref positions.Get(entity);
-                node.Position = new Vector2(position.X, position.Y);
-            }
-
-            ref var component = ref physicsNodes.Add(entity);
-            component.Node = node;
-
-            game.AddChild(node);
-        }
-
-        foreach (var entity in world.Filter<PhysicsNode>().Inc<Notify<Collision>>().Inc<Sprite>().End())
+        foreach (var entity in world.Filter<KinematicBody2DNode>().Inc<Notify<Collision>>().Inc<Sprite>().End())
         {
             ref var physicsNode = ref physicsNodes.Get(entity);
             ref var sprite = ref sprites.Get(entity);
 
             var node = physicsNode.Node;
-
-            var scale = scales.Has(entity)
-                ? scales.Get(entity)
-                : new Scale { X = 1, Y = 1 };
 
             var collision = node.GetNodeOrNull<Node2D>("collision");
             if (collision != null)
@@ -148,26 +122,26 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 Shape = new RectangleShape2D()
                 {
                     Extents = new Vector2(
-                        texture.GetHeight() * scale.X,
-                        texture.GetWidth() * scale.Y) / 2f
+                        texture.GetHeight() * node.Scale.x,
+                        texture.GetWidth() * node.Scale.y) / 2f
                 }
             };
             node.AddChild(shape);
 
             shape.AddChild(new RectangleNode()
             {
-                Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
+                Rect = new Rect2(0, 0, texture.GetHeight() * node.Scale.x, texture.GetWidth() * node.Scale.y),
                 Color = new Godot.Color(1, 0, 0)
             });
         }
 
-        foreach (var entity in world.Filter<PhysicsNode>().Inc<Move>().Inc<Position>().Inc<Speed>().End())
+        foreach (var entity in world.Filter<KinematicBody2DNode>().Inc<Move>().Inc<Speed>().End())
         {
-            ref var position = ref positions.Get(entity);
+            ref var nodeComponent = ref physicsNodes.Get(entity);
             ref var move = ref moves.Get(entity);
             ref var speed = ref speeds.Get(entity);
 
-            var directionVec = new Vector2(position.X, position.Y)
+            var directionVec = nodeComponent.Node.Position
                 .DirectionTo(new Vector2(move.Destination.X, move.Destination.Y))
                 .Normalized();
 
@@ -176,11 +150,10 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             direction.Y = directionVec.y;
         }
 
-        foreach (var entity in world.Filter<PhysicsNode>().Inc<Direction>().Inc<Position>().Inc<Speed>().End())
+        foreach (var entity in world.Filter<KinematicBody2DNode>().Inc<Direction>().Inc<PositionTween>().Inc<Speed>().End())
         {
             ref var direction = ref directions.Get(entity);
             ref var physicsNode = ref physicsNodes.Get(entity);
-            ref var position = ref positions.Get(entity);
             ref var speed = ref speeds.Get(entity);
 
             var node = physicsNode.Node;
@@ -192,7 +165,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 ref var move = ref moves.Get(entity);
 
                 var tickDistance = velocity.DistanceTo(new Vector2(0, 0));
-                var moveDistance = new Vector2(position.X, position.Y)
+                var moveDistance = node.Position
                     .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
 
                 if (moveDistance < tickDistance)
@@ -204,12 +177,22 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 }
             }
 
-            var collision = node.MoveAndCollide(velocity);
+            var collision = node.MoveAndCollide(velocity, true, true, false);
 
-            var positionVec = node.Position;
-            notifyPositions.Ensure(entity);
-            position.X = positionVec.x;
-            position.Y = positionVec.y;
+            var travel = collision == null
+                ? velocity
+                : collision.Travel;
+
+            var newPosition = node.Position + travel;
+
+            ref var tweenComponent = ref positionTweens.Get(entity);
+
+            tweenComponent.Tween.InterpolateProperty(node, "position",
+                node.Position,
+                newPosition,
+                delta);
+
+            tweenComponent.Tween.Start();
 
             if (collision != null)
             {
@@ -249,14 +232,49 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             }
         }
 
-        foreach (var entity in world.Filter<PhysicsNode>().Inc<Area>().Inc<Sprite>().Exc<AreaNode>().End())
+        foreach (var entity in world.Filter<Node2DComponent>().Exc<KinematicBody2DNode>().Inc<Direction>().Inc<PositionTween>().End())
+        {
+            ref var direction = ref directions.Get(entity);
+            ref var nodeComponent = ref node2dComponents.Get(entity);
+            var node = nodeComponent.Node;
+            var speed = speeds.Has(entity)
+                ? speeds.Get(entity)
+                : new Speed() { Value = 1f };
+
+            var velocity = new Vector2(direction.X, direction.Y) * speed.Value * ratio;
+
+            if (moves.Has(entity))
+            {
+                ref var move = ref moves.Get(entity);
+
+                var tickDistance = velocity.DistanceTo(new Vector2(0, 0));
+                var moveDistance = node.Position
+                    .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
+
+                if (moveDistance < tickDistance)
+                {
+                    velocity *= moveDistance / tickDistance;
+
+                    moves.Del(entity);
+                    directions.Del(entity);
+                }
+            }
+
+            ref var tweenComponent = ref positionTweens.Get(entity);
+
+            tweenComponent.Tween.InterpolateProperty(node, "position",
+                node.Position,
+                node.Position + velocity,
+                delta);
+
+            tweenComponent.Tween.Start();
+        }
+
+        foreach (var entity in world.Filter<KinematicBody2DNode>().Inc<Area>().Inc<Sprite>().Exc<AreaNode>().End())
         {
             ref var physicsNode = ref physicsNodes.Get(entity);
             ref var area = ref areas.Get(entity);
             ref var sprite = ref sprites.Get(entity);
-            var scale = scales.Has(entity)
-                ? scales.Get(entity)
-                : new Scale { X = 1, Y = 1 };
 
             var node = new Area2D()
             {
@@ -272,15 +290,15 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 Shape = new RectangleShape2D()
                 {
                     Extents = new Vector2(
-                        texture.GetHeight() * scale.X,
-                        texture.GetWidth() * scale.Y) / 2f
+                        texture.GetHeight() * physicsNode.Node.Scale.x,
+                        texture.GetWidth() * physicsNode.Node.Scale.y) / 2f
                 }
             });
 
             node.AddChild(new RectangleNode()
             {
                 Name = "outline",
-                Rect = new Rect2(0, 0, texture.GetHeight() * scale.X, texture.GetWidth() * scale.Y),
+                Rect = new Rect2(0, 0, texture.GetHeight() * physicsNode.Node.Scale.x, texture.GetWidth() * physicsNode.Node.Scale.y),
                 Color = new Godot.Color(0, 0, 1)
             });
 
@@ -305,7 +323,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             });
         }
 
-        foreach (int entity in world.Filter<PhysicsNode>().Inc<AreaNode>().Inc<DeleteEntity>().End())
+        foreach (int entity in world.Filter<KinematicBody2DNode>().Inc<AreaNode>().Inc<DeleteEntity>().End())
         {
             ref var physicsNode = ref physicsNodes.Get(entity);
             ref var areaNode = ref areaNodes.Get(entity);
@@ -315,7 +333,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             node.QueueFree();
         }
 
-        foreach (int entity in world.Filter<PhysicsNode>().Inc<DeleteEntity>().End())
+        foreach (int entity in world.Filter<KinematicBody2DNode>().Inc<DeleteEntity>().End())
         {
             ref var physicsNode = ref physicsNodes.Get(entity);
 

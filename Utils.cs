@@ -74,7 +74,7 @@ public static class Utils
         return output;
     }
 
-    public static object[] ToComponents(this Godot.Node node)
+    public static object[] ToComponents(this Godot.Object node)
     {
         var components = new Dictionary<Type, object>();
 

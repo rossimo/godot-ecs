@@ -1,7 +1,6 @@
 using Godot;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
-using System.Linq;
 
 public class Game : Godot.YSort
 {
@@ -32,8 +31,6 @@ public class Game : Godot.YSort
             .Add(new PhysicsSystem())
             .Add(new RendererSystem())
             .Add(new DeleteComponentSystem<Notify<Sprite>>())
-            .Add(new DeleteComponentSystem<Notify<Position>>())
-            .Add(new DeleteComponentSystem<Notify<Scale>>())
             .Add(new DeleteComponentSystem<Notify<Flash>>())
             .Add(new DeleteComponentSystem<Notify<Collision>>())
             .Add(new DeleteComponentSystem<Notify<Area>>())
@@ -41,34 +38,45 @@ public class Game : Godot.YSort
             .Inject()
             .Init();
 
-        var positions = world.GetPool<Position>();
-        var scales = world.GetPool<Scale>();
+        var kinematicBody2DComponents = world.GetPool<KinematicBody2DNode>();
+        var positionTweens = world.GetPool<PositionTween>();
+        var node2dComponents = world.GetPool<Node2DComponent>();
 
-        foreach (var child in GetChildren().ToArray<Godot.Object>().OfType<Godot.Node2D>())
+        foreach (var obj in GetChildren().ToArray<Godot.Object>())
         {
-            var components = child.ToComponents();
+            var components = obj.ToComponents();
             if (components.Length == 0) continue;
 
             var entity = world.NewEntity();
 
             foreach (var component in components)
             {
-                var getPool = world.GetType().GetMethod("GetPool")
-                    .MakeGenericMethod(component.GetType());
-                var pool = getPool.Invoke(world, null);
+                var type = component.GetType();
 
-                var addNotify = typeof(Game).GetMethod("ReflectionAddNotify")
-                    .MakeGenericMethod(component.GetType());
-                addNotify.Invoke(null, new[] { pool, entity, component });
-            };
+                var pool = typeof(EcsWorld).GetMethod("GetPool")
+                    .MakeGenericMethod(type)
+                    .Invoke(world, null);
 
-            ref var position = ref positions.Add(entity);
-            position.X = child.Position.x;
-            position.Y = child.Position.y;
+                typeof(Game).GetMethod("ReflectionAddNotify")
+                    .MakeGenericMethod(type)
+                    .Invoke(null, new[] { pool, entity, component });
+            }
 
-            ref var scale = ref scales.Add(entity);
-            scale.X = child.Scale.x;
-            scale.Y = child.Scale.y;
+            if (obj is KinematicBody2D kinematicBody2D)
+            {
+                ref var kinematicBody2DComponent = ref kinematicBody2DComponents.Add(entity);
+                kinematicBody2DComponent.Node = kinematicBody2D;
+            }
+
+            if (obj is Node2D node2d)
+            {
+                ref var node2dComponent = ref node2dComponents.Add(entity);
+                node2dComponent.Node = node2d;
+
+                ref var positionTweenComponent = ref positionTweens.Add(entity);
+                positionTweenComponent.Tween = new Tween() { Name = "position" };
+                node2d.AddChild(positionTweenComponent.Tween);
+            }
         }
 
         /*
@@ -239,7 +247,7 @@ public class Game : Godot.YSort
     }
 
     public static void ReflectionAddNotify<T>(EcsPool<T> pool, int entity, T value)
-    	where T : struct
+        where T : struct
     {
         ref var reference = ref pool.AddNotify(entity);
         reference = value;

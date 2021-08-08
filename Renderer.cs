@@ -15,26 +15,12 @@ public struct Node2DComponent
 }
 
 [EditorComponent]
-public struct Position
-{
-    public float X;
-    public float Y;
-}
-
-[EditorComponent]
 public struct LowRenderPriority { }
 
 [EditorComponent]
 public struct Rotation
 {
     public float Degrees;
-}
-
-[EditorComponent]
-public struct Scale
-{
-    public float X;
-    public float Y;
 }
 
 [EditorComponent]
@@ -57,10 +43,8 @@ public class RendererSystem : IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
     [EcsShared] readonly Shared shared = default;
-    [EcsPool] readonly EcsPool<Scale> scales = default;
     [EcsPool] readonly EcsPool<Sprite> sprites = default;
     [EcsPool] readonly EcsPool<Node2DComponent> node2DComponents = default;
-    [EcsPool] readonly EcsPool<Position> positions = default;
     [EcsPool] readonly EcsPool<FrameTime> deltas = default;
     [EcsPool] readonly EcsPool<LowRenderPriority> lowPriority = default;
     [EcsPool] readonly EcsPool<Flash> flashes = default;
@@ -72,75 +56,6 @@ public class RendererSystem : IEcsRunSystem
         foreach (var entity in world.Filter<FrameTime>().End())
         {
             delta = deltas.Get(entity).Value;
-        }
-
-        foreach (int entity in world.Filter<Notify<Sprite>>().End())
-        {
-            ref var sprite = ref sprites.Get(entity);
-
-            var node = new Godot.Sprite()
-            {
-                Name = $"{entity}",
-                Texture = GD.Load<Texture>(sprite.Image)
-            };
-
-            var positionTween = new Tween()
-            {
-                Name = "position"
-            };
-            node.AddChild(positionTween);
-
-            var modulateTween = new Tween()
-            {
-                Name = "modulate"
-            };
-            node.AddChild(modulateTween);
-
-            game.AddChild(node);
-
-            ref var spriteNode = ref node2DComponents.Add(entity);
-            spriteNode.Node = node;
-            spriteNode.PositionTween = positionTween;
-            spriteNode.ModulateTween = modulateTween;
-
-            if (positions.Has(entity))
-            {
-                ref var position = ref positions.Get(entity);
-                node.Position = new Vector2(position.X, position.Y);
-            }
-        }
-
-        foreach (int entity in world.Filter<Node2DComponent>().Inc<Notify<Position>>().End())
-        {
-            ref var spriteNode = ref node2DComponents.Get(entity);
-            ref var position = ref positions.Get(entity);
-
-            var node = spriteNode.Node;
-
-
-            if (lowPriority.Has(entity))
-            {
-                node.Position = new Vector2(position.X, position.Y);
-            }
-            else
-            {
-                var tween = spriteNode.PositionTween;
-
-                tween.InterpolateProperty(node, "position",
-                    node.Position,
-                    new Vector2(position.X, position.Y),
-                    delta);
-
-                tween.Start();
-            }
-        }
-
-        foreach (int entity in world.Filter<Node2DComponent>().Inc<Notify<Scale>>().End())
-        {
-            ref var scale = ref scales.Get(entity);
-
-            var node = game.GetNodeOrNull<Godot.Sprite>($"{entity}");
-            node.Scale = new Vector2(scale.X, scale.Y);
         }
 
         foreach (var entity in world.Filter<Node2DComponent>().Inc<Notify<Flash>>().End())
