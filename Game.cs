@@ -6,108 +6,108 @@ using Leopotam.EcsLite.Di;
 
 public class Game : Godot.YSort
 {
-	public EcsWorld world;
-	public EcsSystems systems;
-	public Shared shared;
-	public InputSystem input;
-	public FrameTimeSystem frameTime;
-	public EventSystem events;
+    public EcsWorld world;
+    public EcsSystems systems;
+    public Shared shared;
+    public InputSystem input;
+    public FrameTimeSystem frameTime;
+    public EventSystem events;
 
-	public override void _Ready()
-	{
-		world = new EcsWorld();
+    public override void _Ready()
+    {
+        world = new EcsWorld();
 
-		shared = new Shared() { Game = this };
+        shared = new Shared() { Game = this };
 
-		frameTime = new FrameTimeSystem();
-		input = new InputSystem();
-		events = new EventSystem();
+        frameTime = new FrameTimeSystem();
+        input = new InputSystem();
+        events = new EventSystem();
 
-		systems = new EcsSystems(world, shared);
+        systems = new EcsSystems(world, shared);
 
-		systems
-			.Add(frameTime)
-			.Add(input)
-			.Add(events)
-			.Add(new CombatSystem())
-			.Add(new PhysicsSystem())
-			.Add(new RendererSystem())
-			.Add(new DeleteComponentSystem<Notify<Sprite>>())
-			.Add(new DeleteComponentSystem<Notify<Flash>>())
-			.Add(new DeleteComponentSystem<Notify<Collision>>())
-			.Add(new DeleteComponentSystem<Notify<Area>>())
-			.Add(new DeleteEntitySystem())
-			.Inject()
-			.Init();
+        systems
+            .Add(frameTime)
+            .Add(input)
+            .Add(events)
+            .Add(new CombatSystem())
+            .Add(new PhysicsSystem())
+            .Add(new RendererSystem())
+            .Add(new DeleteComponentSystem<Notify<Sprite>>())
+            .Add(new DeleteComponentSystem<Notify<Flash>>())
+            .Add(new DeleteComponentSystem<Notify<Collision>>())
+            .Add(new DeleteComponentSystem<Notify<Area>>())
+            .Add(new DeleteEntitySystem())
+            .Inject()
+            .Init();
 
-		var physicsComponents = world.GetPool<PhysicsNode>();
-		var positionTweens = world.GetPool<PositionTween>();
-		var renders = world.GetPool<RenderNode>();
+        var physicsComponents = world.GetPool<PhysicsNode>();
+        var positionTweens = world.GetPool<PositionTween>();
+        var renders = world.GetPool<RenderNode>();
 
-		foreach (var obj in GetChildren().OfType<Godot.Node>())
-		{
-			var components = obj.ToComponents();
-			if (components.Length == 0) continue;
+        foreach (var node in GetChildren().OfType<Godot.Node>())
+        {
+            var components = node.ToComponents();
+            if (components.Length == 0) continue;
 
-			var entity = world.NewEntity();
+            var entity = world.NewEntity();
 
-			foreach (var component in components)
-			{
-				var type = component.GetType();
+            foreach (var component in components)
+            {
+                var type = component.GetType();
 
-				var pool = typeof(EcsWorld).GetMethod("GetPool")
-					.MakeGenericMethod(type)
-					.Invoke(world, null);
+                var pool = typeof(EcsWorld).GetMethod("GetPool")
+                    .MakeGenericMethod(type)
+                    .Invoke(world, null);
 
-				typeof(Game).GetMethod("ReflectionAddNotify")
-					.MakeGenericMethod(type)
-					.Invoke(null, new[] { pool, entity, component });
-			}
+                typeof(Game).GetMethod("ReflectionAddNotify")
+                    .MakeGenericMethod(type)
+                    .Invoke(null, new[] { pool, entity, component });
+            }
 
-			Node2D renderNode = null;
-			KinematicBody2D physicsNode = null;
+            Node2D renderNode = null;
+            KinematicBody2D physicsNode = null;
 
-			if (obj is KinematicBody2D)
-			{
-				physicsNode = obj as KinematicBody2D;
-			}
-			else if (obj is Node2D)
-			{
-				renderNode = obj as Node2D;
+            if (node is KinematicBody2D physics)
+            {
+                physicsNode = physics;
+            }
+            else if (node is Node2D render)
+            {
+                renderNode = render;
 
-				physicsNode = renderNode.GetChildren().ToArray<Godot.Node>()
-					.OfType<KinematicBody2D>().FirstOrDefault();
+                physicsNode = renderNode.GetChildren().ToArray<Godot.Node>()
+                    .OfType<KinematicBody2D>().FirstOrDefault();
 
-				if (physicsNode != null)
-				{
-					var position = physicsNode.GlobalPosition;
-					renderNode.RemoveChild(physicsNode);
-					AddChild(physicsNode);
+                if (physicsNode != null)
+                {
+                    var position = physicsNode.GlobalPosition;
+                    renderNode.RemoveChild(physicsNode);
+                    AddChild(physicsNode);
 
-					physicsNode.GlobalPosition = position;
-					physicsNode.Scale *= renderNode.Scale;
-					physicsNode.Rotation += renderNode.Rotation;
-				}
-			}
+                    physicsNode.GlobalPosition = position;
+                    physicsNode.Scale *= renderNode.Scale;
+                    physicsNode.Rotation += renderNode.Rotation;
+                }
+            }
 
-			if (physicsNode != null)
-			{
-				ref var physicsComponent = ref physicsComponents.Add(entity);
-				physicsComponent.Node = physicsNode;
-			}
+            if (physicsNode != null)
+            {
+                ref var physicsComponent = ref physicsComponents.Add(entity);
+                physicsComponent.Node = physicsNode;
+            }
 
-			if (renderNode != null)
-			{
-				ref var render = ref renders.Add(entity);
-				render.Node = renderNode;
+            if (renderNode != null)
+            {
+                ref var render = ref renders.Add(entity);
+                render.Node = renderNode;
 
-				ref var positionTweenComponent = ref positionTweens.Add(entity);
-				positionTweenComponent.Tween = new Tween() { Name = "position" };
-				renderNode.AddChild(positionTweenComponent.Tween);
-			}
-		}
+                ref var positionTweenComponent = ref positionTweens.Add(entity);
+                positionTweenComponent.Tween = new Tween() { Name = "position" };
+                renderNode.AddChild(positionTweenComponent.Tween);
+            }
+        }
 
-		/*
+        /*
 		var sprites = world.GetPool<Sprite>();
 		var positions = world.GetPool<Position>();
 		var scales = world.GetPool<Scale>();
@@ -226,21 +226,21 @@ public class Game : Godot.YSort
 		}
 		*/
 
-		systems.Init();
-	}
+        systems.Init();
+    }
 
-	public override void _Input(InputEvent @event)
-	{
-		input.Run(systems, @event);
-	}
+    public override void _Input(InputEvent @event)
+    {
+        input.Run(systems, @event);
+    }
 
-	public override void _PhysicsProcess(float deltaValue)
-	{
-		frameTime.Run(systems, deltaValue);
-		systems.Run();
-	}
+    public override void _PhysicsProcess(float deltaValue)
+    {
+        frameTime.Run(systems, deltaValue);
+        systems.Run();
+    }
 
-	/*
+    /*
 	public void QueueEvent(Event @event, int source, int target)
 	{
 
@@ -257,27 +257,27 @@ public class Game : Godot.YSort
 	}
 	*/
 
-	public void _Event(Node targetNode, GodotWrapper sourceWrapper, GodotWrapper tasksWrapper)
-	{
-		var tasks = tasksWrapper.Get<EventTask[]>();
-		var source = sourceWrapper.Get<EcsPackedEntity>();
-		var target = targetNode is EntityNode entityNode ? entityNode.Entity : default;
+    public void _Event(Node targetNode, GodotWrapper sourceWrapper, GodotWrapper tasksWrapper)
+    {
+        var tasks = tasksWrapper.Get<EventTask[]>();
+        var source = sourceWrapper.Get<EcsPackedEntity>();
+        var target = targetNode is EntityNode entityNode ? entityNode.Entity : default;
 
-		foreach (var task in tasks)
-		{
-			events.Queue(new Event()
-			{
-				Task = task,
-				Source = source,
-				Target = target
-			});
-		}
-	}
+        foreach (var task in tasks)
+        {
+            events.Queue(new Event()
+            {
+                Task = task,
+                Source = source,
+                Target = target
+            });
+        }
+    }
 
-	public static void ReflectionAddNotify<T>(EcsPool<T> pool, int entity, T value)
-		where T : struct
-	{
-		ref var reference = ref pool.AddNotify(entity);
-		reference = value;
-	}
+    public static void ReflectionAddNotify<T>(EcsPool<T> pool, int entity, T value)
+        where T : struct
+    {
+        ref var reference = ref pool.AddNotify(entity);
+        reference = value;
+    }
 }
