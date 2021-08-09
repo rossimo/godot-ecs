@@ -75,7 +75,6 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<EventTrigger<Collision>> collisionTriggers = default;
     [EcsPool] readonly EcsPool<EventTrigger<Area>> areaTriggers = default;
     [EcsPool] readonly EcsPool<EventQueue> eventQueues = default;
-    [EcsPool] readonly EcsPool<FrameTime> deltas = default;
 
     public void Init(EcsSystems systems)
     {
@@ -91,49 +90,8 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
         var game = shared.Game;
         var ratio = (60f / PHYSICS_FPS);
 
-        float delta = 0;
-        foreach (var entity in world.Filter<FrameTime>().End())
-        {
-            delta = deltas.Get(entity).Value;
-        }
-
         ref var ticks = ref this.ticks.Get(shared.Physics);
         ticks.Value++;
-
-        foreach (var entity in world.Filter<KinematicBody2DNode>().Inc<Notify<Collision>>().Inc<Sprite>().End())
-        {
-            ref var physicsNode = ref physicsNodes.Get(entity);
-            ref var sprite = ref sprites.Get(entity);
-
-            var node = physicsNode.Node;
-
-            var collision = node.GetNodeOrNull<Node2D>("collision");
-            if (collision != null)
-            {
-                collision.RemoveAndSkip();
-                collision.QueueFree();
-            }
-
-            var texture = GD.Load<Texture>(sprite.Image);
-
-            var shape = new CollisionShape2D()
-            {
-                Name = "collision",
-                Shape = new RectangleShape2D()
-                {
-                    Extents = new Vector2(
-                        texture.GetHeight() * node.Scale.x,
-                        texture.GetWidth() * node.Scale.y) / 2f
-                }
-            };
-            node.AddChild(shape);
-
-            shape.AddChild(new RectangleNode()
-            {
-                Rect = new Rect2(0, 0, texture.GetHeight() * node.Scale.x, texture.GetWidth() * node.Scale.y),
-                Color = new Godot.Color(1, 0, 0)
-            });
-        }
 
         foreach (var entity in world.Filter<KinematicBody2DNode>().Inc<Move>().End())
         {
@@ -160,6 +118,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             var node = node2d.Node;
 
             var travel = new Vector2(direction.X, direction.Y) * speed.Value * ratio;
+            var percentage = 1f;
 
             if (moves.Has(entity))
             {
@@ -171,7 +130,8 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
 
                 if (moveDistance < tickDistance)
                 {
-                    travel *= moveDistance / tickDistance;
+                    percentage = moveDistance / tickDistance;
+                    travel *= percentage;
 
                     moves.Del(entity);
                     directions.Del(entity);
@@ -182,11 +142,9 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             {
                 ref var physics = ref physicsNodes.Get(entity);
 
-                var collision = physics.Node.MoveAndCollide(travel, true, true, false);
+                var collision = physics.Node.MoveAndCollide(travel);
 
-                travel = collision == null
-                    ? travel
-                    : collision.Travel;
+                travel = physics.Node.Position - node2d.Node.Position;
 
                 if (collision != null)
                 {
@@ -231,7 +189,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             tweenComponent.Tween.InterpolateProperty(node, "global_position",
                 node.GlobalPosition,
                 node.GlobalPosition + travel,
-                delta);
+                (1f / PHYSICS_FPS) * percentage);
 
             tweenComponent.Tween.Start();
         }
@@ -307,20 +265,6 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             game.RemoveChild(node);
             node.QueueFree();
         }
-
-        /*
-        foreach (var (id, component) in collisions.Removed)
-        {
-            var node = state.Get<PhysicsNode>(id)?.Node;
-            var collision = node?.GetNodeOrNull<Node2D>("collision");
-
-            if (collision != null)
-            {
-                collision.RemoveAndSkip();
-                collision.QueueFree();
-            }
-        }
-        */
     }
 }
 

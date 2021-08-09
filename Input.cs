@@ -34,36 +34,45 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<Speed> speeds = default;
     [EcsPool] readonly EcsPool<Expiration> expirations = default;
     [EcsPool] readonly EcsPool<Node2DComponent> node2ds = default;
+    [EcsPool] readonly EcsPool<KinematicBody2DNode> physicsNodes = default;
 
     public void Init(EcsSystems systems)
     {
         var world = systems.GetWorld();
+        var shared = systems.GetShared<Shared>();
 
-        var entity = world.NewEntity();
-        mouseLefts.Add(entity);
-        mouseRights.Add(entity);
+        shared.Input = world.NewEntity();
+        mouseLefts.Add(shared.Input);
+        mouseRights.Add(shared.Input);
     }
 
     public void Run(EcsSystems systems, InputEvent @event)
     {
+        var game = shared.Game;
+        var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());
+
         switch (@event)
         {
             case InputEventMouseButton mouseButton:
                 {
                     if ((mouseButton.ButtonIndex & (int)ButtonList.MaskLeft) != 0)
                     {
-                        foreach (var entity in world.Filter<MouseLeft>().End())
-                        {
-                            ref var mouseLeft = ref mouseLefts.Get(entity);
-                            mouseLeft.Pressed = mouseButton.IsPressed();
-                        }
+                        ref var mouseLeft = ref mouseLefts.Get(shared.Input);
+                        mouseLeft.Pressed = mouseButton.IsPressed();
                     }
                     else if ((mouseButton.ButtonIndex & (int)ButtonList.MaskRight) != 0)
                     {
-                        foreach (var entity in world.Filter<MouseRight>().End())
+                        ref var mouseRight = ref mouseRights.Get(shared.Input);
+                        mouseRight.Pressed = mouseButton.IsPressed();
+
+                        foreach (var entity in world.Filter<Player>().Inc<Node2DComponent>().End())
                         {
-                            ref var mouseRight = ref mouseRights.Get(entity);
-                            mouseRight.Pressed = mouseButton.IsPressed();
+                            if (mouseButton.IsPressed())
+                            {
+                                ref var move = ref moves.Ensure(entity);
+                                move.Destination.X = mousePosition.x;
+                                move.Destination.Y = mousePosition.y;
+                            }
                         }
                     }
                 }
@@ -76,33 +85,16 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
         var game = shared.Game;
         var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());
 
-        var mouseLeft = false;
-        var mouseRight = false;
+        ref var mouseLeft = ref mouseLefts.Get(shared.Input);
+        ref var mouseRight = ref mouseRights.Get(shared.Input);
 
         var tick = ticks.Get(shared.Physics).Value;
 
-        foreach (var entity in world.Filter<MouseLeft>().End())
+        foreach (var entity in world.Filter<Player>().Inc<KinematicBody2DNode>().End())
         {
-            mouseLeft |= mouseLefts.Get(entity).Pressed;
-        }
-
-        foreach (var entity in world.Filter<MouseRight>().End())
-        {
-            mouseRight |= mouseRights.Get(entity).Pressed;
-        }
-
-        foreach (var entity in world.Filter<Player>().Inc<Node2DComponent>().End())
-        {
-            if (mouseRight)
+            if (mouseLeft.Pressed)
             {
-                ref var move = ref moves.Ensure(entity);
-                move.Destination.X = mousePosition.x;
-                move.Destination.Y = mousePosition.y;
-            }
-
-            if (mouseLeft)
-            {
-                var playerNode = node2ds.Get(entity).Node;
+                var playerNode = physicsNodes.Get(entity).Node;
                 var directionVec = playerNode.Position
                     .DirectionTo(mousePosition)
                     .Normalized();
