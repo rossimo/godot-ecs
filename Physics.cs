@@ -201,43 +201,6 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             }
         }
 
-        foreach (var entity in world.Filter<PhysicsNode>().Inc<Area>().Inc<Sprite>().Exc<AreaNode>().End())
-        {
-            ref var physicsNode = ref physicsNodes.Get(entity);
-            ref var area = ref areas.Get(entity);
-            ref var sprite = ref sprites.Get(entity);
-
-            var node = new Area2D()
-            {
-                Name = "area"
-            };
-            physicsNode.Node.AddChild(node);
-
-            var texture = GD.Load<Texture>(sprite.Image);
-
-            node.AddChild(new CollisionShape2D()
-            {
-                Name = "collision",
-                Shape = new RectangleShape2D()
-                {
-                    Extents = new Vector2(
-                        texture.GetHeight() * physicsNode.Node.Scale.x,
-                        texture.GetWidth() * physicsNode.Node.Scale.y) / 2f
-                }
-            });
-
-            node.AddChild(new RectangleNode()
-            {
-                Name = "outline",
-                Rect = new Rect2(0, 0, texture.GetHeight() * physicsNode.Node.Scale.x, texture.GetWidth() * physicsNode.Node.Scale.y),
-                Color = new Godot.Color(0, 0, 1)
-            });
-
-            ref var areaNode = ref areaNodes.Add(entity);
-            areaNode.Node = node;
-        }
-
-
         foreach (var entity in world.Filter<AreaNode>().Inc<Notify<EventTrigger<Area>>>().End())
         {
             ref var areaNode = ref areaNodes.Get(entity);
@@ -254,42 +217,18 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             });
         }
 
-        foreach (int entity in world.Filter<PhysicsNode>().Inc<AreaNode>().Inc<DeleteEntity>().End())
+        foreach (int entity in world.Filter<AreaNode>().Inc<DeleteEntity>().End())
         {
-            ref var physicsNode = ref physicsNodes.Get(entity);
-            ref var areaNode = ref areaNodes.Get(entity);
-
-            var node = areaNode.Node;
-            physicsNode.Node.RemoveChild(node);
+            ref var node = ref areaNodes.Get(entity).Node;
+            node.GetParent()?.RemoveChild(node);
             node.QueueFree();
         }
 
         foreach (int entity in world.Filter<PhysicsNode>().Inc<DeleteEntity>().End())
         {
-            ref var physicsNode = ref physicsNodes.Get(entity);
-
-            var node = physicsNode.Node;
-            game.RemoveChild(node);
+            ref var node = ref physicsNodes.Get(entity).Node;
+            node.GetParent()?.RemoveChild(node);
             node.QueueFree();
         }
-    }
-}
-
-public class RectangleNode : Node2D
-{
-    public Rect2 Rect = new Rect2();
-    public Godot.Color Color = new Godot.Color(1, 0, 0);
-
-    public override void _Draw()
-    {
-        var vertices = new[] {
-            new Vector2(Rect.Position.x, Rect.Position.y),
-            new Vector2(Rect.Position.x + Rect.Size.x, Rect.Position.y),
-            new Vector2(Rect.Position.x + Rect.Size.x, Rect.Position.y + Rect.Size.y),
-            new Vector2(Rect.Position.x, Rect.Position.y + Rect.Size.y),
-            new Vector2(Rect.Position.x, Rect.Position.y)
-        }.Select(vert => vert - new Vector2(Rect.Size.x / 2, Rect.Size.y / 2)).ToArray();
-
-        DrawPolyline(vertices, Color);
     }
 }
