@@ -33,8 +33,8 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<Direction> directions = default;
     [EcsPool] readonly EcsPool<Speed> speeds = default;
     [EcsPool] readonly EcsPool<Expiration> expirations = default;
-    [EcsPool] readonly EcsPool<Node2DComponent> node2ds = default;
-    [EcsPool] readonly EcsPool<KinematicBody2DNode> physicsNodes = default;
+    [EcsPool] readonly EcsPool<RenderNode> renders = default;
+    [EcsPool] readonly EcsPool<PhysicsNode> physicsNodes = default;
 
     public void Init(EcsSystems systems)
     {
@@ -64,16 +64,6 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
                     {
                         ref var mouseRight = ref mouseRights.Get(shared.Input);
                         mouseRight.Pressed = mouseButton.IsPressed();
-
-                        foreach (var entity in world.Filter<Player>().Inc<Node2DComponent>().End())
-                        {
-                            if (mouseButton.IsPressed())
-                            {
-                                ref var move = ref moves.Ensure(entity);
-                                move.Destination.X = mousePosition.x;
-                                move.Destination.Y = mousePosition.y;
-                            }
-                        }
                     }
                 }
                 break;
@@ -90,7 +80,17 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
 
         var tick = ticks.Get(shared.Physics).Value;
 
-        foreach (var entity in world.Filter<Player>().Inc<KinematicBody2DNode>().End())
+        foreach (var entity in world.Filter<Player>().Inc<RenderNode>().End())
+        {
+            if (mouseRight.Pressed)
+            {
+                ref var move = ref moves.Ensure(entity);
+                move.Destination.X = mousePosition.x;
+                move.Destination.Y = mousePosition.y;
+            }
+        }
+
+        foreach (var entity in world.Filter<Player>().Inc<PhysicsNode>().End())
         {
             if (mouseLeft.Pressed)
             {
@@ -101,7 +101,7 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
 
                 var bullet = world.NewEntity();
 
-                ref var node2dComponent = ref node2ds.Add(bullet);
+                ref var node2dComponent = ref renders.Add(bullet);
                 node2dComponent.Node = new Godot.Sprite()
                 {
                     Texture = GD.Load<Texture>("res://resources/tiles/tile663.png"),

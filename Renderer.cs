@@ -7,10 +7,9 @@ public struct Sprite
     public string Image;
 }
 
-public struct Node2DComponent
+public struct RenderNode
 {
     public Godot.Node2D Node;
-    public Godot.Tween PositionTween;
     public Godot.Tween ModulateTween;
 }
 
@@ -43,8 +42,7 @@ public class RendererSystem : IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
     [EcsShared] readonly Shared shared = default;
-    [EcsPool] readonly EcsPool<Sprite> sprites = default;
-    [EcsPool] readonly EcsPool<Node2DComponent> node2DComponents = default;
+    [EcsPool] readonly EcsPool<RenderNode> renders = default;
     [EcsPool] readonly EcsPool<FrameTime> deltas = default;
     [EcsPool] readonly EcsPool<LowRenderPriority> lowPriority = default;
     [EcsPool] readonly EcsPool<Flash> flashes = default;
@@ -58,9 +56,9 @@ public class RendererSystem : IEcsRunSystem
             delta = deltas.Get(entity).Value;
         }
 
-        foreach (var entity in world.Filter<Node2DComponent>().Inc<Notify<Flash>>().End())
+        foreach (var entity in world.Filter<RenderNode>().Inc<Notify<Flash>>().End())
         {
-            ref var spriteNode = ref node2DComponents.Get(entity);
+            ref var spriteNode = ref renders.Get(entity);
 
             var flash = flashes.Get(entity);
             flashes.Del(entity);
@@ -76,9 +74,9 @@ public class RendererSystem : IEcsRunSystem
             tween.Start();
         }
 
-        foreach (int entity in world.Filter<Node2DComponent>().Inc<DeleteEntity>().End())
+        foreach (int entity in world.Filter<RenderNode>().Inc<DeleteEntity>().End())
         {
-            ref var sprite = ref node2DComponents.Get(entity);
+            ref var sprite = ref renders.Get(entity);
 
             var node = sprite.Node;
             game.RemoveChild(node);
