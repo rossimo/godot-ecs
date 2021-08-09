@@ -52,6 +52,7 @@ public struct AreaNode
 
 public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
 {
+    public static float TARGET_PHYSICS_FPS = 60f;
     public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_fps")}".ToFloat();
 
     public static ulong MillisToTicks(ulong millis)
@@ -116,8 +117,8 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 : new Speed() { Value = 1f };
 
             var renderNode = render.Node;
-
-            var travel = new Vector2(direction.X, direction.Y) * speed.Value;
+            var travel = new Vector2(direction.X, direction.Y) * speed.Value 
+                * (TARGET_PHYSICS_FPS / PHYSICS_FPS);
             var percentage = 1f;
 
             if (moves.Has(entity))

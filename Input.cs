@@ -58,12 +58,12 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
                     if ((mouseButton.ButtonIndex & (int)ButtonList.MaskLeft) != 0)
                     {
                         ref var mouseLeft = ref mouseLefts.Get(shared.Input);
-                        mouseLeft.Pressed = mouseButton.IsPressed();
+                        mouseLeft.Pressed |= mouseButton.IsPressed();
                     }
                     else if ((mouseButton.ButtonIndex & (int)ButtonList.MaskRight) != 0)
                     {
                         ref var mouseRight = ref mouseRights.Get(shared.Input);
-                        mouseRight.Pressed = mouseButton.IsPressed();
+                        mouseRight.Pressed |= mouseButton.IsPressed();
                     }
                 }
                 break;
@@ -124,5 +124,8 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
                 expiration.Tick = PhysicsSystem.MillisToTicks(1 * 1000) + tick;
             }
         }
+
+        mouseLeft.Pressed = Input.IsMouseButtonPressed((int)ButtonList.MaskLeft);
+        mouseRight.Pressed = Input.IsMouseButtonPressed((int)ButtonList.MaskRight);
     }
 }
