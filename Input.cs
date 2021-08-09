@@ -46,11 +46,21 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
         mouseRights.Add(shared.Input);
     }
 
-    public void Run(EcsSystems systems, InputEvent @event)
+    public void QueueMove()
     {
         var game = shared.Game;
-        var mousePosition = game.ToLocal(game.GetViewport().GetMousePosition());
+        var position = game.ToLocal(game.GetViewport().GetMousePosition());
 
+        foreach (var entity in world.Filter<Player>().Inc<RenderNode>().End())
+        {
+            ref var move = ref moves.Ensure(entity);
+            move.Destination.X = position.x;
+            move.Destination.Y = position.y;
+        }
+    }
+
+    public void Run(EcsSystems systems, InputEvent @event)
+    {
         switch (@event)
         {
             case InputEventMouseButton mouseButton:
@@ -64,6 +74,11 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
                     {
                         ref var mouseRight = ref mouseRights.Get(shared.Input);
                         mouseRight.Pressed |= mouseButton.IsPressed();
+
+                        if (mouseRight.Pressed)
+                        {
+                            QueueMove();
+                        }
                     }
                 }
                 break;
@@ -79,16 +94,6 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
         ref var mouseRight = ref mouseRights.Get(shared.Input);
 
         var tick = ticks.Get(shared.Physics).Value;
-
-        foreach (var entity in world.Filter<Player>().Inc<RenderNode>().End())
-        {
-            if (mouseRight.Pressed)
-            {
-                ref var move = ref moves.Ensure(entity);
-                move.Destination.X = mousePosition.x;
-                move.Destination.Y = mousePosition.y;
-            }
-        }
 
         foreach (var entity in world.Filter<Player>().Inc<PhysicsNode>().End())
         {
@@ -127,5 +132,10 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
 
         mouseLeft.Pressed = Input.IsMouseButtonPressed((int)ButtonList.MaskLeft);
         mouseRight.Pressed = Input.IsMouseButtonPressed((int)ButtonList.MaskRight);
+
+        if (mouseRight.Pressed)
+        {
+            QueueMove();
+        }
     }
 }
