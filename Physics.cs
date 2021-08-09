@@ -171,7 +171,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                         }));
                     }
 
-                    if (collisionTriggers.Has(target))
+                    if (target != -1 && collisionTriggers.Has(target))
                     {
                         ref var trigger = ref collisionTriggers.Get(target);
                         eventQueue.Events.AddRange(trigger.Tasks.Select(task => new Event()

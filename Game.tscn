@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=2]
+[gd_scene load_steps=8 format=2]
 
 [ext_resource path="res://Game.cs" type="Script" id=1]
 [ext_resource path="res://resources/tiles/tile072.png" type="Texture" id=2]
@@ -6,8 +6,12 @@
 [ext_resource path="res://resources/tiles/tile481.png" type="Texture" id=4]
 [ext_resource path="res://resources/tiles/tile570.png" type="Texture" id=5]
 
-[sub_resource type="CircleShape2D" id=1]
-radius = 20.0
+[sub_resource type="CapsuleShape2D" id=1]
+radius = 5.0
+height = 8.0
+
+[sub_resource type="RectangleShape2D" id=2]
+extents = Vector2( 20, 10 )
 
 [node name="Game" type="YSort"]
 script = ExtResource( 1 )
@@ -16,6 +20,11 @@ script = ExtResource( 1 )
 position = Vector2( 400, 200 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 3 )
+
+[node name="physics" type="KinematicBody2D" parent="fire"]
+
+[node name="collision" type="CollisionShape2D" parent="fire/physics"]
+shape = SubResource( 1 )
 
 [node name="potion" type="Sprite" parent="."]
 position = Vector2( 200, 300 )
@@ -27,19 +36,18 @@ position = Vector2( 300, 300 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 4 )
 
-[node name="player" type="Node" parent="."]
+[node name="sprite" type="Sprite" parent="."]
+position = Vector2( 157, 160 )
+scale = Vector2( 3, 3 )
+texture = ExtResource( 2 )
+offset = Vector2( 0, -5 )
 __meta__ = {
 "components/player": true,
 "components/speed/value": 2.0
 }
 
-[node name="sprite" type="Sprite" parent="player"]
-position = Vector2( 50, 50 )
-scale = Vector2( 3, 3 )
-texture = ExtResource( 2 )
+[node name="physics" type="KinematicBody2D" parent="sprite"]
+scale = Vector2( 0.333333, 0.333333 )
 
-[node name="physics" type="KinematicBody2D" parent="player"]
-position = Vector2( 50, 50 )
-
-[node name="collision" type="CollisionShape2D" parent="player/physics"]
-shape = SubResource( 1 )
+[node name="collision" type="CollisionShape2D" parent="sprite/physics"]
+shape = SubResource( 2 )

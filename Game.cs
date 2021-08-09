@@ -67,22 +67,27 @@ public class Game : Godot.YSort
 			Node2D renderNode = null;
 			KinematicBody2D physicsNode = null;
 
-			if (obj.GetType() == typeof(Godot.Node))
-			{
-				physicsNode = obj.GetChildren().ToArray<Godot.Node>()
-					.OfType<KinematicBody2D>().FirstOrDefault();
-
-				renderNode = obj.GetChildren().ToArray<Godot.Node>()
-					.Where(node => node != physicsNode)
-					.OfType<Node2D>().FirstOrDefault();
-			}
-			else if (obj is KinematicBody2D)
+			if (obj is KinematicBody2D)
 			{
 				physicsNode = obj as KinematicBody2D;
 			}
 			else if (obj is Node2D)
 			{
 				renderNode = obj as Node2D;
+
+				physicsNode = renderNode.GetChildren().ToArray<Godot.Node>()
+					.OfType<KinematicBody2D>().FirstOrDefault();
+
+				if (physicsNode != null)
+				{
+					var position = physicsNode.GlobalPosition;
+					renderNode.RemoveChild(physicsNode);
+					AddChild(physicsNode);
+
+					physicsNode.GlobalPosition = position;
+					physicsNode.Scale *= renderNode.Scale;
+					physicsNode.Rotation += renderNode.Rotation;
+				}
 			}
 
 			if (physicsNode != null)
