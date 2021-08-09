@@ -138,14 +138,16 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 }
             }
 
-            var startPosition = renderNode.Position;
-            var endPosition = renderNode.Position + travel;
+            var startPosition = physicsNodes.Has(entity)
+                ? physicsNodes.Get(entity).Node.Position
+                : renderNode.Position;
+
+            var endPosition = startPosition + travel;
 
             if (physicsNodes.Has(entity))
             {
                 ref var physics = ref physicsNodes.Get(entity);
 
-                startPosition = physics.Node.Position;
                 var collision = physics.Node.MoveAndCollide(travel);
                 endPosition = physics.Node.Position;
 
