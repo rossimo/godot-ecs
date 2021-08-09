@@ -117,22 +117,21 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 : new Speed() { Value = 1f };
 
             var renderNode = render.Node;
-            var travel = new Vector2(direction.X, direction.Y) * speed.Value 
+            var travel = new Vector2(direction.X, direction.Y) * speed.Value
                 * (TARGET_PHYSICS_FPS / PHYSICS_FPS);
-            var percentage = 1f;
+
+            var intentDistance = travel.DistanceTo(new Vector2(0, 0));
 
             if (moves.Has(entity))
             {
                 ref var move = ref moves.Get(entity);
 
-                var tickDistance = travel.DistanceTo(new Vector2(0, 0));
                 var moveDistance = renderNode.Position
                     .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
 
-                if (moveDistance < tickDistance)
+                if (moveDistance < intentDistance)
                 {
-                    percentage = moveDistance / tickDistance;
-                    travel *= percentage;
+                    travel *= moveDistance / intentDistance;
 
                     moves.Del(entity);
                     directions.Del(entity);
@@ -194,10 +193,12 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             {
                 ref var tweenComponent = ref positionTweens.Get(entity);
 
+                var deltaRatio = startPosition.DistanceTo(endPosition) / intentDistance;
+
                 tweenComponent.Tween.InterpolateProperty(renderNode, "position",
                     startPosition,
                     endPosition,
-                    (1f / PHYSICS_FPS) * percentage);
+                    (1f / PHYSICS_FPS) * deltaRatio);
 
                 tweenComponent.Tween.Start();
             }
