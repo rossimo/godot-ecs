@@ -4,4 +4,5 @@ public class Shared
     public int Events;
     public int Physics;
     public int Input;
+    public int FrameTime;
 }

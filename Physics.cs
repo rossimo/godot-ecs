@@ -75,6 +75,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<EventTrigger<Collision>> collisionTriggers = default;
     [EcsPool] readonly EcsPool<EventTrigger<Area>> areaTriggers = default;
     [EcsPool] readonly EcsPool<EventQueue> eventQueues = default;
+    [EcsPool] readonly EcsPool<FrameTime> frameTimes = default;
 
     public void Init(EcsSystems systems)
     {
@@ -88,7 +89,6 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
     public void Run(EcsSystems systems)
     {
         var game = shared.Game;
-        var ratio = (60f / PHYSICS_FPS);
 
         ref var ticks = ref this.ticks.Get(shared.Physics);
         ticks.Value++;
@@ -117,7 +117,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
 
             var renderNode = render.Node;
 
-            var travel = new Vector2(direction.X, direction.Y) * speed.Value * ratio;
+            var travel = new Vector2(direction.X, direction.Y) * speed.Value;
             var percentage = 1f;
 
             if (moves.Has(entity))
@@ -138,13 +138,16 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 }
             }
 
+            var startPosition = renderNode.Position;
+            var endPosition = renderNode.Position + travel;
+
             if (physicsNodes.Has(entity))
             {
                 ref var physics = ref physicsNodes.Get(entity);
 
+                startPosition = physics.Node.Position;
                 var collision = physics.Node.MoveAndCollide(travel);
-
-                travel = physics.Node.Position - render.Node.Position;
+                endPosition = physics.Node.Position;
 
                 if (collision != null)
                 {
@@ -184,20 +187,20 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 }
             }
 
-            if (positionTweens.Has(entity))
+            if (positionTweens.Has(entity) && Engine.GetFramesPerSecond() >= PHYSICS_FPS)
             {
                 ref var tweenComponent = ref positionTweens.Get(entity);
 
-                tweenComponent.Tween.InterpolateProperty(renderNode, "global_position",
-                    renderNode.Position,
-                    renderNode.Position + travel,
+                tweenComponent.Tween.InterpolateProperty(renderNode, "position",
+                    startPosition,
+                    endPosition,
                     (1f / PHYSICS_FPS) * percentage);
 
                 tweenComponent.Tween.Start();
             }
             else
             {
-                renderNode.Position = renderNode.Position + travel;
+                renderNode.Position = endPosition;
             }
         }
 

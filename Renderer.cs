@@ -92,28 +92,23 @@ public struct FrameTime
 
 public class FrameTimeSystem : IEcsInitSystem
 {
-    private EcsPool<FrameTime> _pool;
-    private EcsFilter _filter;
+    [EcsWorld] readonly EcsWorld world = default;
+    [EcsShared] readonly Shared shared = default;
+    [EcsPool] readonly EcsPool<FrameTime> pool = default;
 
     public void Init(EcsSystems systems)
     {
+        var shared = systems.GetShared<Shared>();
         var world = systems.GetWorld();
 
-        _pool = world.GetPool<FrameTime>();
-        _filter = world.Filter<FrameTime>().End();
-
-        _pool.Add(world.NewEntity());
+        shared.FrameTime = world.NewEntity();
+        world.GetPool<FrameTime>().Add(shared.FrameTime);
     }
 
     public void Run(EcsSystems systems, float delta)
     {
-        var world = systems.GetWorld();
-
-        foreach (var entity in world.Filter<FrameTime>().End())
-        {
-            ref var component = ref _pool.Get(entity);
-            component.Value = delta;
-        }
+        ref var component = ref pool.Get(shared.FrameTime);
+        component.Value = delta;
     }
 }
 
