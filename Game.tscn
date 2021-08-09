@@ -6,12 +6,12 @@
 [ext_resource path="res://resources/tiles/tile481.png" type="Texture" id=4]
 [ext_resource path="res://resources/tiles/tile570.png" type="Texture" id=5]
 
-[sub_resource type="CapsuleShape2D" id=1]
+[sub_resource type="CircleShape2D" id=1]
 radius = 5.0
-height = 8.0
 
-[sub_resource type="RectangleShape2D" id=2]
-extents = Vector2( 20, 10 )
+[sub_resource type="CapsuleShape2D" id=2]
+radius = 15.0
+height = 15.0
 
 [node name="Game" type="YSort"]
 script = ExtResource( 1 )
@@ -24,6 +24,7 @@ texture = ExtResource( 3 )
 [node name="physics" type="KinematicBody2D" parent="fire"]
 
 [node name="collision" type="CollisionShape2D" parent="fire/physics"]
+position = Vector2( 0, 2.5 )
 shape = SubResource( 1 )
 
 [node name="potion" type="Sprite" parent="."]
@@ -40,7 +41,6 @@ texture = ExtResource( 4 )
 position = Vector2( 157, 160 )
 scale = Vector2( 3, 3 )
 texture = ExtResource( 2 )
-offset = Vector2( 0, -5 )
 __meta__ = {
 "components/player": true,
 "components/speed/value": 2.0
