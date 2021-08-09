@@ -74,11 +74,11 @@ public static class Utils
         return output;
     }
 
-    public static object[] ToComponents(this Godot.Object node)
+    public static object[] ToComponents(this Godot.Object obj)
     {
         var components = new Dictionary<Type, object>();
 
-        foreach (var key in node.GetMetaList() ?? new string[] { })
+        foreach (var key in obj.GetMetaList() ?? new string[] { })
         {
             var path = key.Split('/');
             if (path.Length < 2) continue;
@@ -95,16 +95,16 @@ public static class Utils
                 : Activator.CreateInstance(type);
 
             var fieldPath = String.Join('/', path.Skip(2));
-            var value = node.GetMeta(key);
+            var value = obj.GetMeta(key);
 
             try
             {
-                component = SetField(component, fieldPath, node.GetMeta(key));
+                component = SetField(component, fieldPath, obj.GetMeta(key));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Unable to set {type.Name} {fieldPath} to {value}");
-                Console.WriteLine(ex.Message);
+                var objName = obj is Godot.Node node ? node.Name : obj.ToString();
+                Console.WriteLine($"Unable to set {type.Name} {fieldPath} to '{value}' for '{objName}': {ex.Message}");
             }
 
             components[type] = component;

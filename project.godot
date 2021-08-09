@@ -22,10 +22,6 @@ enabled=PoolStringArray( "res://addons/ecsplugin/plugin.cfg" )
 default_clear_color=Color( 0, 0, 0, 1 )
 batch=false
 
-[physics]
-
-common/physics_fps=60
-
 [rendering]
 
 environment/default_clear_color=Color( 0, 0, 0, 1 )
