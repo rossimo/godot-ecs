@@ -75,32 +75,55 @@ public static class Utils
         return output;
     }
 
-    public static object[] ToComponents(this Godot.Object obj)
+    public static object[] ToComponentDictionary(this Godot.Object obj)
     {
         var components = new Dictionary<Type, object>();
 
-        foreach (var key in obj.GetMetaList() ?? new string[] { })
+        foreach (var meta in obj.GetMetaList() ?? new string[] { })
         {
-            var path = key.Split('/');
+            var path = meta.Split('/');
             if (path.Length < 2) continue;
 
             var prefix = path[0];
-            if (path[0] != "components") continue;
+            if (prefix != "components") continue;
 
             var name = path[1];
             var type = COMPONENTS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower());
             if (type == null) continue;
 
-            var component = components.ContainsKey(type)
-                ? components[type]
-                : Activator.CreateInstance(type);
+            object component = null;
 
-            var fieldPath = String.Join('/', path.Skip(2));
-            var value = obj.GetMeta(key);
+            if (type.IsMany())
+            {
+                var key = path[2];
+                Dictionary<string, object> dict;
+                if (components.ContainsKey(type))
+                {
+                    dict = components[type] as Dictionary<string, object>;
+                }
+                else
+                {
+                    dict = new Dictionary<string, object>();
+                    components[type] = dict;
+                }
+
+                component = dict.ContainsKey(key)
+                    ? dict[key]
+                    : Activator.CreateInstance(type);
+            }
+            else
+            {
+                component = components.ContainsKey(type)
+                    ? components[type]
+                    : Activator.CreateInstance(type);
+            }
+
+            var fieldPath = String.Join('/', path.Skip(type.IsMany() ? 3 : 2));
+            var value = obj.GetMeta(meta);
 
             try
             {
-                component = SetField(component, fieldPath, obj.GetMeta(key));
+                component = SetField(component, fieldPath, obj.GetMeta(meta));
             }
             catch (Exception ex)
             {
@@ -108,7 +131,16 @@ public static class Utils
                 Console.WriteLine($"Unable to set {type.Name} {fieldPath} to '{value}' for '{objName}': {ex.Message}");
             }
 
-            components[type] = component;
+            if (type.IsMany())
+            {
+                var key = path[2];
+                var dict = components[type] as Dictionary<string, object>;
+                dict[key] = component;
+            }
+            else
+            {
+                components[type] = component;
+            }
         }
 
         return components.Values.ToArray();
@@ -167,7 +199,7 @@ public static class Utils
                 poolType = typeof(Listener<>).MakeGenericType(new[] { poolType });
             }
 
-            if (type.IsMultiple())
+            if (type.IsMany())
             {
                 poolType = typeof(Many<>).MakeGenericType(new[] { poolType });
             }
@@ -184,7 +216,7 @@ public static class Utils
         addMethodCache.TryGetValue(type, out addMethod);
         if (addMethod == null)
         {
-            var addMethodName = type.IsMultiple()
+            var addMethodName = type.IsMany()
                 ? "ReflectionConcat"
                 : "ReflectionAdd";
 
@@ -211,7 +243,7 @@ public static class Utils
         reference = value;
     }
 
-    public static bool IsMultiple(this Type type)
+    public static bool IsMany(this Type type)
     {
         return type.GetCustomAttributes(typeof(IsMany), false)?.Length > 0;
     }

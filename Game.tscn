@@ -42,8 +42,6 @@ position = Vector2( 157, 160 )
 scale = Vector2( 3, 3 )
 texture = ExtResource( 2 )
 __meta__ = {
-"components/health/value": 20,
-"components/healthupdate/delta": 10,
 "components/player": true,
 "components/speed/value": 2.0
 }
