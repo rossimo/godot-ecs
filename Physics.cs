@@ -69,14 +69,10 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<PhysicsNode> physicsNodes = default;
     [EcsPool] readonly EcsPool<RenderNode> renders = default;
     [EcsPool] readonly EcsPool<PositionTween> positionTweens = default;
-    [EcsPool] readonly EcsPool<Area> areas = default;
     [EcsPool] readonly EcsPool<AreaNode> areaNodes = default;
-    [EcsPool] readonly EcsPool<Sprite> sprites = default;
-    [EcsPool] readonly EcsPool<Collision> collisions = default;
     [EcsPool] readonly EcsPool<EventTrigger<Collision>> collisionTriggers = default;
     [EcsPool] readonly EcsPool<EventTrigger<Area>> areaTriggers = default;
     [EcsPool] readonly EcsPool<EventQueue> eventQueues = default;
-    [EcsPool] readonly EcsPool<FrameTime> frameTimes = default;
 
     public void Init(EcsSystems systems)
     {

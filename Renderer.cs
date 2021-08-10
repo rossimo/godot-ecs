@@ -44,7 +44,6 @@ public class RendererSystem : IEcsRunSystem
     [EcsShared] readonly Shared shared = default;
     [EcsPool] readonly EcsPool<RenderNode> renders = default;
     [EcsPool] readonly EcsPool<FrameTime> deltas = default;
-    [EcsPool] readonly EcsPool<LowRenderPriority> lowPriority = default;
     [EcsPool] readonly EcsPool<Flash> flashes = default;
 
     public void Run(EcsSystems systems)
@@ -92,7 +91,6 @@ public struct FrameTime
 
 public class FrameTimeSystem : IEcsInitSystem
 {
-    [EcsWorld] readonly EcsWorld world = default;
     [EcsShared] readonly Shared shared = default;
     [EcsPool] readonly EcsPool<FrameTime> pool = default;
 

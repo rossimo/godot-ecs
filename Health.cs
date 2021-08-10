@@ -18,7 +18,6 @@ public struct HealthUpdate
 public class HealthSystem : IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
-    [EcsShared] readonly Shared shared = default;
     [EcsPool] readonly EcsPool<Health> healths = default;
     [EcsPool] readonly EcsPool<Delete> deletes = default;
     [EcsPool] readonly EcsPool<Queue<HealthUpdate>> healthUpdateQueue = default;
