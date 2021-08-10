@@ -24,12 +24,12 @@ public static class NotifyUtils
 }
 
 [EditorComponent]
-public struct DeleteEntity { }
+public struct Delete { }
 
 public class DeleteEntitySystem : IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
-    [EcsFilter(typeof(DeleteEntity))] readonly EcsFilter _filter = default;
+    [EcsFilter(typeof(Delete))] readonly EcsFilter _filter = default;
 
     public void Run(EcsSystems systems)
     {

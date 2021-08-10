@@ -224,14 +224,14 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             });
         }
 
-        foreach (int entity in world.Filter<AreaNode>().Inc<DeleteEntity>().End())
+        foreach (int entity in world.Filter<AreaNode>().Inc<Delete>().End())
         {
             ref var node = ref areaNodes.Get(entity).Node;
             node.GetParent()?.RemoveChild(node);
             node.QueueFree();
         }
 
-        foreach (int entity in world.Filter<PhysicsNode>().Inc<DeleteEntity>().End())
+        foreach (int entity in world.Filter<PhysicsNode>().Inc<Delete>().End())
         {
             ref var node = ref physicsNodes.Get(entity).Node;
             node.GetParent()?.RemoveChild(node);
