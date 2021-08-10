@@ -43,7 +43,7 @@ public class Game : Godot.YSort
 
 		foreach (var node in GetChildren().OfType<Godot.Node>())
 		{
-			var components = node.ToComponentDictionary();
+			var components = node.ToComponents();
 			if (components.Length == 0) continue;
 
 			var entity = world.NewEntity();

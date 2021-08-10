@@ -274,8 +274,6 @@ public class EcsPlugin : EditorPlugin
     {
         if (current == null) return;
 
-        Console.WriteLine($"Removing {prefix}");
-
         foreach (var meta in current.GetMetaList().Where(meta => meta.StartsWith(prefix)))
         {
             current.RemoveMeta(meta);

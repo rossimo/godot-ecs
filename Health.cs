@@ -27,9 +27,11 @@ public class HealthSystem : IEcsRunSystem
         foreach (var entity in world.Filter<Health>().Inc<Many<HealthUpdate>>().End())
         {
             ref var health = ref healths.Get(entity);
+            ref var updates = ref healthUpdates.Get(entity);
 
-            foreach (var update in healthUpdates.Get(entity))
+            foreach (var update in updates)
             {
+                Console.WriteLine($"Health delta {update.Delta}");
                 health.Value += update.Delta;
             }
 

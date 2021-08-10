@@ -146,7 +146,38 @@ public static class Utils
         return components.Values.ToArray();
     }
 
-    public static object SetField(object obj, string path, object value)
+    public static object[] ToComponents(this Godot.Object obj)
+    {
+        var componentsWithDictionary = obj.ToComponentDictionary();
+        var componentsWithMany = componentsWithDictionary
+            .Select(component => component.ToComponentMany());
+
+        return componentsWithMany.ToArray();
+    }
+
+    public static object ToComponentMany(this object obj)
+    {
+        if (obj is Dictionary<string, object> dict)
+        {
+            if (dict.Count == 0)
+            {
+                throw new Exception("Empty dictionary found while converting mapped components to array components");
+            }
+
+            var sample = dict.FirstOrDefault().Value;
+            var type = sample.GetType();
+
+            var manyType = typeof(Many<>).MakeGenericType(new[] { type });
+            var many = Activator.CreateInstance(manyType);
+
+            var items = dict.Values;
+            return many.SetField("Items", dict.Values.ToArray());
+        }
+
+        return obj;
+    }
+
+    public static object SetField(this object obj, string path, object value)
     {
         var parts = path.Split('/');
         if (parts.Length == 0) return obj;
@@ -159,7 +190,31 @@ public static class Utils
 
         if (parts.Length == 1)
         {
-            fieldInfo.SetValue(obj, Convert.ChangeType(value, fieldInfo.FieldType));
+            var isConvertable = fieldInfo.FieldType
+                .FindInterfaces((intf, o) => intf == typeof(IConvertible), value)
+                .Count() > 0;
+
+            var isArray = fieldInfo.FieldType.IsArray;
+
+            object converted = null;
+
+            if (isConvertable)
+            {
+                converted = Convert.ChangeType(value, fieldInfo.FieldType);
+            }
+            else if (isArray)
+            {
+
+                var length = (value as Array).Length;
+
+                converted = Array.CreateInstance(
+                    fieldInfo.FieldType.GetElementType(),
+                    length);
+
+                Array.Copy(value as Array, converted as Array, length);
+            }
+
+            fieldInfo.SetValue(obj, converted);
         }
         else
         {
@@ -230,7 +285,7 @@ public static class Utils
     }
 
     public static void ReflectionAdd<T>(EcsPool<T> pool, int entity, T value)
-    where T : struct
+        where T : struct
     {
         ref var reference = ref pool.Ensure(entity);
         reference = value;
