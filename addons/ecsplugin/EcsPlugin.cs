@@ -95,7 +95,7 @@ public class EcsPlugin : EditorPlugin
 		addObject = (Godot.Control parent, object obj, string prefix, bool top) =>
 		{
 			var type = obj.GetType();
-			var queued = type.GetCustomAttributes(typeof(Queued), false)?.Length > 0;
+			var queued = type.GetCustomAttributes(typeof(IsMany), false)?.Length > 0;
 			var listened = type.GetCustomAttributes(typeof(Listened), false)?.Length > 0;
 
 			var componentLayout = new VBoxContainer()

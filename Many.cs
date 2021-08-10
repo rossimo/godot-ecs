@@ -3,7 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-public struct Queue<T>
+public struct Many<T>
     where T : struct
 {
     public T[] Items;
@@ -15,9 +15,9 @@ public struct Queue<T>
     }
 }
 
-public static class QueueUtils
+public static class Many
 {
-    public static ref T Queue<T>(this EcsPool<Queue<T>> pool, int entity)
+    public static ref T Concat<T>(this EcsPool<Many<T>> pool, int entity)
         where T : struct
     {
         ref var queue = ref pool.Ensure(entity);
@@ -38,7 +38,7 @@ public static class QueueUtils
 }
 
 [System.AttributeUsage(System.AttributeTargets.Struct)]
-public class Queued : System.Attribute
+public class IsMany : System.Attribute
 {
 
 }

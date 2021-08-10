@@ -28,7 +28,7 @@ public struct Direction
     public float Y;
 }
 
-[Editor, Queued, Listened]
+[Editor, IsMany, Listened]
 public struct Collision { }
 
 [Editor]
@@ -69,7 +69,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<RenderNode> renders = default;
     [EcsPool] readonly EcsPool<PositionTween> positionTweens = default;
     [EcsPool] readonly EcsPool<AreaNode> areaNodes = default;
-    [EcsPool] readonly EcsPool<Queue<Listener<Collision>>> collisionListeners = default;
+    [EcsPool] readonly EcsPool<Many<Listener<Collision>>> collisionListeners = default;
 
     public void Init(EcsSystems systems)
     {

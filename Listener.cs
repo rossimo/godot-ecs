@@ -7,15 +7,12 @@ using System.Linq;
 public struct Listener<E>
     where E : struct
 {
-    public object[] Components;
+    public E Component;
     public Target Target;
 
     public void Run(EcsWorld world, int self, int other)
     {
-        foreach (var component in Components)
-        {
-            world.Add(ResolveTarget(self, other), component);
-        }
+        world.Add(ResolveTarget(self, other), Component);
     }
 
     public int ResolveTarget(int self, int other)

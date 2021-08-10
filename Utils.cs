@@ -167,9 +167,9 @@ public static class Utils
                 poolType = typeof(Listener<>).MakeGenericType(new[] { poolType });
             }
 
-            if (type.IsQueued())
+            if (type.IsMultiple())
             {
-                poolType = typeof(Queue<>).MakeGenericType(new[] { poolType });
+                poolType = typeof(Many<>).MakeGenericType(new[] { poolType });
             }
 
             getPoolMethod = typeof(EcsWorld).GetMethod("GetPool")
@@ -184,8 +184,8 @@ public static class Utils
         addMethodCache.TryGetValue(type, out addMethod);
         if (addMethod == null)
         {
-            var addMethodName = type.IsQueued()
-                ? "ReflectionQueue"
+            var addMethodName = type.IsMultiple()
+                ? "ReflectionConcat"
                 : "ReflectionAdd";
 
             addMethod = typeof(Utils).GetMethod(addMethodName)
@@ -204,16 +204,16 @@ public static class Utils
         reference = value;
     }
 
-    public static void ReflectionQueue<T>(EcsPool<Queue<T>> pool, int entity, T value)
+    public static void ReflectionConcat<T>(EcsPool<Many<T>> pool, int entity, T value)
         where T : struct
     {
-        ref var reference = ref pool.Queue(entity);
+        ref var reference = ref pool.Concat(entity);
         reference = value;
     }
 
-    public static bool IsQueued(this Type type)
+    public static bool IsMultiple(this Type type)
     {
-        return type.GetCustomAttributes(typeof(Queued), false)?.Length > 0;
+        return type.GetCustomAttributes(typeof(IsMany), false)?.Length > 0;
     }
 
     public static bool IsListened(this Type type)
@@ -221,7 +221,7 @@ public static class Utils
         return type.GetCustomAttributes(typeof(Listened), false)?.Length > 0;
     }
 
-    public static void Run<T>(this Queue<Listener<T>> triggers, EcsWorld world, int self, int other)
+    public static void Run<T>(this Many<Listener<T>> triggers, EcsWorld world, int self, int other)
          where T : struct
     {
         foreach (var trigger in triggers)
