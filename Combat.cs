@@ -1,7 +1,7 @@
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
 
-[EditorComponent]
+[Editor]
 public struct Expiration
 {
     public ulong Tick;

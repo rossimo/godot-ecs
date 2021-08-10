@@ -1,5 +1,4 @@
 using Leopotam.EcsLite;
-using Leopotam.EcsLite.Di;
 using System.Collections.Generic;
 
 public struct EventQueue
@@ -14,11 +13,6 @@ public struct Event
     public EventTask Task;
 }
 
-public struct EventTrigger<T>
-    where T : struct
-{
-    public EventTask[] Tasks;
-}
 
 public interface EventTask
 {
@@ -80,6 +74,7 @@ public static class EventUtils
     }
 }
 
+/*
 public class EventSystem : IEcsInitSystem, IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
@@ -123,7 +118,6 @@ public class EventSystem : IEcsInitSystem, IEcsRunSystem
     }
 }
 
-/*
 public struct EventEnumerator : IDisposable
 {
     EcsFilter.Enumerator _enumerator;

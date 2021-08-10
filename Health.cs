@@ -2,17 +2,17 @@ using System;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
 
-[EditorComponent]
+[Editor]
 public struct Health
 {
     public int Value;
 }
 
 [Queued]
-[EditorComponent]
+[Editor]
 public struct HealthUpdate
 {
-    public int Value;
+    public int Delta;
 }
 
 public class HealthSystem : IEcsRunSystem
@@ -31,7 +31,7 @@ public class HealthSystem : IEcsRunSystem
 
             foreach (var update in updates)
             {
-                health.Value += update.Value;
+                health.Value += update.Delta;
             }
 
             if (health.Value <= 0)

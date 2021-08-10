@@ -1,5 +1,5 @@
 [System.AttributeUsage(System.AttributeTargets.Struct)]
-public class EditorComponent : System.Attribute
+public class Editor : System.Attribute
 {
 
 }

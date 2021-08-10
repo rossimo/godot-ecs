@@ -1,7 +1,8 @@
 using System;
 using System.Linq;
-using System.Collections.Generic;
 using System.Reflection;
+using System.Collections.Generic;
+using Leopotam.EcsLite;
 
 public static class Utils
 {
@@ -140,8 +141,92 @@ public static class Utils
     {
         return AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(assembly => assembly.GetTypes())
-            .Where(type => type.GetCustomAttributes(typeof(EditorComponent), false)?.Length > 0)
+            .Where(type => type.GetCustomAttributes(typeof(Editor), false)?.Length > 0)
             .OrderBy(component => component.Name)
             .ToArray();
+    }
+
+    private static Dictionary<Type, MethodInfo> getPoolMethodCache =
+        new Dictionary<Type, MethodInfo>();
+
+    private static Dictionary<Type, MethodInfo> addMethodCache =
+        new Dictionary<Type, MethodInfo>();
+
+    public static void Add(this EcsWorld world, int entity, object component)
+    {
+        var type = component.GetType();
+
+        MethodInfo getPoolMethod;
+        getPoolMethodCache.TryGetValue(type, out getPoolMethod);
+        if (getPoolMethod == null)
+        {
+            var poolType = type;
+
+            if (type.IsListened())
+            {
+                poolType = typeof(Listener<>).MakeGenericType(new[] { poolType });
+            }
+
+            if (type.IsQueued())
+            {
+                poolType = typeof(Queue<>).MakeGenericType(new[] { poolType });
+            }
+
+            getPoolMethod = typeof(EcsWorld).GetMethod("GetPool")
+                .MakeGenericMethod(poolType);
+
+            getPoolMethodCache.Add(type, getPoolMethod);
+        }
+
+        var pool = getPoolMethod.Invoke(world, null);
+
+        MethodInfo addMethod;
+        addMethodCache.TryGetValue(type, out addMethod);
+        if (addMethod == null)
+        {
+            var addMethodName = type.IsQueued()
+                ? "ReflectionQueue"
+                : "ReflectionAdd";
+
+            addMethod = typeof(Utils).GetMethod(addMethodName)
+                .MakeGenericMethod(type);
+
+            addMethodCache.Add(type, addMethod);
+        }
+
+        addMethod.Invoke(null, new[] { pool, entity, component });
+    }
+
+    public static void ReflectionAdd<T>(EcsPool<T> pool, int entity, T value)
+    where T : struct
+    {
+        ref var reference = ref pool.Ensure(entity);
+        reference = value;
+    }
+
+    public static void ReflectionQueue<T>(EcsPool<Queue<T>> pool, int entity, T value)
+        where T : struct
+    {
+        ref var reference = ref pool.Queue(entity);
+        reference = value;
+    }
+
+    public static bool IsQueued(this Type type)
+    {
+        return type.GetCustomAttributes(typeof(Queued), false)?.Length > 0;
+    }
+
+    public static bool IsListened(this Type type)
+    {
+        return type.GetCustomAttributes(typeof(Listened), false)?.Length > 0;
+    }
+
+    public static void Run<T>(this Queue<Listener<T>> triggers, EcsWorld world, int self, int other)
+         where T : struct
+    {
+        foreach (var trigger in triggers)
+        {
+            trigger.Run(world, self, other);
+        }
     }
 }

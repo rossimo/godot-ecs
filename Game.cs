@@ -11,7 +11,6 @@ public class Game : Godot.YSort
 	public Shared shared;
 	public InputSystem input;
 	public FrameTimeSystem frameTime;
-	public EventSystem events;
 
 	public override void _Ready()
 	{
@@ -21,21 +20,18 @@ public class Game : Godot.YSort
 
 		frameTime = new FrameTimeSystem();
 		input = new InputSystem();
-		events = new EventSystem();
 
 		systems = new EcsSystems(world, shared);
 
 		systems
 			.Add(frameTime)
 			.Add(input)
-			.Add(events)
 			.Add(new CombatSystem())
 			.Add(new HealthSystem())
 			.Add(new PhysicsSystem())
 			.Add(new RendererSystem())
 			.Add(new DeleteComponentSystem<Notify<Sprite>>())
 			.Add(new DeleteComponentSystem<Notify<Flash>>())
-			.Add(new DeleteComponentSystem<Notify<Collision>>())
 			.Add(new DeleteComponentSystem<Notify<Area>>())
 			.Add(new DeleteEntitySystem())
 			.Inject()
@@ -54,25 +50,7 @@ public class Game : Godot.YSort
 
 			foreach (var component in components)
 			{
-				var type = component.GetType();
-
-				var queued = type.GetCustomAttributes(typeof(Queued), false)?.Length > 0;
-
-				var poolType = queued
-					? typeof(Queue<>).MakeGenericType(new[] { type })
-					: type;
-
-				var pool = typeof(EcsWorld).GetMethod("GetPool")
-					.MakeGenericMethod(poolType)
-					.Invoke(world, null);
-
-				var addMethod = queued
-					? "ReflectionQueue"
-					: "ReflectionAdd";
-
-				typeof(Game).GetMethod(addMethod)
-					.MakeGenericMethod(type)
-					.Invoke(null, new[] { pool, entity, component });
+				world.Add(entity, component);
 			}
 
 			Node2D renderNode = null;
@@ -270,6 +248,7 @@ public class Game : Godot.YSort
 
 	public void _Event(Node targetNode, GodotWrapper sourceWrapper, GodotWrapper tasksWrapper)
 	{
+		/*
 		var tasks = tasksWrapper.Get<EventTask[]>();
 		var source = sourceWrapper.Get<EcsPackedEntity>();
 		var target = targetNode is EntityNode entityNode ? entityNode.Entity : default;
@@ -283,19 +262,6 @@ public class Game : Godot.YSort
 				Target = target
 			});
 		}
-	}
-
-	public static void ReflectionAdd<T>(EcsPool<T> pool, int entity, T value)
-		where T : struct
-	{
-		ref var reference = ref pool.Ensure(entity);
-		reference = value;
-	}
-
-	public static void ReflectionQueue<T>(EcsPool<Queue<T>> pool, int entity, T value)
-		where T : struct
-	{
-		ref var reference = ref pool.Queue(entity);
-		reference = value;
+		*/
 	}
 }

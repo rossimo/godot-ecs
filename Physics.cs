@@ -2,37 +2,36 @@ using Godot;
 using System;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
-using System.Linq;
 
 public struct Tick
 {
     public ulong Value;
 }
 
-[EditorComponent]
+[Editor]
 public struct Speed
 {
     public float Value;
 }
 
-[EditorComponent]
+[Editor]
 public struct Destination
 {
     public float X;
     public float Y;
 }
 
-[EditorComponent]
+[Editor]
 public struct Direction
 {
     public float X;
     public float Y;
 }
 
-[EditorComponent]
+[Editor, Queued, Listened]
 public struct Collision { }
 
-[EditorComponent]
+[Editor]
 public struct Area { }
 
 public struct PhysicsNode
@@ -70,9 +69,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<RenderNode> renders = default;
     [EcsPool] readonly EcsPool<PositionTween> positionTweens = default;
     [EcsPool] readonly EcsPool<AreaNode> areaNodes = default;
-    [EcsPool] readonly EcsPool<EventTrigger<Collision>> collisionTriggers = default;
-    [EcsPool] readonly EcsPool<EventTrigger<Area>> areaTriggers = default;
-    [EcsPool] readonly EcsPool<EventQueue> eventQueues = default;
+    [EcsPool] readonly EcsPool<Queue<Listener<Collision>>> collisionListeners = default;
 
     public void Init(EcsSystems systems)
     {
@@ -152,26 +149,19 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                     moves.Del(entity);
                     directions.Del(entity);
 
-                    var target = -1;
-
+                    var other = -1;
                     if (collision.Collider is EntityNode otherNode)
                     {
-                        otherNode.Entity.Unpack(world, out target);
+                        otherNode.Entity.Unpack(world, out other);
                     }
 
-                    ref var eventQueue = ref eventQueues.Get(shared.Events);
-
-                    if (collisionTriggers.Has(entity))
+                    if (collisionListeners.Has(entity))
                     {
-                        ref var trigger = ref collisionTriggers.Get(entity);
-                        eventQueue.Events.AddRange(trigger.Tasks.Select(task => new Event()
-                        {
-                            Task = task,
-                            Source = world.PackEntity(entity),
-                            Target = target == -1 ? default : world.PackEntity(target)
-                        }));
+                        ref var listeners = ref collisionListeners.Get(entity);
+                        listeners.Run(world, entity, other);
                     }
 
+                    /*
                     if (target != -1 && collisionTriggers.Has(target))
                     {
                         ref var trigger = ref collisionTriggers.Get(target);
@@ -182,6 +172,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                             Target = world.PackEntity(entity)
                         }));
                     }
+                    */
                 }
             }
 
@@ -204,7 +195,8 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             }
         }
 
-        foreach (var entity in world.Filter<AreaNode>().Inc<Notify<EventTrigger<Area>>>().End())
+        /*
+        foreach (var entity in world.Filter<AreaNode>().Inc<Notify<Trigger<Area>>>().End())
         {
             ref var areaNode = ref areaNodes.Get(entity);
             ref var trigger = ref areaTriggers.Get(entity);
@@ -219,6 +211,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 new GodotWrapper(world.PackEntity(entity)), new GodotWrapper(trigger.Tasks)
             });
         }
+        */
 
         foreach (int entity in world.Filter<AreaNode>().Inc<Delete>().End())
         {

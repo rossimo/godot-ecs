@@ -13,16 +13,16 @@ public struct RenderNode
     public Godot.Tween ModulateTween;
 }
 
-[EditorComponent]
+[Editor]
 public struct LowRenderPriority { }
 
-[EditorComponent]
+[Editor]
 public struct Rotation
 {
     public float Degrees;
 }
 
-[EditorComponent]
+[Editor]
 public struct Color
 {
     public float Red;
@@ -30,7 +30,7 @@ public struct Color
     public float Blue;
 }
 
-[EditorComponent]
+[Editor]
 public struct Flash
 {
     public Color Color;
