@@ -96,6 +96,7 @@ public class EcsPlugin : EditorPlugin
         {
             var type = obj.GetType();
             var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
+            var IsListened = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Listener<>);
 
             var componentLayout = new VBoxContainer()
             {
@@ -118,12 +119,13 @@ public class EcsPlugin : EditorPlugin
                 var array = arrayField.GetValue(obj) as Array;
                 if (array.Length == 0) return;
 
-                title = type.GetGenericArguments().First().Name;
-
-                notations.Add("M");
+                title = type.GetGenericArguments().First().Name + " List";
             }
 
-            if (type.IsListened()) notations.Add("L");
+            if (IsListened)
+            {
+                notations.Add("L");
+            }
 
             componentPrimitiveLayout.AddChild(new Label()
             {
@@ -235,7 +237,7 @@ public class EcsPlugin : EditorPlugin
 
             if (isMany)
             {
-                name = type.GetGenericArguments().First().Name.ToLower();
+                name = type.GetGenericArguments().First().Name.ToLower() + "[]";
             }
 
             addObject(layout, obj, $"components/{name}");
@@ -296,15 +298,17 @@ public class EcsPlugin : EditorPlugin
             var fieldMap = component.ToFieldMap();
             object values = fieldMap.Count > 0 ? fieldMap : true;
             object entry = null;
+            var metaName = componentType.Name;
 
-            if (componentType.IsMany())
+            if (componentType.HasManyHint())
             {
+                metaName = $"{metaName}[]";
                 var dict = new Dictionary<string, object>();
 
                 var key = 0;
                 var existingMeta = current.GetMetaList();
                 while (existingMeta
-                    .Where(meta => meta.StartsWith($"components/{componentType.Name}/{key}".ToLower()))
+                    .Where(meta => meta.StartsWith($"components/{metaName}/{key}".ToLower()))
                     .Count() > 0)
                 {
                     key++;
@@ -321,7 +325,7 @@ public class EcsPlugin : EditorPlugin
 
             var metadata = new Dictionary<string, object>() {
                 { "components", new Dictionary<string, object>() {
-                    { componentType.Name, entry }
+                    { metaName, entry }
                 } }
             }.ToFlat("/");
 

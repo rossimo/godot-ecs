@@ -88,13 +88,14 @@ public static class Utils
             var prefix = path[0];
             if (prefix != "components") continue;
 
-            var name = path[1];
+            var name = path[1].Replace("[", string.Empty).Replace("]", string.Empty);
+            var isMany = path[1].EndsWith("[]");
             var type = COMPONENTS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower());
             if (type == null) continue;
 
             object component = null;
 
-            if (type.IsMany())
+            if (isMany)
             {
                 var index = Convert.ToInt32(path[2]);
                 Array array;
@@ -123,7 +124,7 @@ public static class Utils
                     : Activator.CreateInstance(type);
             }
 
-            var fieldPath = String.Join('/', path.Skip(type.IsMany() ? 3 : 2));
+            var fieldPath = String.Join('/', path.Skip(isMany ? 3 : 2));
             var value = obj.GetMeta(meta);
 
             try
@@ -136,7 +137,7 @@ public static class Utils
                 Console.WriteLine($"Unable to set {type.Name} {fieldPath} to '{value}' for '{objName}': {ex.Message}");
             }
 
-            if (type.IsMany())
+            if (isMany)
             {
                 var key = Convert.ToInt32(path[2]);
                 var manyComponent = dict[type];
@@ -256,16 +257,6 @@ public static class Utils
         getPoolMethodCache.TryGetValue(type, out getPoolMethod);
         if (getPoolMethod == null)
         {
-            if (type.IsListened())
-            {
-                poolType = typeof(Listener<>).MakeGenericType(new[] { poolType });
-            }
-
-            if (type.IsMany())
-            {
-                poolType = typeof(Many<>).MakeGenericType(new[] { poolType });
-            }
-
             getPoolMethod = typeof(EcsWorld).GetMethod("GetPool")
                 .MakeGenericMethod(poolType);
 
@@ -278,28 +269,13 @@ public static class Utils
         addMethodCache.TryGetValue(type, out addMethod);
         if (addMethod == null)
         {
-            var addMethodName = type.IsMany()
-                ? "ReflectionConcat"
-                : "ReflectionAdd";
-
-            addMethod = typeof(Utils).GetMethod(addMethodName)
+            addMethod = typeof(Utils).GetMethod("ReflectionAdd")
                 .MakeGenericMethod(poolType);
 
             addMethodCache.Add(type, addMethod);
         }
 
-        if (type.IsMany())
-        {
-            var array = component as Array;
-            for (var i = 0; i < array.Length; i++)
-            {
-                addMethod.Invoke(null, new[] { pool, entity, array.GetValue(i) });
-            }
-        }
-        else
-        {
-            addMethod.Invoke(null, new[] { pool, entity, component });
-        }
+        addMethod.Invoke(null, new[] { pool, entity, component });
     }
 
     public static void ReflectionAdd<T>(EcsPool<T> pool, int entity, T value)
@@ -316,7 +292,7 @@ public static class Utils
         reference = value;
     }
 
-    public static bool IsMany(this Type type)
+    public static bool HasManyHint(this Type type)
     {
         return type.GetCustomAttributes(typeof(IsMany), false)?.Length > 0;
     }
