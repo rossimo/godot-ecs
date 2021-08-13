@@ -95,7 +95,7 @@ public class EcsPlugin : EditorPlugin
         addObject = (Godot.Control parent, object obj, string prefix) =>
         {
             var type = obj.GetType();
-            var isDictionary = type == typeof(Dictionary<string, object>);
+            var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
 
             var componentLayout = new VBoxContainer()
             {
@@ -112,13 +112,14 @@ public class EcsPlugin : EditorPlugin
             var notations = new List<string>();
 
             var title = type.Name;
-            if (isDictionary)
+            if (isMany)
             {
-                var dict = obj as Dictionary<string, object>;
-                if (dict.Count == 0) return;
+                var arrayField = obj.GetType().GetField("Items");
+                var array = arrayField.GetValue(obj) as Array;
+                if (array.Length == 0) return;
 
-                var entry = dict.FirstOrDefault().Value;
-                title = entry.GetType().Name;
+                title = type.GetGenericArguments().First().Name;
+
                 notations.Add("M");
             }
 
@@ -138,9 +139,10 @@ public class EcsPlugin : EditorPlugin
             };
             componentPrimitiveLayout.AddChild(fieldsLayout);
 
-            if (isDictionary)
+            if (isMany)
             {
-                var dict = obj as Dictionary<string, object>;
+                var arrayField = obj.GetType().GetField("Items");
+                var array = arrayField.GetValue(obj) as Array;
                 var indentLayout = new HBoxContainer()
                 {
                     SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
@@ -160,9 +162,9 @@ public class EcsPlugin : EditorPlugin
                 };
                 indentLayout.AddChild(childLayout);
 
-                foreach (var entry in dict)
+                for (var i = 0; i < array.Length; i++)
                 {
-                    addObject(childLayout, entry.Value, $"{prefix}/{entry.Key}");
+                    addObject(childLayout, array.GetValue(i), $"{prefix}/{i}");
                 }
                 return;
             }
@@ -225,16 +227,15 @@ public class EcsPlugin : EditorPlugin
             }
         };
 
-        foreach (var obj in current.ToComponentDictionary().OrderBy(el => el.GetType().Name))
+        foreach (var obj in current.ToComponents().OrderBy(el => el.GetType().Name))
         {
-            var name = obj.GetType().Name.ToLower();
+            var type = obj.GetType();
+            var name = type.Name.ToLower();
+            var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
 
-            if (obj is Dictionary<string, object> dict)
+            if (isMany)
             {
-                if (dict.Count == 0) continue;
-
-                var entry = dict.FirstOrDefault().Value;
-                name = entry.GetType().Name.ToLower();
+                name = type.GetGenericArguments().First().Name.ToLower();
             }
 
             addObject(layout, obj, $"components/{name}");

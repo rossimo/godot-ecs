@@ -75,11 +75,12 @@ public static class Utils
         return output;
     }
 
-    public static object[] ToComponentDictionary(this Godot.Object obj)
+    public static object[] ToComponents(this Godot.Object obj)
     {
-        var components = new Dictionary<Type, object>();
+        var dict = new Dictionary<Type, object>();
+        var metalist = obj.GetMetaList() ?? new string[] { };
 
-        foreach (var meta in obj.GetMetaList() ?? new string[] { })
+        foreach (var meta in metalist)
         {
             var path = meta.Split('/');
             if (path.Length < 2) continue;
@@ -95,26 +96,30 @@ public static class Utils
 
             if (type.IsMany())
             {
-                var key = path[2];
-                Dictionary<string, object> dict;
-                if (components.ContainsKey(type))
+                var index = Convert.ToInt32(path[2]);
+                Array array;
+                if (dict.ContainsKey(type))
                 {
-                    dict = components[type] as Dictionary<string, object>;
+                    var manyComponent = dict[type];
+                    var fieldInfo = manyComponent.GetType().GetField("Items");
+                    array = fieldInfo.GetValue(manyComponent) as Array;
                 }
                 else
                 {
-                    dict = new Dictionary<string, object>();
-                    components[type] = dict;
+                    var manyComponent = Activator.CreateInstance(typeof(Many<>).MakeGenericType(new[] { type }));
+                    array = Array.CreateInstance(type, 0);
+                    manyComponent.SetField("Items", array);
+                    dict[type] = manyComponent;
                 }
 
-                component = dict.ContainsKey(key)
-                    ? dict[key]
+                component = index < array.Length
+                    ? array.GetValue(index)
                     : Activator.CreateInstance(type);
             }
             else
             {
-                component = components.ContainsKey(type)
-                    ? components[type]
+                component = dict.ContainsKey(type)
+                    ? dict[type]
                     : Activator.CreateInstance(type);
             }
 
@@ -133,48 +138,52 @@ public static class Utils
 
             if (type.IsMany())
             {
-                var key = path[2];
-                var dict = components[type] as Dictionary<string, object>;
-                dict[key] = component;
+                var key = Convert.ToInt32(path[2]);
+                var manyComponent = dict[type];
+                var fieldInfo = manyComponent.GetType().GetField("Items");
+                var array = fieldInfo.GetValue(manyComponent) as Array;
+                if (key >= array.Length)
+                {
+                    var expanded = Array.CreateInstance(type, key + 1);
+                    Array.Copy(array, expanded, array.Length);
+                    array = expanded;
+                    fieldInfo.SetValue(manyComponent, array);
+                    dict[type] = manyComponent;
+                }
+                array.SetValue(component, key);
             }
             else
             {
-                components[type] = component;
+                dict[type] = component;
             }
         }
 
-        return components.Values.ToArray();
-    }
-
-    public static object[] ToComponents(this Godot.Object obj)
-    {
-        var componentsWithDictionary = obj.ToComponentDictionary();
-        var componentsWithMany = componentsWithDictionary
-            .Select(component => component.ToComponentMany());
-
-        return componentsWithMany.ToArray();
-    }
-
-    public static object ToComponentMany(this object obj)
-    {
-        if (obj is Dictionary<string, object> dict)
+        var components = dict.Values.ToArray();
+        for (var i = 0; i < components.Length; i++)
         {
-            if (dict.Count == 0)
+            ref var component = ref components[i];
+            var type = component.GetType();
+            if (type.IsArray)
             {
-                throw new Exception("Empty dictionary found while converting mapped components to array components");
+                var array = component as Array;
+                var prefix = $"components/{type.GetElementType().Name.ToLower()}";
+
+                var indexes = Enumerable
+                    .Range(0, array.Length)
+                    .Where(index => metalist.Where(meta => meta.StartsWith($"{prefix}/{index}")).Count() > 0)
+                    .ToArray();
+
+                var trimmed = Array.CreateInstance(type.GetElementType(), indexes.Count());
+                for (var j = 0; j < indexes.Count(); j++)
+                {
+                    var index = indexes[j];
+                    trimmed.SetValue(array.GetValue(index), j);
+                }
+                component = trimmed;
             }
-
-            var sample = dict.FirstOrDefault().Value;
-            var type = sample.GetType();
-
-            var manyType = typeof(Many<>).MakeGenericType(new[] { type });
-            var many = Activator.CreateInstance(manyType);
-
-            var items = dict.Values;
-            return many.SetField("Items", dict.Values.ToArray());
         }
 
-        return obj;
+        return components;
     }
 
     public static object SetField(this object obj, string path, object value)
@@ -204,7 +213,6 @@ public static class Utils
             }
             else if (isArray)
             {
-
                 var length = (value as Array).Length;
 
                 converted = Array.CreateInstance(
@@ -242,13 +250,12 @@ public static class Utils
     public static void Add(this EcsWorld world, int entity, object component)
     {
         var type = component.GetType();
+        var poolType = type;
 
         MethodInfo getPoolMethod;
         getPoolMethodCache.TryGetValue(type, out getPoolMethod);
         if (getPoolMethod == null)
         {
-            var poolType = type;
-
             if (type.IsListened())
             {
                 poolType = typeof(Listener<>).MakeGenericType(new[] { poolType });
@@ -276,12 +283,23 @@ public static class Utils
                 : "ReflectionAdd";
 
             addMethod = typeof(Utils).GetMethod(addMethodName)
-                .MakeGenericMethod(type);
+                .MakeGenericMethod(poolType);
 
             addMethodCache.Add(type, addMethod);
         }
 
-        addMethod.Invoke(null, new[] { pool, entity, component });
+        if (type.IsMany())
+        {
+            var array = component as Array;
+            for (var i = 0; i < array.Length; i++)
+            {
+                addMethod.Invoke(null, new[] { pool, entity, array.GetValue(i) });
+            }
+        }
+        else
+        {
+            addMethod.Invoke(null, new[] { pool, entity, component });
+        }
     }
 
     public static void ReflectionAdd<T>(EcsPool<T> pool, int entity, T value)
