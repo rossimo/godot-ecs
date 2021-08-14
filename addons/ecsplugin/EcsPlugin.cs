@@ -6,338 +6,329 @@ using System.Collections.Generic;
 [Tool]
 public class EcsPlugin : EditorPlugin
 {
-    private Control dock;
-    private Node current;
+	private Control dock;
+	private Node current;
 
-    private static int MARGIN = 3;
+	private static int MARGIN = 3;
 
-    public override void _EnterTree()
-    {
-        dock = new Control()
-        {
-            Name = "Components",
-            SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = (int)Control.SizeFlags.ExpandFill,
-        };
-        AddControlToDock(DockSlot.RightUl, dock);
+	public override void _EnterTree()
+	{
+		dock = new Control()
+		{
+			Name = "Components",
+			SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+			SizeFlagsVertical = (int)Control.SizeFlags.ExpandFill,
+		};
+		AddControlToDock(DockSlot.RightUl, dock);
 
-        RenderComponents();
+		RenderComponents();
 
-        var selector = GetEditorInterface().GetSelection();
-        selector.Connect("selection_changed", this, nameof(SelectedNode));
+		var selector = GetEditorInterface().GetSelection();
+		selector.Connect("selection_changed", this, nameof(SelectedNode));
 
-        current = selector.GetSelectedNodes().ToArray<Node>()?.FirstOrDefault();
-    }
+		current = selector.GetSelectedNodes().ToArray<Node>()?.FirstOrDefault();
+	}
 
-    public override void _ExitTree()
-    {
-        RemoveControlFromDocks(dock);
-        dock.QueueFree();
-    }
+	public override void _ExitTree()
+	{
+		RemoveControlFromDocks(dock);
+		dock.QueueFree();
+	}
 
-    public void SelectedNode()
-    {
-        var selector = GetEditorInterface().GetSelection();
-        var nodes = selector.GetSelectedNodes().ToArray<Node>();
+	public void SelectedNode()
+	{
+		var selector = GetEditorInterface().GetSelection();
+		var nodes = selector.GetSelectedNodes().ToArray<Node>();
 
-        current = nodes.Length == 1
-            ? nodes[0]
-            : null;
+		current = nodes.Length == 1
+			? nodes[0]
+			: null;
 
-        RenderComponents();
-    }
+		RenderComponents();
+	}
 
-    public void RenderComponents()
-    {
-        foreach (Node child in dock.GetChildren())
-        {
-            dock.RemoveChild(child);
-            child.QueueFree();
-        }
+	public void RenderComponents()
+	{
+		foreach (Node child in dock.GetChildren())
+		{
+			dock.RemoveChild(child);
+			child.QueueFree();
+		}
 
-        if (current == null)
-        {
-            var center = new CenterContainer()
-            {
-                AnchorRight = 1,
-                AnchorBottom = 1,
-            };
-            dock.AddChild(center);
+		if (current == null)
+		{
+			var center = new CenterContainer()
+			{
+				AnchorRight = 1,
+				AnchorBottom = 1,
+			};
+			dock.AddChild(center);
 
-            center.AddChild(new Label()
-            {
-                Text = "Select a single node to edit its components.",
-                Align = Label.AlignEnum.Center
-            });
+			center.AddChild(new Label()
+			{
+				Text = "Select a single node to edit its components.",
+				Align = Label.AlignEnum.Center
+			});
 
-            return;
-        }
+			return;
+		}
 
-        var panel = new Panel()
-        {
-            AnchorRight = 1,
-            AnchorBottom = 1,
-        };
-        dock.AddChild(panel);
+		var panel = new Panel()
+		{
+			AnchorRight = 1,
+			AnchorBottom = 1,
+		};
+		dock.AddChild(panel);
 
-        var layout = new VBoxContainer()
-        {
-            AnchorRight = 1,
-            SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
-            MarginLeft = MARGIN,
-            MarginTop = MARGIN,
-            MarginBottom = -MARGIN,
-            MarginRight = -MARGIN
-        };
-        panel.AddChild(layout);
+		var layout = new VBoxContainer()
+		{
+			AnchorRight = 1,
+			SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+			MarginLeft = MARGIN,
+			MarginTop = MARGIN,
+			MarginBottom = -MARGIN,
+			MarginRight = -MARGIN
+		};
+		panel.AddChild(layout);
 
-        Action<Godot.Control, object, string> addObject = null;
-        addObject = (Godot.Control parent, object obj, string prefix) =>
-        {
-            var type = obj.GetType();
-            var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
-            var IsListened = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Listener<>);
+		Action<Godot.Control, object, object, string> addObject = null;
+		addObject = (Godot.Control parent, object obj, object parentObj, string prefix) =>
+		{
+			var type = obj.GetType();
+			var parentType = parentObj?.GetType();
+			var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
+			var IsListened = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Listener<>);
+			var parentIsMany = parentType?.IsGenericType == true && parentType?.GetGenericTypeDefinition() == typeof(Many<>);
 
-            var componentLayout = new VBoxContainer()
-            {
-                SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
-            };
-            parent.AddChild(componentLayout);
+			if (isMany)
+			{
+				var arrayField = obj.GetType().GetField("Items");
+				var array = arrayField.GetValue(obj) as Array;
+				for (var i = 0; i < array.Length; i++)
+				{
+					var childLayout = new HBoxContainer()
+					{
+						SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+						SizeFlagsVertical = 0
+					};
+					parent.AddChild(childLayout);
 
-            var componentPrimitiveLayout = new HBoxContainer()
-            {
-                SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
-            };
-            componentLayout.AddChild(componentPrimitiveLayout);
+					addObject(childLayout, array.GetValue(i), obj, $"{prefix}/{i}");
+				}
+				return;
+			}
 
-            var notations = new List<string>();
+			var componentLayout = new VBoxContainer()
+			{
+				SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
+			};
+			parent.AddChild(componentLayout);
 
-            var title = type.Name;
-            if (isMany)
-            {
-                var arrayField = obj.GetType().GetField("Items");
-                var array = arrayField.GetValue(obj) as Array;
-                if (array.Length == 0) return;
+			var componentPrimitiveLayout = new HBoxContainer()
+			{
+				SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
+			};
+			componentLayout.AddChild(componentPrimitiveLayout);
 
-                title = type.GetGenericArguments().First().Name + " List";
-            }
+			var titleLayout = new HBoxContainer()
+			{
+				SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+				SizeFlagsVertical = 0,
+			};
+			componentPrimitiveLayout.AddChild(titleLayout);
 
-            if (IsListened)
-            {
-                notations.Add("L");
-            }
+			titleLayout.AddChild(new Label()
+			{
+				Text = $"{(parentIsMany ? "•  " : "")}{type.Name}"
+			});
 
-            componentPrimitiveLayout.AddChild(new Label()
-            {
-                Text = $"{title}{(notations.Count > 0 ? (" (" + String.Join(", ", notations) + ")") : "")}",
-                SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
-                SizeFlagsVertical = 0
-            });
+			if (IsListened)
+			{
+				titleLayout.AddChild(new Godot.TextureRect()
+				{
+					Texture = GD.Load<Texture>("res://event_small.png"),
+					StretchMode = TextureRect.StretchModeEnum.KeepCentered
+				});
+			}
 
-            var fieldsLayout = new VBoxContainer()
-            {
-                SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
-                SizeFlagsVertical = 0
-            };
-            componentPrimitiveLayout.AddChild(fieldsLayout);
+			if (type.GetFields().Length > 0)
+			{
+				var fieldsLayout = new VBoxContainer()
+				{
+					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+					SizeFlagsVertical = 0
+				};
+				componentPrimitiveLayout.AddChild(fieldsLayout);
 
-            if (isMany)
-            {
-                var arrayField = obj.GetType().GetField("Items");
-                var array = arrayField.GetValue(obj) as Array;
-                var indentLayout = new HBoxContainer()
-                {
-                    SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
-                    SizeFlagsVertical = 0
-                };
-                componentLayout.AddChild(indentLayout);
+				foreach (var fieldInfo in type.GetFields())
+				{
+					var fieldLayout = new HBoxContainer();
+					fieldsLayout.AddChild(fieldLayout);
 
-                indentLayout.AddChild(new Control()
-                {
-                    RectMinSize = new Vector2(15, 0)
-                });
+					var childObj = fieldInfo.GetValue(obj);
+					var name = $"{prefix}/{fieldInfo.Name.ToLower()}";
 
-                var childLayout = new VBoxContainer()
-                {
-                    SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
-                    SizeFlagsVertical = 0
-                };
-                indentLayout.AddChild(childLayout);
+					if (fieldInfo.FieldType.IsEditable())
+					{
+						fieldLayout.AddChild(new Label()
+						{
+							Text = fieldInfo.Name
+						});
 
-                for (var i = 0; i < array.Length; i++)
-                {
-                    addObject(childLayout, array.GetValue(i), $"{prefix}/{i}");
-                }
-                return;
-            }
+						var editor = new LineEdit()
+						{
+							SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+							Text = $"{childObj}"
+						};
+						fieldLayout.AddChild(editor);
 
-            var remove = new Button()
-            {
-                Text = "X",
-                SizeFlagsVertical = 0
-            };
-            componentPrimitiveLayout.AddChild(remove);
-            remove.Connect("pressed", this, nameof(ComponentRemoved), new Godot.Collections.Array { prefix });
+						editor.Connect("text_changed", this, nameof(FieldChanged),
+							new Godot.Collections.Array { name, new GodotWrapper(fieldInfo.FieldType) });
+					}
+					else
+					{
+						var indentLayout = new HBoxContainer()
+						{
+							SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+							SizeFlagsVertical = 0
+						};
+						componentLayout.AddChild(indentLayout);
 
-            foreach (var fieldInfo in type.GetFields())
-            {
-                var fieldLayout = new HBoxContainer();
-                fieldsLayout.AddChild(fieldLayout);
+						indentLayout.AddChild(new Control()
+						{
+							RectMinSize = new Vector2(15, 0)
+						});
 
-                var childObj = fieldInfo.GetValue(obj);
-                var name = $"{prefix}/{fieldInfo.Name.ToLower()}";
+						var childLayout = new VBoxContainer()
+						{
+							SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+							SizeFlagsVertical = 0
+						};
+						indentLayout.AddChild(childLayout);
+						addObject(childLayout, childObj, obj, name);
+					}
+				}
+			}
 
-                if (fieldInfo.FieldType.IsEditable())
-                {
-                    fieldLayout.AddChild(new Label()
-                    {
-                        Text = fieldInfo.Name
-                    });
+			var remove = new Button()
+			{
+				Text = "X",
+				SizeFlagsVertical = 0
+			};
+			componentPrimitiveLayout.AddChild(remove);
+			remove.Connect("pressed", this, nameof(ComponentRemoved), new Godot.Collections.Array { prefix });
+		};
 
-                    var editor = new LineEdit()
-                    {
-                        SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
-                        Text = $"{childObj}"
-                    };
-                    fieldLayout.AddChild(editor);
 
-                    editor.Connect("text_changed", this, nameof(FieldChanged),
-                        new Godot.Collections.Array { name, new GodotWrapper(fieldInfo.FieldType) });
-                }
-                else
-                {
-                    var indentLayout = new HBoxContainer()
-                    {
-                        SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
-                        SizeFlagsVertical = 0
-                    };
-                    componentLayout.AddChild(indentLayout);
+		foreach (var obj in current.ToComponents().OrderBy(el => el.GetType().Name))
+		{
+			var type = obj.GetType();
+			var name = type.Name.ToLower();
+			var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
 
-                    indentLayout.AddChild(new Control()
-                    {
-                        RectMinSize = new Vector2(15, 0)
-                    });
+			if (isMany)
+			{
+				name = type.GetGenericArguments().First().Name.ToLower() + "[]";
+			}
 
-                    var childLayout = new VBoxContainer()
-                    {
-                        SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
-                        SizeFlagsVertical = 0
-                    };
-                    indentLayout.AddChild(childLayout);
-                    addObject(childLayout, childObj, name);
-                }
-            }
-        };
+			addObject(layout, obj, null, $"components/{name}");
+		}
 
-        foreach (var obj in current.ToComponents().OrderBy(el => el.GetType().Name))
-        {
-            var type = obj.GetType();
-            var name = type.Name.ToLower();
-            var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
+		var picker = new OptionButton() { Text = "Add Component" };
+		layout.AddChild(picker);
+		picker.Connect("item_selected", this, nameof(AddComponent));
 
-            if (isMany)
-            {
-                name = type.GetGenericArguments().First().Name.ToLower() + "[]";
-            }
+		for (var i = 0; i < Utils.COMPONENTS.Count; i++)
+		{
+			var componentType = Utils.COMPONENTS[i];
+			picker.GetPopup().AddItem(componentType.Name, i);
+		}
+	}
 
-            addObject(layout, obj, $"components/{name}");
-        }
+	public void FieldChanged(string value, string path, GodotWrapper typeWrapper)
+	{
+		if (current == null) return;
 
-        var picker = new OptionButton() { Text = "Add Component" };
-        layout.AddChild(picker);
-        picker.Connect("item_selected", this, nameof(AddComponent));
+		var type = typeWrapper.Get<Type>();
 
-        for (var i = 0; i < Utils.COMPONENTS.Count; i++)
-        {
-            var componentType = Utils.COMPONENTS[i];
-            picker.GetPopup().AddItem(componentType.Name, i);
-        }
-    }
+		try
+		{
+			current.SetMeta(path, Convert.ChangeType(value, type));
+		}
+		catch (Exception)
+		{
+			current.SetMeta(path, "");
+		}
 
-    public void FieldChanged(string value, string path, GodotWrapper typeWrapper)
-    {
-        if (current == null) return;
+		GetUndoRedo().CreateAction($"Edited {path}");
+		GetUndoRedo().CommitAction();
+	}
 
-        var type = typeWrapper.Get<Type>();
+	public void ComponentRemoved(string prefix)
+	{
+		if (current == null) return;
 
-        try
-        {
-            current.SetMeta(path, Convert.ChangeType(value, type));
-        }
-        catch (Exception)
-        {
-            current.SetMeta(path, "");
-        }
+		foreach (var meta in current.GetMetaList().Where(meta => meta.StartsWith(prefix)))
+		{
+			current.RemoveMeta(meta);
+		}
 
-        GetUndoRedo().CreateAction($"Edited {path}");
-        GetUndoRedo().CommitAction();
-    }
+		GetUndoRedo().CreateAction($"Removing {prefix}");
+		GetUndoRedo().CommitAction();
 
-    public void ComponentRemoved(string prefix)
-    {
-        if (current == null) return;
+		RenderComponents();
+	}
 
-        foreach (var meta in current.GetMetaList().Where(meta => meta.StartsWith(prefix)))
-        {
-            current.RemoveMeta(meta);
-        }
+	public void AddComponent(int index)
+	{
+		if (current != null)
+		{
+			var componentType = Utils.COMPONENTS[index];
+			var component = Activator.CreateInstance(componentType);
 
-        GetUndoRedo().CreateAction($"Removing {prefix}");
-        GetUndoRedo().CommitAction();
+			var fieldMap = component.ToFieldMap();
+			object values = fieldMap.Count > 0 ? fieldMap : true;
+			object entry = null;
+			var metaName = componentType.Name;
 
-        RenderComponents();
-    }
+			if (componentType.HasManyHint())
+			{
+				metaName = $"{metaName}[]";
+				var dict = new Dictionary<string, object>();
 
-    public void AddComponent(int index)
-    {
-        if (current != null)
-        {
-            var componentType = Utils.COMPONENTS[index];
-            var component = Activator.CreateInstance(componentType);
+				var key = 0;
+				var existingMeta = current.GetMetaList();
+				while (existingMeta
+					.Where(meta => meta.StartsWith($"components/{metaName}/{key}".ToLower()))
+					.Count() > 0)
+				{
+					key++;
+				}
 
-            var fieldMap = component.ToFieldMap();
-            object values = fieldMap.Count > 0 ? fieldMap : true;
-            object entry = null;
-            var metaName = componentType.Name;
+				dict[$"{key}"] = values;
 
-            if (componentType.HasManyHint())
-            {
-                metaName = $"{metaName}[]";
-                var dict = new Dictionary<string, object>();
+				entry = dict;
+			}
+			else
+			{
+				entry = values;
+			}
 
-                var key = 0;
-                var existingMeta = current.GetMetaList();
-                while (existingMeta
-                    .Where(meta => meta.StartsWith($"components/{metaName}/{key}".ToLower()))
-                    .Count() > 0)
-                {
-                    key++;
-                }
+			var metadata = new Dictionary<string, object>() {
+				{ "components", new Dictionary<string, object>() {
+					{ metaName, entry }
+				} }
+			}.ToFlat("/");
 
-                dict[$"{key}"] = values;
+			foreach (var meta in metadata)
+			{
+				current.SetMeta(meta.Key.ToLower(), meta.Value);
+			}
 
-                entry = dict;
-            }
-            else
-            {
-                entry = values;
-            }
+			GetUndoRedo().CreateAction($"Add {componentType.Name}");
+			GetUndoRedo().CommitAction();
+		}
 
-            var metadata = new Dictionary<string, object>() {
-                { "components", new Dictionary<string, object>() {
-                    { metaName, entry }
-                } }
-            }.ToFlat("/");
-
-            foreach (var meta in metadata)
-            {
-                current.SetMeta(meta.Key.ToLower(), meta.Value);
-            }
-
-            GetUndoRedo().CreateAction($"Add {componentType.Name}");
-            GetUndoRedo().CommitAction();
-        }
-
-        RenderComponents();
-    }
+		RenderComponents();
+	}
 }
