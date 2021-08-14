@@ -91,44 +91,65 @@ public class EcsPlugin : EditorPlugin
 		};
 		panel.AddChild(layout);
 
-		Action<Godot.Control, object, object, string> addObject = null;
-		addObject = (Godot.Control parent, object obj, object parentObj, string prefix) =>
+		Action<Godot.Control, object, string> addObject = null;
+		addObject = (Godot.Control parent, object obj, string prefix) =>
 		{
 			var type = obj.GetType();
-			var parentType = parentObj?.GetType();
 			var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
 			var IsListened = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Listener<>);
-			var parentIsMany = parentType?.IsGenericType == true && parentType?.GetGenericTypeDefinition() == typeof(Many<>);
 
 			if (isMany)
 			{
-				var arrayField = obj.GetType().GetField("Items");
+				var manyTitleLayout = new HBoxContainer()
+				{
+					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
+				};
+				parent.AddChild(manyTitleLayout);
+
+				manyTitleLayout.AddChild(new Godot.TextureRect()
+				{
+					Texture = GD.Load<Texture>("res://bars.png"),
+					StretchMode = TextureRect.StretchModeEnum.KeepCentered
+				});
+
+				manyTitleLayout.AddChild(new Godot.Label()
+				{
+					Text = type.GetGenericArguments().First().Name
+				});
+
+				var indentLayout = new HBoxContainer()
+				{
+					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+					SizeFlagsVertical = 0
+				};
+				parent.AddChild(indentLayout);
+
+				indentLayout.AddChild(new Control()
+				{
+					RectMinSize = new Vector2(16, 0)
+				});
+
+				var childLayout = new VBoxContainer()
+				{
+					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+					SizeFlagsVertical = 0
+				};
+				indentLayout.AddChild(childLayout);
+
+				var arrayField = type.GetField("Items");
 				var array = arrayField.GetValue(obj) as Array;
 				for (var i = 0; i < array.Length; i++)
 				{
-					var childLayout = new HBoxContainer()
-					{
-						SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
-						SizeFlagsVertical = 0
-					};
-					parent.AddChild(childLayout);
-
-					addObject(childLayout, array.GetValue(i), obj, $"{prefix}/{i}");
+					addObject(childLayout, array.GetValue(i), $"{prefix}/{i}");
 				}
 				return;
 			}
-
-			var componentLayout = new VBoxContainer()
-			{
-				SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
-			};
-			parent.AddChild(componentLayout);
 
 			var componentPrimitiveLayout = new HBoxContainer()
 			{
 				SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
 			};
-			componentLayout.AddChild(componentPrimitiveLayout);
+			parent.AddChild(componentPrimitiveLayout);
 
 			var titleLayout = new HBoxContainer()
 			{
@@ -137,19 +158,25 @@ public class EcsPlugin : EditorPlugin
 			};
 			componentPrimitiveLayout.AddChild(titleLayout);
 
-			titleLayout.AddChild(new Label()
+			titleLayout.AddChild(new Godot.TextureRect()
 			{
-				Text = $"{(parentIsMany ? "•  " : "")}{type.Name}"
+				Texture = GD.Load<Texture>("res://cog.png"),
+				StretchMode = TextureRect.StretchModeEnum.KeepCentered
 			});
 
 			if (IsListened)
 			{
 				titleLayout.AddChild(new Godot.TextureRect()
 				{
-					Texture = GD.Load<Texture>("res://event_small.png"),
+					Texture = GD.Load<Texture>("res://event.png"),
 					StretchMode = TextureRect.StretchModeEnum.KeepCentered
 				});
 			}
+
+			titleLayout.AddChild(new Label()
+			{
+				Text = type.Name
+			});
 
 			if (type.GetFields().Length > 0)
 			{
@@ -192,11 +219,11 @@ public class EcsPlugin : EditorPlugin
 							SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
 							SizeFlagsVertical = 0
 						};
-						componentLayout.AddChild(indentLayout);
+						parent.AddChild(indentLayout);
 
 						indentLayout.AddChild(new Control()
 						{
-							RectMinSize = new Vector2(15, 0)
+							RectMinSize = new Vector2(16, 0)
 						});
 
 						var childLayout = new VBoxContainer()
@@ -205,7 +232,7 @@ public class EcsPlugin : EditorPlugin
 							SizeFlagsVertical = 0
 						};
 						indentLayout.AddChild(childLayout);
-						addObject(childLayout, childObj, obj, name);
+						addObject(childLayout, childObj, name);
 					}
 				}
 			}
@@ -231,7 +258,7 @@ public class EcsPlugin : EditorPlugin
 				name = type.GetGenericArguments().First().Name.ToLower() + "[]";
 			}
 
-			addObject(layout, obj, null, $"components/{name}");
+			addObject(layout, obj, $"components/{name}");
 		}
 
 		var picker = new OptionButton() { Text = "Add Component" };
