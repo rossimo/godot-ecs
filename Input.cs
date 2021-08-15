@@ -15,7 +15,7 @@ public struct MouseRight
     public bool Pressed;
 }
 
-[Editor, IsEvent, IsMany]
+[Editor]
 public struct Move
 {
     public Destination Destination;
