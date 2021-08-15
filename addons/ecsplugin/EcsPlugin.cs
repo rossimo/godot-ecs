@@ -96,7 +96,7 @@ public class EcsPlugin : EditorPlugin
 		{
 			var type = obj.GetType();
 			var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
-			var IsListened = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Listener<>);
+			var isEvent = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Event<>);
 
 			if (isMany)
 			{
@@ -145,6 +145,50 @@ public class EcsPlugin : EditorPlugin
 				return;
 			}
 
+			if (isEvent)
+			{
+				var eventTitleLayout = new HBoxContainer()
+				{
+					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
+				};
+				parent.AddChild(eventTitleLayout);
+
+				eventTitleLayout.AddChild(new Godot.TextureRect()
+				{
+					Texture = GD.Load<Texture>("res://event.png"),
+					StretchMode = TextureRect.StretchModeEnum.KeepCentered
+				});
+
+				eventTitleLayout.AddChild(new Godot.Label()
+				{
+					Text = type.GetGenericArguments().First().Name
+				});
+
+				var indentLayout = new HBoxContainer()
+				{
+					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+					SizeFlagsVertical = 0
+				};
+				parent.AddChild(indentLayout);
+
+				indentLayout.AddChild(new Control()
+				{
+					RectMinSize = new Vector2(16, 0)
+				});
+
+				var childLayout = new VBoxContainer()
+				{
+					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+					SizeFlagsVertical = 0
+				};
+				indentLayout.AddChild(childLayout);
+
+				var componentField = type.GetField("Component");
+				var component = componentField.GetValue(obj);
+				addObject(childLayout, component, $"{prefix}");
+				return;
+			}
+
 			var componentPrimitiveLayout = new HBoxContainer()
 			{
 				SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
@@ -158,17 +202,19 @@ public class EcsPlugin : EditorPlugin
 			};
 			componentPrimitiveLayout.AddChild(titleLayout);
 
-			titleLayout.AddChild(new Godot.TextureRect()
-			{
-				Texture = GD.Load<Texture>("res://cog.png"),
-				StretchMode = TextureRect.StretchModeEnum.KeepCentered
-			});
-
-			if (IsListened)
+			if (isEvent)
 			{
 				titleLayout.AddChild(new Godot.TextureRect()
 				{
 					Texture = GD.Load<Texture>("res://event.png"),
+					StretchMode = TextureRect.StretchModeEnum.KeepCentered
+				});
+			}
+			else
+			{
+				titleLayout.AddChild(new Godot.TextureRect()
+				{
+					Texture = GD.Load<Texture>("res://cog.png"),
 					StretchMode = TextureRect.StretchModeEnum.KeepCentered
 				});
 			}
@@ -251,12 +297,25 @@ public class EcsPlugin : EditorPlugin
 		{
 			var type = obj.GetType();
 			var name = type.Name.ToLower();
-			var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
+			var annotations = new List<string>();
 
+			var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
 			if (isMany)
 			{
-				name = type.GetGenericArguments().First().Name.ToLower() + "[]";
+				var manyType = type = type.GetGenericArguments().First();
+				name = manyType.Name.ToLower();
+				annotations.Add("[]");
 			}
+
+			var isEvent = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Event<>);
+			if (isEvent)
+			{
+				var eventType = type = type.GetGenericArguments().First();
+				name = eventType.Name.ToLower();
+				annotations.Add("()");
+			}
+
+			name = $"{name}{(String.Join("", annotations))}";
 
 			addObject(layout, obj, $"components/{name}");
 		}
@@ -295,6 +354,8 @@ public class EcsPlugin : EditorPlugin
 	{
 		if (current == null) return;
 
+		Console.WriteLine(prefix);
+
 		foreach (var meta in current.GetMetaList().Where(meta => meta.StartsWith(prefix)))
 		{
 			current.RemoveMeta(meta);
@@ -321,6 +382,15 @@ public class EcsPlugin : EditorPlugin
 			if (componentType.HasManyHint())
 			{
 				metaName = $"{metaName}[]";
+			}
+
+			if (componentType.HasEventHint())
+			{
+				metaName = $"{metaName}()";
+			}
+
+			if (componentType.HasManyHint())
+			{
 				var dict = new Dictionary<string, object>();
 
 				var key = 0;

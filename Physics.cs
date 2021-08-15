@@ -28,7 +28,7 @@ public struct Direction
     public float Y;
 }
 
-[Editor, IsMany, Listened]
+[Editor, IsMany, IsEvent]
 public struct Collision { }
 
 [Editor]
@@ -69,7 +69,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<RenderNode> renders = default;
     [EcsPool] readonly EcsPool<PositionTween> positionTweens = default;
     [EcsPool] readonly EcsPool<AreaNode> areaNodes = default;
-    [EcsPool] readonly EcsPool<Many<Listener<Collision>>> collisionListeners = default;
+    [EcsPool] readonly EcsPool<Many<Event<Collision>>> collisionEvents = default;
 
     public void Init(EcsSystems systems)
     {
@@ -155,10 +155,13 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                         otherNode.Entity.Unpack(world, out other);
                     }
 
-                    if (collisionListeners.Has(entity))
+                    if (collisionEvents.Has(entity))
                     {
-                        ref var listeners = ref collisionListeners.Get(entity);
-                        listeners.Run(world, entity, other);
+                        ref var events = ref collisionEvents.Get(entity);
+                        foreach (var ev in events)
+                        {
+                            ev.Add(world, entity, other);
+                        }
                     }
 
                     /*

@@ -88,40 +88,70 @@ public static class Utils
             var prefix = path[0];
             if (prefix != "components") continue;
 
-            var name = path[1].Replace("[", string.Empty).Replace("]", string.Empty);
-            var isMany = path[1].EndsWith("[]");
-            var type = COMPONENTS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower());
-            if (type == null) continue;
+            var isMany = path[1].Contains("[]");
+            var isEvent = path[1].Contains("()");
 
-            object component = null;
+            var name = path[1].Replace("[]", string.Empty).Replace("()", string.Empty);
+            var componentType = COMPONENTS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower());
 
+            var eventType = typeof(Event<>).MakeGenericType(new[] { componentType });
+            var elementType = isEvent ? eventType : componentType;
+            var manyType = typeof(Many<>).MakeGenericType(new[] { elementType });
+
+            if (componentType == null) continue;
+
+            var type = componentType;
+            if (isEvent)
+            {
+                type = eventType;
+            }
             if (isMany)
             {
-                var index = Convert.ToInt32(path[2]);
-                Array array;
-                if (dict.ContainsKey(type))
-                {
-                    var manyComponent = dict[type];
-                    var fieldInfo = manyComponent.GetType().GetField("Items");
-                    array = fieldInfo.GetValue(manyComponent) as Array;
-                }
-                else
-                {
-                    var manyComponent = Activator.CreateInstance(typeof(Many<>).MakeGenericType(new[] { type }));
-                    array = Array.CreateInstance(type, 0);
-                    manyComponent.SetField("Items", array);
-                    dict[type] = manyComponent;
-                }
+                type = manyType;
+            }
 
-                component = index < array.Length
-                    ? array.GetValue(index)
-                    : Activator.CreateInstance(type);
+            object component = null;
+            object manyComponent = null;
+            object eventComponent = null;
+
+            if (dict.ContainsKey(type))
+            {
+                component = dict[type];
             }
             else
             {
-                component = dict.ContainsKey(type)
-                    ? dict[type]
-                    : Activator.CreateInstance(type);
+                component = Activator.CreateInstance(type);
+
+                if (isMany)
+                {
+                    component.SetField("Items", Array.CreateInstance(elementType, 0));
+                }
+
+                dict[type] = component;
+            }
+
+            if (isMany)
+            {
+                manyComponent = component;
+
+                var index = Convert.ToInt32(path[2]);
+                var array = type.GetField("Items").GetValue(component) as Array;
+
+                component = index < array.Length
+                    ? array.GetValue(index)
+                    : Activator.CreateInstance(elementType);
+            }
+
+            if (isEvent)
+            {
+                eventComponent = component;
+
+                var fieldInfo = component.GetType().GetField("Component");
+                component = fieldInfo.GetValue(component);
+                if (component == null)
+                {
+                    component = Activator.CreateInstance(componentType);
+                }
             }
 
             var fieldPath = String.Join('/', path.Skip(isMany ? 3 : 2));
@@ -134,29 +164,34 @@ public static class Utils
             catch (Exception ex)
             {
                 var objName = obj is Godot.Node node ? node.Name : obj.ToString();
-                Console.WriteLine($"Unable to set {type.Name} {fieldPath} to '{value}' for '{objName}': {ex.Message}");
+                Console.WriteLine($"Unable to set {componentType.Name} {fieldPath} to '{value}' for '{objName}': {ex.Message}");
+            }
+
+            if (isEvent)
+            {
+                var fieldInfo = eventType.GetField("Component");
+                fieldInfo.SetValue(eventComponent, component);
+                component = eventComponent;
             }
 
             if (isMany)
             {
                 var key = Convert.ToInt32(path[2]);
-                var manyComponent = dict[type];
-                var fieldInfo = manyComponent.GetType().GetField("Items");
+                var fieldInfo = type.GetField("Items");
                 var array = fieldInfo.GetValue(manyComponent) as Array;
+
                 if (key >= array.Length)
                 {
-                    var expanded = Array.CreateInstance(type, key + 1);
+                    var expanded = Array.CreateInstance(elementType, key + 1);
                     Array.Copy(array, expanded, array.Length);
                     array = expanded;
                     fieldInfo.SetValue(manyComponent, array);
-                    dict[type] = manyComponent;
                 }
                 array.SetValue(component, key);
+                component = manyComponent;
             }
-            else
-            {
-                dict[type] = component;
-            }
+
+            dict[type] = component;
         }
 
         var components = dict.Values.ToArray();
@@ -297,17 +332,8 @@ public static class Utils
         return type.GetCustomAttributes(typeof(IsMany), false)?.Length > 0;
     }
 
-    public static bool IsListened(this Type type)
+    public static bool HasEventHint(this Type type)
     {
-        return type.GetCustomAttributes(typeof(Listened), false)?.Length > 0;
-    }
-
-    public static void Run<T>(this Many<Listener<T>> triggers, EcsWorld world, int self, int other)
-         where T : struct
-    {
-        foreach (var trigger in triggers)
-        {
-            trigger.Run(world, self, other);
-        }
+        return type.GetCustomAttributes(typeof(IsEvent), false)?.Length > 0;
     }
 }
