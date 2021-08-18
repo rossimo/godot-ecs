@@ -47,7 +47,7 @@ public static class Utils
 
     public static bool IsEditable(this Type type)
     {
-        return type.IsPrimitive || type == typeof(string);
+        return type.IsPrimitive || type == typeof(string) || type.IsEnum;
     }
 
     public static Dictionary<string, object> ToFlat(this Dictionary<string, object> dict, string sep, string prefix = "")
@@ -76,6 +76,52 @@ public static class Utils
         return output;
     }
 
+    public static Dictionary<string, object> ToMeta(this object component)
+    {
+        var type = component.GetType();
+        var name = type.Name.ToLower();
+        var annotations = new List<string>();
+
+        var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
+        if (isMany)
+        {
+            type = type.GetGenericArguments().First();
+            name = type.Name.ToLower();
+            annotations.Add("[]");
+        }
+
+        var isEvent = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Event<>);
+        if (isEvent)
+        {
+            type = type.GetGenericArguments().First();
+            name = type.Name.ToLower();
+            annotations.Add("()");
+        }
+
+        name = $"{name}{(String.Join("", annotations))}";
+
+        Dictionary<string, object> meta;
+
+        if (isMany)
+        {
+            var itemsField = component.GetType().GetField("Items");
+            var array = itemsField.GetValue(component) as Array;
+            meta = new Dictionary<string, object>();
+
+            for (var i = 0; i < array.Length; i++)
+            {
+                meta.Add($"{i}", array.GetValue(i).ToFieldMap());
+            }
+        }
+        else
+        {
+            meta = component.ToFieldMap();
+        }
+
+        return new Dictionary<string, object>() {
+            { name, meta }
+        }.ToFlat("/");
+    }
 
     public static object[] ToComponents(this Godot.Object obj)
     {
@@ -125,7 +171,6 @@ public static class Utils
             {
                 if (isMany)
                 {
-                    Console.WriteLine(manyDictType);
                     component =  Activator.CreateInstance(manyDictType);
                 }
                 else

@@ -107,7 +107,7 @@ public class EcsPlugin : EditorPlugin
 				parent.AddChild(manyLayout);
 
 				var iconLayout = new CenterContainer()
-				{ 
+				{
 					RectMinSize = new Vector2(0, 26),
 					SizeFlagsVertical = 0
 				};
@@ -143,7 +143,7 @@ public class EcsPlugin : EditorPlugin
 				parent.AddChild(eventLayout);
 
 				var iconLayout = new CenterContainer()
-				{ 
+				{
 					RectMinSize = new Vector2(0, 26),
 					SizeFlagsVertical = 0
 				};
@@ -321,11 +321,30 @@ public class EcsPlugin : EditorPlugin
 	{
 		if (current == null) return;
 
-		Console.WriteLine(prefix);
-
 		foreach (var meta in current.GetMetaList().Where(meta => meta.StartsWith(prefix)))
 		{
 			current.RemoveMeta(meta);
+		}
+
+		var unserialized = current.ToComponents();
+
+		foreach (var meta in current.GetMetaList())
+		{
+			current.RemoveMeta(meta);
+		}
+
+		foreach (var component in unserialized)
+		{
+			var meta = component.ToMeta();
+			foreach (var entry in meta)
+			{
+				current.SetMeta("components/" + entry.Key.ToLower(), entry.Value);
+			}
+
+			if (meta.Count == 0)
+			{
+				current.SetMeta("components/" + component.GetType().Name.ToLower(), true);
+			}
 		}
 
 		GetUndoRedo().CreateAction($"Removing {prefix}");
