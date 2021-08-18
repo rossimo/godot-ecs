@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using System.Collections;
 using System.Collections.Generic;
 using Leopotam.EcsLite;
 
@@ -75,6 +76,7 @@ public static class Utils
         return output;
     }
 
+
     public static object[] ToComponents(this Godot.Object obj)
     {
         var dict = new Dictionary<Type, object>();
@@ -97,6 +99,7 @@ public static class Utils
             var eventType = typeof(Event<>).MakeGenericType(new[] { componentType });
             var elementType = isEvent ? eventType : componentType;
             var manyType = typeof(Many<>).MakeGenericType(new[] { elementType });
+            var manyDictType = typeof(Dictionary<,>).MakeGenericType(new[] { typeof(string), elementType });
 
             if (componentType == null) continue;
 
@@ -120,11 +123,14 @@ public static class Utils
             }
             else
             {
-                component = Activator.CreateInstance(type);
-
                 if (isMany)
                 {
-                    component.SetField("Items", Array.CreateInstance(elementType, 0));
+                    Console.WriteLine(manyDictType);
+                    component =  Activator.CreateInstance(manyDictType);
+                }
+                else
+                {
+                    component = Activator.CreateInstance(type);
                 }
 
                 dict[type] = component;
@@ -134,11 +140,11 @@ public static class Utils
             {
                 manyComponent = component;
 
-                var index = Convert.ToInt32(path[2]);
-                var array = type.GetField("Items").GetValue(component) as Array;
+                var key = path[2];
+                var manyDict = manyComponent as IDictionary;
 
-                component = index < array.Length
-                    ? array.GetValue(index)
+                component = manyDict.Contains(key)
+                    ? manyDict[key]
                     : Activator.CreateInstance(elementType);
             }
 
@@ -176,18 +182,9 @@ public static class Utils
 
             if (isMany)
             {
-                var key = Convert.ToInt32(path[2]);
-                var fieldInfo = type.GetField("Items");
-                var array = fieldInfo.GetValue(manyComponent) as Array;
-
-                if (key >= array.Length)
-                {
-                    var expanded = Array.CreateInstance(elementType, key + 1);
-                    Array.Copy(array, expanded, array.Length);
-                    array = expanded;
-                    fieldInfo.SetValue(manyComponent, array);
-                }
-                array.SetValue(component, key);
+                var key = path[2];
+                var manyDict = manyComponent as IDictionary;
+                manyDict[key] = component;
                 component = manyComponent;
             }
 
@@ -199,23 +196,17 @@ public static class Utils
         {
             ref var component = ref components[i];
             var type = component.GetType();
-            if (type.IsArray)
+            if (type.FindInterfaces((intf, o) => intf == typeof(IDictionary), component).Count() > 0)
             {
-                var array = component as Array;
-                var prefix = $"components/{type.GetElementType().Name.ToLower()}";
+                var manyDict = component as IDictionary;
 
-                var indexes = Enumerable
-                    .Range(0, array.Length)
-                    .Where(index => metalist.Where(meta => meta.StartsWith($"{prefix}/{index}")).Count() > 0)
-                    .ToArray();
+                var elementType = manyDict.GetType().GenericTypeArguments[1];
+                var manyType = typeof(Many<>).MakeGenericType(new[] { elementType });
+                var array = Array.CreateInstance(elementType, manyDict.Count);
+                manyDict.Values.CopyTo(array, 0);
 
-                var trimmed = Array.CreateInstance(type.GetElementType(), indexes.Count());
-                for (var j = 0; j < indexes.Count(); j++)
-                {
-                    var index = indexes[j];
-                    trimmed.SetValue(array.GetValue(index), j);
-                }
-                component = trimmed;
+                component = Activator.CreateInstance(manyType);
+                component = component.SetField("Items", array);
             }
         }
 
