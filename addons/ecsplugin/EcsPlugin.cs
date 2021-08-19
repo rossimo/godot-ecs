@@ -340,11 +340,6 @@ public class EcsPlugin : EditorPlugin
 			{
 				current.SetMeta("components/" + entry.Key.ToLower(), entry.Value);
 			}
-
-			if (meta.Count == 0)
-			{
-				current.SetMeta("components/" + component.GetType().Name.ToLower(), true);
-			}
 		}
 
 		GetUndoRedo().CreateAction($"Removing {prefix}");
