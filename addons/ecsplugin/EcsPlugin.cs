@@ -163,7 +163,20 @@ public class EcsPlugin : EditorPlugin
 
 				var componentField = type.GetField("Component");
 				var component = componentField.GetValue(obj);
-				addObject(childLayout, component, $"{prefix}");
+
+				/*
+				var picker = new OptionButton() { Text = "Add Event Component" };
+				childLayout.AddChild(picker);
+				picker.Connect("item_selected", this, nameof(AddComponent), new Godot.Collections.Array { prefix });
+
+				for (var i = 0; i < Utils.COMPONENTS.Count; i++)
+				{
+					var componentType = Utils.COMPONENTS[i];
+					picker.GetPopup().AddItem(componentType.Name, i);
+				}
+				*/
+				
+				addObject(childLayout, component, prefix);
 				return;
 			}
 
@@ -289,7 +302,7 @@ public class EcsPlugin : EditorPlugin
 
 		var picker = new OptionButton() { Text = "Add Component" };
 		layout.AddChild(picker);
-		picker.Connect("item_selected", this, nameof(AddComponent));
+		picker.Connect("item_selected", this, nameof(AddComponent), new Godot.Collections.Array { "components/" });
 
 		for (var i = 0; i < Utils.COMPONENTS.Count; i++)
 		{
@@ -348,7 +361,7 @@ public class EcsPlugin : EditorPlugin
 		RenderComponents();
 	}
 
-	public void AddComponent(int index)
+	public void AddComponent(int index, string prefix)
 	{
 		if (current != null)
 		{
@@ -393,14 +406,12 @@ public class EcsPlugin : EditorPlugin
 			}
 
 			var metadata = new Dictionary<string, object>() {
-				{ "components", new Dictionary<string, object>() {
-					{ metaName, entry }
-				} }
+				{ metaName, entry }
 			}.ToFlat("/");
 
 			foreach (var meta in metadata)
 			{
-				current.SetMeta(meta.Key.ToLower(), meta.Value);
+				current.SetMeta(prefix + meta.Key.ToLower(), meta.Value);
 			}
 
 			GetUndoRedo().CreateAction($"Add {componentType.Name}");

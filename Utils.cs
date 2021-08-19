@@ -118,15 +118,8 @@ public static class Utils
             meta = component.ToFieldMap();
         }
 
-        if (meta.Count == 0)
-        {
-            meta = new Dictionary<string, object>() {
-                { component.GetType().Name.ToLower(), true }
-            };
-        }
-
         return new Dictionary<string, object>() {
-            { name, meta }
+            { name, meta.Count > 0 ? meta : true }
         }.ToFlat("/");
     }
 
