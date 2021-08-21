@@ -175,7 +175,7 @@ public class EcsPlugin : EditorPlugin
 					picker.GetPopup().AddItem(componentType.Name, i);
 				}
 				*/
-				
+
 				addObject(childLayout, component, prefix);
 				return;
 			}
@@ -365,53 +365,53 @@ public class EcsPlugin : EditorPlugin
 	{
 		if (current != null)
 		{
-			var componentType = Utils.COMPONENTS[index];
+			var baseComponentType = Utils.COMPONENTS[index];
+			var componentType = baseComponentType;
+			var elementType = componentType;
+
+			if (baseComponentType.HasEventHint())
+			{
+				componentType = typeof(Event<>).MakeGenericType(new[] { componentType });
+				elementType = componentType;
+			}
+
+			if (baseComponentType.HasManyHint())
+			{
+				componentType = typeof(Many<>).MakeGenericType(new[] { componentType });
+			}
+
 			var component = Activator.CreateInstance(componentType);
 
-			var fieldMap = component.ToFieldMap();
-			object values = fieldMap.Count > 0 ? fieldMap : true;
-			object entry = null;
-			var metaName = componentType.Name;
-
-			if (componentType.HasManyHint())
+			if (baseComponentType.HasManyHint())
 			{
-				metaName = $"{metaName}[]";
+				var array = Array.CreateInstance(elementType, 1);
+				array.SetValue(Activator.CreateInstance(elementType), 0);
+				component = component.SetField("Items", array);
 			}
 
-			if (componentType.HasEventHint())
-			{
-				metaName = $"{metaName}()";
-			}
+			var metas = component.ToMeta();
+			var metaName = metas.First().Key.Split("/").First();
+			var manyIndex = 0;
 
-			if (componentType.HasManyHint())
+			if (baseComponentType.HasManyHint())
 			{
-				var dict = new Dictionary<string, object>();
-
-				var key = 0;
 				var existingMeta = current.GetMetaList();
 				while (existingMeta
-					.Where(meta => meta.StartsWith($"components/{metaName}/{key}".ToLower()))
+					.Where(meta => meta.StartsWith($"components/{metaName}/{manyIndex}".ToLower()))
 					.Count() > 0)
 				{
-					key++;
+					manyIndex++;
 				}
-
-				dict[$"{key}"] = values;
-
-				entry = dict;
-			}
-			else
-			{
-				entry = values;
 			}
 
-			var metadata = new Dictionary<string, object>() {
-				{ metaName, entry }
-			}.ToFlat("/");
-
-			foreach (var meta in metadata)
+			foreach (var meta in metas)
 			{
-				current.SetMeta(prefix + meta.Key.ToLower(), meta.Value);
+				var key = prefix + meta.Key.ToLower();
+				if (baseComponentType.HasManyHint())
+				{
+					key = key.Replace(prefix + metaName + "/0/", prefix + metaName + $"/{manyIndex}/");
+				}
+				current.SetMeta(key, meta.Value);
 			}
 
 			GetUndoRedo().CreateAction($"Add {componentType.Name}");

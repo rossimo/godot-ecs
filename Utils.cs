@@ -100,26 +100,62 @@ public static class Utils
 
         name = $"{name}{(String.Join("", annotations))}";
 
-        Dictionary<string, object> meta;
+        Func<object, Dictionary<string, object>> eventMeta = (object thisComponent) =>
+        {
+            var eventDict = new Dictionary<string, object>();
+
+            var targetField = thisComponent.GetType().GetField("Target");
+            var target = targetField.GetValue(thisComponent);
+            eventDict["target"] = target;
+
+            var childComponentField = thisComponent.GetType().GetField("Component");
+            var childComponent = childComponentField.GetValue(thisComponent);
+            var childMeta = childComponent?.ToMeta();
+            eventDict["component"] = childMeta?.Count == 0 ? true : childMeta;
+
+            return new Dictionary<string, object>() {
+                { name, eventDict }
+            }.ToFlat("/");
+        };
 
         if (isMany)
         {
             var itemsField = component.GetType().GetField("Items");
             var array = itemsField.GetValue(component) as Array;
-            meta = new Dictionary<string, object>();
+            if (array == null) array = Array.CreateInstance(type, 0);
+            var manyDict = new Dictionary<string, object>();
 
             for (var i = 0; i < array.Length; i++)
             {
-                meta.Add($"{i}", array.GetValue(i).ToFieldMap());
+                var element = array.GetValue(i);
+                var elementMeta = isEvent ? eventMeta(element) : element.ToMeta();
+                var value = elementMeta.Select(entry =>
+                   new KeyValuePair<string, object>(
+                       String.Join("/", entry.Key.Split("/").Skip(1)),
+                       entry.Value));
+                manyDict.Add($"{i}", new Dictionary<string, object>(value));
             }
+
+            return new Dictionary<string, object>() {
+                { name, manyDict }
+            }.ToFlat("/");
         }
-        else
+
+        if (isEvent)
         {
-            meta = component.ToFieldMap();
+            return eventMeta(component);
+        }
+
+        var values = component.ToFieldMap();
+        if (values.Count > 0)
+        {
+            return new Dictionary<string, object>() {
+                { name, values }
+            }.ToFlat("/");
         }
 
         return new Dictionary<string, object>() {
-            { name, meta.Count > 0 ? meta : true }
+            { name, true }
         }.ToFlat("/");
     }
 
