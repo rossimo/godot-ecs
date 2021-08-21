@@ -50,6 +50,34 @@ public static class Utils
         return type.IsPrimitive || type == typeof(string) || type.IsEnum;
     }
 
+    public static object Instantiate(Type baseComponentType)
+    {
+        var componentType = baseComponentType;
+        var elementType = componentType;
+
+        if (baseComponentType.HasEventHint())
+        {
+            componentType = typeof(Event<>).MakeGenericType(new[] { componentType });
+            elementType = componentType;
+        }
+
+        if (baseComponentType.HasManyHint())
+        {
+            componentType = typeof(Many<>).MakeGenericType(new[] { componentType });
+        }
+
+        var component = Activator.CreateInstance(componentType);
+
+        if (baseComponentType.HasManyHint())
+        {
+            var array = Array.CreateInstance(elementType, 1);
+            array.SetValue(Activator.CreateInstance(elementType), 0);
+            component = component.SetField("Items", array);
+        }
+
+        return component;
+    }
+
     public static Dictionary<string, object> ToFlat(this Dictionary<string, object> dict, string sep, string prefix = "")
     {
         var output = new Dictionary<string, object>();

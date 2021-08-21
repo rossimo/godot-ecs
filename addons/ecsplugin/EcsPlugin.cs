@@ -164,19 +164,20 @@ public class EcsPlugin : EditorPlugin
 				var componentField = type.GetField("Component");
 				var component = componentField.GetValue(obj);
 
-				/*
-				var picker = new OptionButton() { Text = "Add Event Component" };
+				var picker = new OptionButton() { Text = "Set Component" };
 				childLayout.AddChild(picker);
-				picker.Connect("item_selected", this, nameof(AddComponent), new Godot.Collections.Array { prefix });
+				picker.Connect("item_selected", this, nameof(ReplaceComponent), new Godot.Collections.Array { prefix + "/component/" });
 
 				for (var i = 0; i < Utils.COMPONENTS.Count; i++)
 				{
 					var componentType = Utils.COMPONENTS[i];
 					picker.GetPopup().AddItem(componentType.Name, i);
 				}
-				*/
 
-				addObject(childLayout, component, prefix);
+				if (component != null)
+				{
+					addObject(childLayout, component, prefix + "/component/");
+				}
 				return;
 			}
 
@@ -269,7 +270,7 @@ public class EcsPlugin : EditorPlugin
 				SizeFlagsVertical = 0
 			};
 			componentPrimitiveLayout.AddChild(remove);
-			remove.Connect("pressed", this, nameof(ComponentRemoved), new Godot.Collections.Array { prefix });
+			remove.Connect("pressed", this, nameof(ComponentRemoved), new Godot.Collections.Array { prefix + "/" });
 		};
 
 
@@ -361,39 +362,62 @@ public class EcsPlugin : EditorPlugin
 		RenderComponents();
 	}
 
-	public void AddComponent(int index, string prefix)
+	public void ReplaceComponent(int index, string prefix)
 	{
 		if (current != null)
 		{
-			var baseComponentType = Utils.COMPONENTS[index];
-			var componentType = baseComponentType;
-			var elementType = componentType;
-
-			if (baseComponentType.HasEventHint())
-			{
-				componentType = typeof(Event<>).MakeGenericType(new[] { componentType });
-				elementType = componentType;
-			}
-
-			if (baseComponentType.HasManyHint())
-			{
-				componentType = typeof(Many<>).MakeGenericType(new[] { componentType });
-			}
-
-			var component = Activator.CreateInstance(componentType);
-
-			if (baseComponentType.HasManyHint())
-			{
-				var array = Array.CreateInstance(elementType, 1);
-				array.SetValue(Activator.CreateInstance(elementType), 0);
-				component = component.SetField("Items", array);
-			}
+			var type = Utils.COMPONENTS[index];
+			var component = Utils.Instantiate(type);
 
 			var metas = component.ToMeta();
 			var metaName = metas.First().Key.Split("/").First();
 			var manyIndex = 0;
 
-			if (baseComponentType.HasManyHint())
+			if (type.HasManyHint())
+			{
+				var existingMeta = current.GetMetaList();
+				while (existingMeta
+					.Where(meta => meta.StartsWith($"components/{metaName}/{manyIndex}".ToLower()))
+					.Count() > 0)
+				{
+					manyIndex++;
+				}
+			}
+
+			foreach (var meta in current.GetMetaList().Where(meta => meta.StartsWith(prefix)))
+			{
+				current.RemoveMeta(meta);
+			}
+
+			foreach (var meta in metas)
+			{
+				var key = prefix + meta.Key.ToLower();
+				if (type.HasManyHint())
+				{
+					key = key.Replace(prefix + metaName + "/0/", prefix + metaName + $"/{manyIndex}/");
+				}
+				current.SetMeta(key, meta.Value);
+			}
+
+			GetUndoRedo().CreateAction($"Add {type.Name}");
+			GetUndoRedo().CommitAction();
+		}
+
+		RenderComponents();
+	}
+
+	public void AddComponent(int index, string prefix)
+	{
+		if (current != null)
+		{
+			var type = Utils.COMPONENTS[index];
+			var component = Utils.Instantiate(type);
+
+			var metas = component.ToMeta();
+			var metaName = metas.First().Key.Split("/").First();
+			var manyIndex = 0;
+
+			if (type.HasManyHint())
 			{
 				var existingMeta = current.GetMetaList();
 				while (existingMeta
@@ -407,14 +431,14 @@ public class EcsPlugin : EditorPlugin
 			foreach (var meta in metas)
 			{
 				var key = prefix + meta.Key.ToLower();
-				if (baseComponentType.HasManyHint())
+				if (type.HasManyHint())
 				{
 					key = key.Replace(prefix + metaName + "/0/", prefix + metaName + $"/{manyIndex}/");
 				}
 				current.SetMeta(key, meta.Value);
 			}
 
-			GetUndoRedo().CreateAction($"Add {componentType.Name}");
+			GetUndoRedo().CreateAction($"Add {type.Name}");
 			GetUndoRedo().CommitAction();
 		}
 
