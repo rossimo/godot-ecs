@@ -136,23 +136,45 @@ public class EcsPlugin : EditorPlugin
 
 			if (isEvent)
 			{
-				var eventLayout = new HBoxContainer()
+				var eventLayout = new VBoxContainer()
+				{
+					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+					SizeFlagsVertical = 0
+				};
+				parent.AddChild(eventLayout);
+
+				var eventTitleLayout = new HBoxContainer()
 				{
 					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
 				};
-				parent.AddChild(eventLayout);
+				eventLayout.AddChild(eventTitleLayout);
 
 				var iconLayout = new CenterContainer()
 				{
 					RectMinSize = new Vector2(0, 26),
 					SizeFlagsVertical = 0
 				};
-				eventLayout.AddChild(iconLayout);
+				eventTitleLayout.AddChild(iconLayout);
 
 				iconLayout.AddChild(new Godot.TextureRect()
 				{
 					Texture = GD.Load<Texture>("res://event.png")
 				});
+
+				var eventType = type.GenericTypeArguments[0];
+				eventTitleLayout.AddChild(new Label()
+				{
+					Text = eventType.Name,
+					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
+				});
+
+				var eventRemove = new Button()
+				{
+					Text = "X",
+					SizeFlagsVertical = 0
+				};
+				eventTitleLayout.AddChild(eventRemove);
+				eventRemove.Connect("pressed", this, nameof(ComponentRemoved), new Godot.Collections.Array { prefix });
 
 				var childLayout = new VBoxContainer()
 				{
@@ -176,7 +198,7 @@ public class EcsPlugin : EditorPlugin
 
 				if (component != null)
 				{
-					addObject(childLayout, component, prefix + "/component/");
+					addObject(childLayout, component, prefix + "/component/" + Utils.ComponentName(component));
 				}
 				return;
 			}
@@ -270,7 +292,7 @@ public class EcsPlugin : EditorPlugin
 				SizeFlagsVertical = 0
 			};
 			componentPrimitiveLayout.AddChild(remove);
-			remove.Connect("pressed", this, nameof(ComponentRemoved), new Godot.Collections.Array { prefix + "/" });
+			remove.Connect("pressed", this, nameof(ComponentRemoved), new Godot.Collections.Array { prefix });
 		};
 
 		foreach (var obj in current.ToComponents("components/").OrderBy(el => el.GetType().Name))
@@ -376,7 +398,7 @@ public class EcsPlugin : EditorPlugin
 			{
 				var existingMeta = current.GetMetaList();
 				while (existingMeta
-					.Where(meta => meta.StartsWith($"components/{metaName}/{manyIndex}".ToLower()))
+					.Where(meta => meta.StartsWith($"{prefix}/{manyIndex}".ToLower()))
 					.Count() > 0)
 				{
 					manyIndex++;

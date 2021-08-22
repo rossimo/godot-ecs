@@ -78,6 +78,31 @@ public static class Utils
         return component;
     }
 
+    public static string ComponentName(object obj)
+    {
+        var type = obj.GetType();
+        var name = type.Name.ToLower();
+        var annotations = new List<string>();
+
+        var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
+        if (isMany)
+        {
+            type = type.GetGenericArguments().First();
+            name = type.Name.ToLower();
+            annotations.Add("[]");
+        }
+
+        var isEvent = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Event<>);
+        if (isEvent)
+        {
+            type = type.GetGenericArguments().First();
+            name = type.Name.ToLower();
+            annotations.Add("()");
+        }
+
+        return $"{name}{(String.Join("", annotations))}";
+    }
+
     public static Dictionary<string, object> ToFlat(this Dictionary<string, object> dict, string sep, string prefix = "")
     {
         var output = new Dictionary<string, object>();
@@ -107,26 +132,19 @@ public static class Utils
     public static Dictionary<string, object> ToMeta(this object component)
     {
         var type = component.GetType();
-        var name = type.Name.ToLower();
-        var annotations = new List<string>();
+        var name = ComponentName(component);
 
         var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
         if (isMany)
         {
             type = type.GetGenericArguments().First();
-            name = type.Name.ToLower();
-            annotations.Add("[]");
         }
 
         var isEvent = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Event<>);
         if (isEvent)
         {
             type = type.GetGenericArguments().First();
-            name = type.Name.ToLower();
-            annotations.Add("()");
         }
-
-        name = $"{name}{(String.Join("", annotations))}";
 
         Func<object, Dictionary<string, object>> eventMeta = (object thisComponent) =>
         {
@@ -259,19 +277,19 @@ public static class Utils
                     : Activator.CreateInstance(elementType);
             }
 
+            var fieldPath = String.Join('/', subpath.Skip(isMany ? 2 : 1));
+
             if (isEvent)
             {
                 eventComponent = component;
 
-                var fieldInfo = component.GetType().GetField("Component");
-                component = fieldInfo.GetValue(component);
-                if (component == null)
+                if (fieldPath.StartsWith("component/"))
                 {
-                    component = Activator.CreateInstance(componentType);
+                    var eventComponentPath = new string(meta.SkipLast(fieldPath.Length).ToArray()) + "component";
+                    component = obj.ToComponents(eventComponentPath).First();
                 }
             }
 
-            var fieldPath = String.Join('/', subpath.Skip(isMany ? 2 : 1));
             var value = obj.GetMeta(meta);
 
             try
@@ -286,8 +304,11 @@ public static class Utils
 
             if (isEvent)
             {
-                var fieldInfo = eventType.GetField("Component");
-                fieldInfo.SetValue(eventComponent, component);
+                if (fieldPath.StartsWith("component/"))
+                {
+                    var fieldInfo = eventType.GetField("Component");
+                    fieldInfo.SetValue(eventComponent, component);
+                }
                 component = eventComponent;
             }
 
