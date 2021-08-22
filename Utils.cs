@@ -187,23 +187,25 @@ public static class Utils
         }.ToFlat("/");
     }
 
-    public static object[] ToComponents(this Godot.Object obj)
+    public static object[] ToComponents(this Godot.Object obj, string prefix)
     {
         var dict = new Dictionary<Type, object>();
         var metalist = obj.GetMetaList() ?? new string[] { };
 
-        foreach (var meta in metalist)
+        foreach (var meta in metalist.Where(part => part.StartsWith(prefix)))
         {
-            var path = meta.Split('/');
-            if (path.Length < 2) continue;
+            var subpath = new string(meta.Skip(prefix.Length).ToArray())
+                .Split('/')
+                .Select(part => part.Trim())
+                .Where(part => part.Length != 0)
+                .ToArray();
 
-            var prefix = path[0];
-            if (prefix != "components") continue;
+            if (subpath.Length == 0) continue;
 
-            var isMany = path[1].Contains("[]");
-            var isEvent = path[1].Contains("()");
+            var isMany = subpath[0].Contains("[]");
+            var isEvent = subpath[0].Contains("()");
 
-            var name = path[1].Replace("[]", string.Empty).Replace("()", string.Empty);
+            var name = subpath[0].Replace("[]", string.Empty).Replace("()", string.Empty);
             var componentType = COMPONENTS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower());
 
             var eventType = typeof(Event<>).MakeGenericType(new[] { componentType });
@@ -249,7 +251,7 @@ public static class Utils
             {
                 manyComponent = component;
 
-                var key = path[2];
+                var key = subpath[1];
                 var manyDict = manyComponent as IDictionary;
 
                 component = manyDict.Contains(key)
@@ -269,12 +271,12 @@ public static class Utils
                 }
             }
 
-            var fieldPath = String.Join('/', path.Skip(isMany ? 3 : 2));
+            var fieldPath = String.Join('/', subpath.Skip(isMany ? 2 : 1));
             var value = obj.GetMeta(meta);
 
             try
             {
-                component = SetField(component, fieldPath, obj.GetMeta(meta));
+                component = SetField(component, fieldPath, value);
             }
             catch (Exception ex)
             {
@@ -291,7 +293,7 @@ public static class Utils
 
             if (isMany)
             {
-                var key = path[2];
+                var key = subpath[1];
                 var manyDict = manyComponent as IDictionary;
                 manyDict[key] = component;
                 component = manyComponent;

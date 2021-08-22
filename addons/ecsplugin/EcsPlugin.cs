@@ -273,8 +273,7 @@ public class EcsPlugin : EditorPlugin
 			remove.Connect("pressed", this, nameof(ComponentRemoved), new Godot.Collections.Array { prefix + "/" });
 		};
 
-
-		foreach (var obj in current.ToComponents().OrderBy(el => el.GetType().Name))
+		foreach (var obj in current.ToComponents("components/").OrderBy(el => el.GetType().Name))
 		{
 			var type = obj.GetType();
 			var name = type.Name.ToLower();
@@ -340,7 +339,7 @@ public class EcsPlugin : EditorPlugin
 			current.RemoveMeta(meta);
 		}
 
-		var unserialized = current.ToComponents();
+		var unserialized = current.ToComponents("components/");
 
 		foreach (var meta in current.GetMetaList())
 		{
