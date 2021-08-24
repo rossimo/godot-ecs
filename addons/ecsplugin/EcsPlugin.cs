@@ -47,6 +47,14 @@ public class EcsPlugin : EditorPlugin
 		RenderComponents();
 	}
 
+	public enum NodeType
+	{
+		Tag,
+		Tags,
+		Events,
+		Value
+	}
+
 	public void RenderComponents()
 	{
 		foreach (Node child in dock.GetChildren())
@@ -91,8 +99,8 @@ public class EcsPlugin : EditorPlugin
 		};
 		panel.AddChild(layout);
 
-		Action<Godot.Control, object, string> addObject = null;
-		addObject = (Godot.Control parent, object obj, string prefix) =>
+		Action<Godot.Control, object, string, NodeType> addObject = null;
+		addObject = (Godot.Control parent, object obj, string prefix, NodeType icon) =>
 		{
 			var type = obj.GetType();
 			var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
@@ -100,36 +108,18 @@ public class EcsPlugin : EditorPlugin
 
 			if (isMany)
 			{
-				var manyLayout = new HBoxContainer()
-				{
-					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
-				};
-				parent.AddChild(manyLayout);
-
-				var iconLayout = new CenterContainer()
-				{
-					RectMinSize = new Vector2(0, 26),
-					SizeFlagsVertical = 0
-				};
-				manyLayout.AddChild(iconLayout);
-
-				iconLayout.AddChild(new Godot.TextureRect()
-				{
-					Texture = GD.Load<Texture>("res://bars.png")
-				});
-
-				var childLayout = new VBoxContainer()
+				var manyLayout = new VBoxContainer()
 				{
 					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
 					SizeFlagsVertical = 0
 				};
-				manyLayout.AddChild(childLayout);
+				parent.AddChild(manyLayout);
 
 				var arrayField = type.GetField("Items");
 				var array = arrayField.GetValue(obj) as Array;
 				for (var i = 0; i < array.Length; i++)
 				{
-					addObject(childLayout, array.GetValue(i), $"{prefix}/{i}");
+					addObject(manyLayout, array.GetValue(i), $"{prefix}/{i}", NodeType.Tags);
 				}
 				return;
 			}
@@ -158,7 +148,7 @@ public class EcsPlugin : EditorPlugin
 
 				iconLayout.AddChild(new Godot.TextureRect()
 				{
-					Texture = GD.Load<Texture>("res://event.png")
+					Texture = GD.Load<Texture>("res://satellite.png")
 				});
 
 				var eventType = type.GenericTypeArguments[0];
@@ -176,12 +166,30 @@ public class EcsPlugin : EditorPlugin
 				eventTitleLayout.AddChild(eventRemove);
 				eventRemove.Connect("pressed", this, nameof(ComponentRemoved), new Godot.Collections.Array { prefix });
 
+				var outerChildLayout = new HBoxContainer()
+				{
+					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+				};
+				eventLayout.AddChild(outerChildLayout);
+
+				var childIconLayout = new CenterContainer()
+				{
+					RectMinSize = new Vector2(0, 26),
+					SizeFlagsVertical = 0
+				};
+				outerChildLayout.AddChild(childIconLayout);
+
+				childIconLayout.AddChild(new Godot.TextureRect()
+				{
+					Texture = GD.Load<Texture>("res://node.png")
+				});
+
 				var childLayout = new VBoxContainer()
 				{
 					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
 					SizeFlagsVertical = 0
 				};
-				eventLayout.AddChild(childLayout);
+				outerChildLayout.AddChild(childLayout);
 
 				var componentField = type.GetField("Component");
 				var component = componentField.GetValue(obj);
@@ -196,7 +204,7 @@ public class EcsPlugin : EditorPlugin
 
 					pickerLayout.AddChild(new Godot.TextureRect()
 					{
-						Texture = GD.Load<Texture>("res://cog.png"),
+						Texture = GD.Load<Texture>("res://tag.png"),
 						StretchMode = TextureRect.StretchModeEnum.KeepCentered
 					});
 
@@ -217,7 +225,7 @@ public class EcsPlugin : EditorPlugin
 
 				if (component != null)
 				{
-					addObject(childLayout, component, prefix + "/component/" + Utils.ComponentName(component));
+					addObject(childLayout, component, prefix + "/component/" + Utils.ComponentName(component), NodeType.Tag);
 				}
 				return;
 			}
@@ -235,11 +243,29 @@ public class EcsPlugin : EditorPlugin
 			};
 			componentPrimitiveLayout.AddChild(titleLayout);
 
-			titleLayout.AddChild(new Godot.TextureRect()
+			Texture iconTex = null;
+			switch (icon)
 			{
-				Texture = GD.Load<Texture>("res://cog.png"),
-				StretchMode = TextureRect.StretchModeEnum.KeepCentered
-			});
+				case NodeType.Tag:
+					{
+						iconTex = GD.Load<Texture>("res://tag.png");
+						break;
+					}
+				case NodeType.Tags:
+					{
+						iconTex = GD.Load<Texture>("res://tags.png");
+						break;
+					}
+			}
+
+			if (iconTex != null)
+			{
+				titleLayout.AddChild(new Godot.TextureRect()
+				{
+					Texture = iconTex,
+					StretchMode = TextureRect.StretchModeEnum.KeepCentered
+				});
+			}
 
 			titleLayout.AddChild(new Label()
 			{
@@ -300,18 +326,21 @@ public class EcsPlugin : EditorPlugin
 							SizeFlagsVertical = 0
 						};
 						indentLayout.AddChild(childLayout);
-						addObject(childLayout, childObj, name);
+						addObject(childLayout, childObj, name, NodeType.Value);
 					}
 				}
 			}
 
-			var remove = new Button()
+			if (icon != NodeType.Value)
 			{
-				Text = "X",
-				SizeFlagsVertical = 0
-			};
-			componentPrimitiveLayout.AddChild(remove);
-			remove.Connect("pressed", this, nameof(ComponentRemoved), new Godot.Collections.Array { prefix });
+				var remove = new Button()
+				{
+					Text = "X",
+					SizeFlagsVertical = 0
+				};
+				componentPrimitiveLayout.AddChild(remove);
+				remove.Connect("pressed", this, nameof(ComponentRemoved), new Godot.Collections.Array { prefix });
+			}
 		};
 
 		foreach (var obj in current.ToComponents("components/").OrderBy(el => el.GetType().Name))
@@ -338,7 +367,7 @@ public class EcsPlugin : EditorPlugin
 
 			name = $"{name}{(String.Join("", annotations))}";
 
-			addObject(layout, obj, $"components/{name}");
+			addObject(layout, obj, $"components/{name}", isMany ? NodeType.Tags : NodeType.Tag);
 		}
 
 		var picker = new OptionButton() { Text = "Add Component" };
@@ -347,8 +376,29 @@ public class EcsPlugin : EditorPlugin
 
 		for (var i = 0; i < Utils.COMPONENTS.Count; i++)
 		{
+
+
 			var componentType = Utils.COMPONENTS[i];
 			picker.GetPopup().AddItem(componentType.Name, i);
+
+			Texture iconTex = null;
+			if (componentType.HasEventHint())
+			{
+				iconTex = GD.Load<Texture>("res://satellite.png");
+			}
+			else if (componentType.HasManyHint())
+			{
+				iconTex = GD.Load<Texture>("res://tags.png");
+			}
+			else
+			{
+				iconTex = GD.Load<Texture>("res://tag.png");
+			}
+
+			if (iconTex != null)
+			{
+				picker.GetPopup().SetItemIcon(i, iconTex);
+			}
 		}
 	}
 
