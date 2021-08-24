@@ -186,14 +186,33 @@ public class EcsPlugin : EditorPlugin
 				var componentField = type.GetField("Component");
 				var component = componentField.GetValue(obj);
 
-				var picker = new OptionButton() { Text = "Set Component" };
-				childLayout.AddChild(picker);
-				picker.Connect("item_selected", this, nameof(ReplaceComponent), new Godot.Collections.Array { prefix + "/component/" });
-
-				for (var i = 0; i < Utils.COMPONENTS.Count; i++)
+				if (component == null)
 				{
-					var componentType = Utils.COMPONENTS[i];
-					picker.GetPopup().AddItem(componentType.Name, i);
+					var pickerLayout = new HBoxContainer()
+					{
+						SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
+					};
+					childLayout.AddChild(pickerLayout);
+
+					pickerLayout.AddChild(new Godot.TextureRect()
+					{
+						Texture = GD.Load<Texture>("res://cog.png"),
+						StretchMode = TextureRect.StretchModeEnum.KeepCentered
+					});
+
+					var picker = new OptionButton()
+					{
+						Text = "Set Component",
+						SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
+					};
+					pickerLayout.AddChild(picker);
+					picker.Connect("item_selected", this, nameof(ReplaceComponent), new Godot.Collections.Array { prefix + "/component/" });
+
+					for (var i = 0; i < Utils.COMPONENTS.Count; i++)
+					{
+						var componentType = Utils.COMPONENTS[i];
+						picker.GetPopup().AddItem(componentType.Name, i);
+					}
 				}
 
 				if (component != null)
