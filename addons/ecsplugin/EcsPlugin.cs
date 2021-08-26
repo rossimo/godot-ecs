@@ -51,6 +51,7 @@ public class EcsPlugin : EditorPlugin
 	{
 		Tag,
 		Tags,
+		Target,
 		Events,
 		Value
 	}
@@ -191,6 +192,42 @@ public class EcsPlugin : EditorPlugin
 				};
 				outerChildLayout.AddChild(childLayout);
 
+				var targetField = type.GetField("Target");
+				var target = targetField.GetValue(obj);
+
+				if (target == null)
+				{
+					var pickerLayout = new HBoxContainer()
+					{
+						SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
+					};
+					childLayout.AddChild(pickerLayout);
+
+					pickerLayout.AddChild(new Godot.TextureRect()
+					{
+						Texture = GD.Load<Texture>("res://target.png"),
+						StretchMode = TextureRect.StretchModeEnum.KeepCentered
+					});
+
+					var picker = new OptionButton()
+					{
+						Text = "Set Target",
+						SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
+					};
+					pickerLayout.AddChild(picker);
+					picker.Connect("item_selected", this, nameof(ReplaceComponent), new Godot.Collections.Array { prefix + "/target/", new GodotWrapper(MetaType.Target) });
+
+					for (var i = 0; i < Utils.TARGETS.Count; i++)
+					{
+						var targetType = Utils.TARGETS[i];
+						picker.GetPopup().AddItem(targetType.Name, i);
+					}
+				}
+				else
+				{
+					addObject(childLayout, target, prefix + "/target/" + Utils.ComponentName(target), NodeType.Target);
+				}
+
 				var componentField = type.GetField("Component");
 				var component = componentField.GetValue(obj);
 
@@ -214,7 +251,7 @@ public class EcsPlugin : EditorPlugin
 						SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
 					};
 					pickerLayout.AddChild(picker);
-					picker.Connect("item_selected", this, nameof(ReplaceComponent), new Godot.Collections.Array { prefix + "/component/" });
+					picker.Connect("item_selected", this, nameof(ReplaceComponent), new Godot.Collections.Array { prefix + "/component/", new GodotWrapper(MetaType.Component) });
 
 					for (var i = 0; i < Utils.COMPONENTS.Count; i++)
 					{
@@ -222,11 +259,11 @@ public class EcsPlugin : EditorPlugin
 						picker.GetPopup().AddItem(componentType.Name, i);
 					}
 				}
-
-				if (component != null)
+				else
 				{
 					addObject(childLayout, component, prefix + "/component/" + Utils.ComponentName(component), NodeType.Tag);
 				}
+
 				return;
 			}
 
@@ -254,6 +291,11 @@ public class EcsPlugin : EditorPlugin
 				case NodeType.Tags:
 					{
 						iconTex = GD.Load<Texture>("res://tags.png");
+						break;
+					}
+				case NodeType.Target:
+					{
+						iconTex = GD.Load<Texture>("res://target.png");
 						break;
 					}
 			}
@@ -376,8 +418,6 @@ public class EcsPlugin : EditorPlugin
 
 		for (var i = 0; i < Utils.COMPONENTS.Count; i++)
 		{
-
-
 			var componentType = Utils.COMPONENTS[i];
 			picker.GetPopup().AddItem(componentType.Name, i);
 
@@ -452,11 +492,28 @@ public class EcsPlugin : EditorPlugin
 		RenderComponents();
 	}
 
-	public void ReplaceComponent(int index, string prefix)
+	public void ReplaceComponent(int index, string prefix, GodotWrapper metaType)
 	{
+		Console.WriteLine(prefix);
 		if (current != null)
 		{
-			var type = Utils.COMPONENTS[index];
+			Type type = null;
+
+			switch (metaType.Get<MetaType>())
+			{
+				case MetaType.Component:
+					{
+						type = Utils.COMPONENTS[index];
+					}
+					break;
+				case MetaType.Target:
+					{
+						type = Utils.TARGETS[index];
+					}
+					break;
+			}
+			if (type == null) return;
+
 			var component = Utils.Instantiate(type);
 
 			var metas = component.ToMeta();
@@ -474,7 +531,26 @@ public class EcsPlugin : EditorPlugin
 				}
 			}
 
-			foreach (var meta in current.GetMetaList().Where(meta => meta.StartsWith(prefix)))
+			var normalizedPrefix = prefix.Split("/").Where(part => part.Length > 0).ToArray();
+
+			foreach (var meta in current.GetMetaList().Where(meta =>
+			{
+				var normalizedMeta = meta.Split("/").Where(part => part.Length > 0).ToArray();
+				if (normalizedMeta.Length < normalizedPrefix.Length)
+				{
+					return false;
+				}
+
+				for (int i = 0; i < normalizedPrefix.Length; i++)
+				{
+					if (normalizedPrefix[i] != normalizedMeta[i])
+					{
+						return false;
+					}
+				}
+				
+				return true;
+			}))
 			{
 				current.RemoveMeta(meta);
 			}

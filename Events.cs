@@ -4,38 +4,48 @@ public struct Event<E>
     where E : struct
 {
     public object Component;
-    public Target Target;
+    public object Target;
 
     public void Add(EcsWorld world, int self, int other)
     {
-        world.Add(Resolve(self, other), Component);
-    }
-
-    public int Resolve(int self, int other)
-    {
-        var target = -1;
-
-        if (Target == Target.Self)
+        if (Target is Target target)
         {
-            target = self;
+            world.Add(target.Resolve(self, other), Component);
         }
-        else if (Target == Target.Other)
-        {
-            target = other;
-        }
-
-        return target;
     }
 }
 
-public enum Target
+public interface Target
 {
-    Self,
-    Other
+    public int Resolve(int self, int other);
+}
+
+[IsTarget]
+public struct TargetSelf : Target
+{
+    public int Resolve(int self, int other)
+    {
+        return self;
+    }
+}
+
+[IsTarget]
+public struct TargetOther : Target
+{
+    public int Resolve(int self, int other)
+    {
+        return other;
+    }
 }
 
 [System.AttributeUsage(System.AttributeTargets.Struct)]
 public class IsEvent : System.Attribute
+{
+
+}
+
+[System.AttributeUsage(System.AttributeTargets.Struct)]
+public class IsTarget : System.Attribute
 {
 
 }

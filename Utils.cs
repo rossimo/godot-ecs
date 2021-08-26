@@ -5,9 +5,16 @@ using System.Collections;
 using System.Collections.Generic;
 using Leopotam.EcsLite;
 
+public enum MetaType
+{
+    Component,
+    Target
+}
+
 public static class Utils
 {
     public static readonly List<Type> COMPONENTS = GetComponents().ToList();
+    public static readonly List<Type> TARGETS = GetTargets().ToList();
 
     public static T[] ToArray<T>(this Godot.Collections.Array array)
     {
@@ -152,12 +159,13 @@ public static class Utils
 
             var targetField = thisComponent.GetType().GetField("Target");
             var target = targetField.GetValue(thisComponent);
-            eventDict["target"] = target;
+            var targetMeta = target?.ToMeta();
+            eventDict["target"] = (targetMeta == null || targetMeta.Count == 0) ? false : targetMeta;
 
             var childComponentField = thisComponent.GetType().GetField("Component");
             var childComponent = childComponentField.GetValue(thisComponent);
             var childMeta = childComponent?.ToMeta();
-            eventDict["component"] = childMeta?.Count == 0 ? true : childMeta;
+            eventDict["component"] = (childMeta == null || childMeta.Count == 0) ? false : childMeta;
 
             return new Dictionary<string, object>() {
                 { name, eventDict }
@@ -205,7 +213,7 @@ public static class Utils
         }.ToFlat("/");
     }
 
-    public static object[] ToComponents(this Godot.Object obj, string prefix)
+    public static object[] ToComponents(this Godot.Object obj, string prefix, MetaType metaType = MetaType.Component)
     {
         var dict = new Dictionary<Type, object>();
         var metalist = obj.GetMetaList() ?? new string[] { };
@@ -224,7 +232,21 @@ public static class Utils
             var isEvent = subpath[0].Contains("()");
 
             var name = subpath[0].Replace("[]", string.Empty).Replace("()", string.Empty);
-            var componentType = COMPONENTS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower());
+            Type componentType = null;
+
+            switch (metaType)
+            {
+                case MetaType.Component:
+                    {
+                        componentType = COMPONENTS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower());
+                    }
+                    break;
+                case MetaType.Target:
+                    {
+                        componentType = TARGETS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower());
+                    }
+                    break;
+            }
 
             var eventType = typeof(Event<>).MakeGenericType(new[] { componentType });
             var elementType = isEvent ? eventType : componentType;
@@ -288,6 +310,11 @@ public static class Utils
                     var eventComponentPath = new string(meta.SkipLast(fieldPath.Length).ToArray()) + "component";
                     component = obj.ToComponents(eventComponentPath).First();
                 }
+                else if (fieldPath.StartsWith("target/"))
+                {
+                    var eventTargetPath = new string(meta.SkipLast(fieldPath.Length).ToArray()) + "target";
+                    component = obj.ToComponents(eventTargetPath, MetaType.Target).First();
+                }
             }
 
             var value = obj.GetMeta(meta);
@@ -307,6 +334,11 @@ public static class Utils
                 if (fieldPath.StartsWith("component/"))
                 {
                     var fieldInfo = eventType.GetField("Component");
+                    fieldInfo.SetValue(eventComponent, component);
+                }
+                else if (fieldPath.StartsWith("target/"))
+                {
+                    var fieldInfo = eventType.GetField("Target");
                     fieldInfo.SetValue(eventComponent, component);
                 }
                 component = eventComponent;
@@ -396,6 +428,15 @@ public static class Utils
         return AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(assembly => assembly.GetTypes())
             .Where(type => type.GetCustomAttributes(typeof(Editor), false)?.Length > 0)
+            .OrderBy(component => component.Name)
+            .ToArray();
+    }
+
+    public static Type[] GetTargets()
+    {
+        return AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(assembly => assembly.GetTypes())
+            .Where(type => type.GetCustomAttributes(typeof(IsTarget), false)?.Length > 0)
             .OrderBy(component => component.Name)
             .ToArray();
     }
