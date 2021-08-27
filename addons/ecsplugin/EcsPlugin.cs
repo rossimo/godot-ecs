@@ -47,12 +47,12 @@ public class EcsPlugin : EditorPlugin
 		RenderComponents();
 	}
 
-	public enum NodeType
+	public enum Category
 	{
-		Tag,
-		Tags,
+		Component,
+		MultiComponent,
 		Target,
-		Events,
+		Event,
 		Value
 	}
 
@@ -100,8 +100,8 @@ public class EcsPlugin : EditorPlugin
 		};
 		panel.AddChild(layout);
 
-		Action<Godot.Control, object, string, NodeType> addObject = null;
-		addObject = (Godot.Control parent, object obj, string prefix, NodeType icon) =>
+		Action<Godot.Control, object, string, Category> addObject = null;
+		addObject = (Godot.Control parent, object obj, string prefix, Category objCategory) =>
 		{
 			var type = obj.GetType();
 			var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
@@ -120,7 +120,7 @@ public class EcsPlugin : EditorPlugin
 				var array = arrayField.GetValue(obj) as Array;
 				for (var i = 0; i < array.Length; i++)
 				{
-					addObject(manyLayout, array.GetValue(i), $"{prefix}/{i}", NodeType.Tags);
+					addObject(manyLayout, array.GetValue(i), $"{prefix}/{i}", Category.MultiComponent);
 				}
 				return;
 			}
@@ -173,18 +173,6 @@ public class EcsPlugin : EditorPlugin
 				};
 				eventLayout.AddChild(outerChildLayout);
 
-				var childIconLayout = new CenterContainer()
-				{
-					RectMinSize = new Vector2(0, 26),
-					SizeFlagsVertical = 0
-				};
-				outerChildLayout.AddChild(childIconLayout);
-
-				childIconLayout.AddChild(new Godot.TextureRect()
-				{
-					Texture = GD.Load<Texture>("res://node.png")
-				});
-
 				var childLayout = new VBoxContainer()
 				{
 					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
@@ -195,13 +183,29 @@ public class EcsPlugin : EditorPlugin
 				var targetField = type.GetField("Target");
 				var target = targetField.GetValue(obj);
 
+				var targetLayout = new HBoxContainer()
+				{
+					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
+				};
+				childLayout.AddChild(targetLayout);
+
+				var targetIconLayout = new VBoxContainer() { };
+				targetLayout.AddChild(targetIconLayout);
+
+				targetIconLayout.AddChild(new Godot.TextureRect()
+				{
+					Texture = GD.Load<Texture>("res://node.png"),
+					RectMinSize = new Vector2(0, 26),
+					StretchMode = TextureRect.StretchModeEnum.KeepCentered,
+				});
+
 				if (target == null)
 				{
 					var pickerLayout = new HBoxContainer()
 					{
 						SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
 					};
-					childLayout.AddChild(pickerLayout);
+					targetLayout.AddChild(pickerLayout);
 
 					pickerLayout.AddChild(new Godot.TextureRect()
 					{
@@ -225,11 +229,28 @@ public class EcsPlugin : EditorPlugin
 				}
 				else
 				{
-					addObject(childLayout, target, prefix + "/target/" + Utils.ComponentName(target), NodeType.Target);
+					addObject(targetLayout, target, prefix + "/target/" + Utils.ComponentName(target), Category.Target);
 				}
 
 				var componentField = type.GetField("Component");
 				var component = componentField.GetValue(obj);
+
+				var childComponentLayout = new HBoxContainer()
+				{
+					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
+				};
+				childLayout.AddChild(childComponentLayout);
+
+
+				var childComponentIconLayout = new VBoxContainer() { };
+				childComponentLayout.AddChild(childComponentIconLayout);
+
+				childComponentIconLayout.AddChild(new Godot.TextureRect()
+				{
+					Texture = GD.Load<Texture>("res://node.png"),
+					RectMinSize = new Vector2(0, 26),
+					StretchMode = TextureRect.StretchModeEnum.KeepCentered,
+				});
 
 				if (component == null)
 				{
@@ -237,7 +258,7 @@ public class EcsPlugin : EditorPlugin
 					{
 						SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
 					};
-					childLayout.AddChild(pickerLayout);
+					childComponentLayout.AddChild(pickerLayout);
 
 					pickerLayout.AddChild(new Godot.TextureRect()
 					{
@@ -261,7 +282,7 @@ public class EcsPlugin : EditorPlugin
 				}
 				else
 				{
-					addObject(childLayout, component, prefix + "/component/" + Utils.ComponentName(component), NodeType.Tag);
+					addObject(childComponentLayout, component, prefix + "/component/" + Utils.ComponentName(component), Category.Component);
 				}
 
 				return;
@@ -281,19 +302,19 @@ public class EcsPlugin : EditorPlugin
 			componentPrimitiveLayout.AddChild(titleLayout);
 
 			Texture iconTex = null;
-			switch (icon)
+			switch (objCategory)
 			{
-				case NodeType.Tag:
+				case Category.Component:
 					{
 						iconTex = GD.Load<Texture>("res://tag.png");
 						break;
 					}
-				case NodeType.Tags:
+				case Category.MultiComponent:
 					{
 						iconTex = GD.Load<Texture>("res://tags.png");
 						break;
 					}
-				case NodeType.Target:
+				case Category.Target:
 					{
 						iconTex = GD.Load<Texture>("res://target.png");
 						break;
@@ -368,12 +389,12 @@ public class EcsPlugin : EditorPlugin
 							SizeFlagsVertical = 0
 						};
 						indentLayout.AddChild(childLayout);
-						addObject(childLayout, childObj, name, NodeType.Value);
+						addObject(childLayout, childObj, name, Category.Value);
 					}
 				}
 			}
 
-			if (icon != NodeType.Value)
+			if (objCategory != Category.Value)
 			{
 				var remove = new Button()
 				{
@@ -409,7 +430,7 @@ public class EcsPlugin : EditorPlugin
 
 			name = $"{name}{(String.Join("", annotations))}";
 
-			addObject(layout, obj, $"components/{name}", isMany ? NodeType.Tags : NodeType.Tag);
+			addObject(layout, obj, $"components/{name}", isMany ? Category.MultiComponent : Category.Component);
 		}
 
 		var picker = new OptionButton() { Text = "Add Component" };
@@ -494,7 +515,6 @@ public class EcsPlugin : EditorPlugin
 
 	public void ReplaceComponent(int index, string prefix, GodotWrapper metaType)
 	{
-		Console.WriteLine(prefix);
 		if (current != null)
 		{
 			Type type = null;
@@ -548,7 +568,7 @@ public class EcsPlugin : EditorPlugin
 						return false;
 					}
 				}
-				
+
 				return true;
 			}))
 			{
