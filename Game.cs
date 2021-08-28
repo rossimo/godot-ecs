@@ -81,12 +81,16 @@ public class Game : Godot.YSort
 
 			if (physicsNode != null)
 			{
+				physicsNode.SetEntity(world, entity);
+
 				ref var physicsComponent = ref physicsComponents.Add(entity);
 				physicsComponent.Node = physicsNode;
 			}
 
 			if (renderNode != null)
 			{
+				renderNode.SetEntity(world, entity);
+
 				ref var render = ref renders.Add(entity);
 				render.Node = renderNode;
 
@@ -95,125 +99,6 @@ public class Game : Godot.YSort
 				renderNode.AddChild(positionTweenComponent.Tween);
 			}
 		}
-
-		/*
-		var sprites = world.GetPool<Sprite>();
-		var positions = world.GetPool<Position>();
-		var scales = world.GetPool<Scale>();
-		var players = world.GetPool<Player>();
-		var speeds = world.GetPool<Speed>();
-		var collisions = world.GetPool<Collision>();
-		var collisionTriggers = world.GetPool<EventTrigger<Collision>>();
-		var areas = world.GetPool<Area>();
-		var areaTriggers = world.GetPool<EventTrigger<Area>>();
-
-		{
-			var player = world.NewEntity();
-
-			players.Add(player);
-
-			ref var sprite = ref sprites.AddNotify(player);
-			sprite.Image = "res://resources/tiles/tile072.png";
-
-			ref var position = ref positions.AddNotify(player);
-			position.X = 50;
-			position.Y = 50;
-
-			ref var scale = ref scales.AddNotify(player);
-			scale.X = 3;
-			scale.Y = 3;
-
-			ref var speed = ref speeds.Add(player);
-			speed.Value = 3f;
-
-			areas.AddNotify(player);
-
-			collisions.AddNotify(player);
-		}
-
-		{
-			var fire = world.NewEntity();
-
-			ref var sprite = ref sprites.AddNotify(fire);
-			sprite.Image = "res://resources/tiles/tile495.png";
-
-			ref var position = ref positions.AddNotify(fire);
-			position.X = 400;
-			position.Y = 200;
-
-			ref var scale = ref scales.AddNotify(fire);
-			scale.X = 2;
-			scale.Y = 2;
-
-			collisions.AddNotify(fire);
-
-			ref var triggers = ref collisionTriggers.AddNotify(fire);
-			triggers.Tasks = new EventTask[] {
-				new Add<Flash>() {
-					Notify = true,
-					Component = new Flash() {
-						Color = new Color() { Red = 2f, Green = 2f, Blue = 2f }
-					}
-				},
-				new Add<Flash>() {
-					Notify = true,
-					Target = Target.Other,
-					Component = new Flash() {
-						Color = new Color() { Red = 2f, Green = 0f, Blue = 0f }
-					}
-				}
-			};
-		}
-
-		{
-			var button = world.NewEntity();
-
-			ref var sprite = ref sprites.AddNotify(button);
-			sprite.Image = "res://resources/tiles/tile481.png";
-
-			ref var position = ref positions.AddNotify(button);
-			position.X = 300;
-			position.Y = 300;
-
-			ref var scale = ref scales.AddNotify(button);
-			scale.X = 2;
-			scale.Y = 2;
-
-			areas.AddNotify(button);
-
-			ref var triggers = ref areaTriggers.AddNotify(button);
-			triggers.Tasks = new EventTask[] {
-				new Add<Flash>() {
-					Notify = true,
-					Component = new Flash() {
-						Color = new Color() { Red = 0.33f, Green = 0.33f, Blue = 0.33f }
-					}
-				}
-			};
-		}
-
-		{
-			var potion = world.NewEntity();
-
-			ref var sprite = ref sprites.AddNotify(potion);
-			sprite.Image = "res://resources/tiles/tile570.png";
-
-			ref var position = ref positions.AddNotify(potion);
-			position.X = 200;
-			position.Y = 300;
-
-			ref var scale = ref scales.AddNotify(potion);
-			scale.X = 2;
-			scale.Y = 2;
-
-			areas.AddNotify(potion);
-
-			ref var triggers = ref areaTriggers.AddNotify(potion);
-			triggers.Tasks = new EventTask[] {
-				new Add<DeleteEntity>()
-			};
-		}
-		*/
 
 		systems.Init();
 	}

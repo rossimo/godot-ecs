@@ -157,11 +157,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                     moves.Del(entity);
                     directions.Del(entity);
 
-                    var other = -1;
-                    if (collision.Collider is EntityNode otherNode)
-                    {
-                        otherNode.Entity.Unpack(world, out other);
-                    }
+                    var other = collision.Collider.GetEntity(world);
 
                     if (collisionEvents.Has(entity))
                     {
@@ -172,18 +168,14 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                         }
                     }
 
-                    /*
-                    if (target != -1 && collisionTriggers.Has(target))
+                    if (other != -1 && collisionEvents.Has(other))
                     {
-                        ref var trigger = ref collisionTriggers.Get(target);
-                        eventQueue.Events.AddRange(trigger.Tasks.Select(task => new Event()
+                        ref var events = ref collisionEvents.Get(other);
+                        foreach (var ev in events)
                         {
-                            Task = task,
-                            Source = target == -1 ? default : world.PackEntity(target),
-                            Target = world.PackEntity(entity)
-                        }));
+                            ev.Add(world, other, entity);
+                        }
                     }
-                    */
                 }
             }
 

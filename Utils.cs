@@ -500,4 +500,27 @@ public static class Utils
     {
         return type.GetCustomAttributes(typeof(IsEvent), false)?.Length > 0;
     }
+
+    public static void SetEntity(this Godot.Object obj, EcsWorld world, int entity)
+    {
+        var packed = world.PackEntity(entity);
+        obj.SetMeta("entity/id", packed.Id);
+        obj.SetMeta("entity/gen", packed.Gen);
+    }
+
+    public static int GetEntity(this Godot.Object obj, EcsWorld world)
+    {
+        if (obj == null)
+        {
+            return -1;
+        }
+
+        EcsPackedEntity packed;
+        packed.Id = Convert.ToInt32(obj.GetMeta("entity/id"));
+        packed.Gen = Convert.ToInt32(obj.GetMeta("entity/gen"));
+
+        int entityId = -1;
+        packed.Unpack(world, out entityId);
+        return entityId;
+    }
 }

@@ -20,6 +20,10 @@ script = ExtResource( 1 )
 position = Vector2( 400, 200 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 3 )
+__meta__ = {
+"components/collision[]()/0/component/speed/value": 5.0,
+"components/collision[]()/0/target/targetother": true
+}
 
 [node name="physics" type="KinematicBody2D" parent="fire"]
 
@@ -42,13 +46,9 @@ position = Vector2( 157, 160 )
 scale = Vector2( 3, 3 )
 texture = ExtResource( 2 )
 __meta__ = {
-"components/collision[]()/0/component/speed/value": 5.0,
-"components/collision[]()/0/target/targetself": true,
 "components/destination/x": 10.0,
 "components/destination/y": 0.0,
 "components/health/value": 40,
-"components/healthupdate[]/0/delta": 10,
-"components/healthupdate[]/1/delta": 20,
 "components/player": true,
 "components/speed/value": 2.0
 }
