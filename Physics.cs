@@ -92,6 +92,14 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             ref var nodeComponent = ref physicsNodes.Get(entity);
             ref var move = ref moves.Get(entity);
 
+            if (move.Destination.X == nodeComponent.Node.Position.x &&
+                move.Destination.Y == nodeComponent.Node.Position.y)
+            {
+                moves.Del(entity);
+                directions.Del(entity);
+                continue;
+            }
+
             var directionVec = nodeComponent.Node.Position
                 .DirectionTo(new Vector2(move.Destination.X, move.Destination.Y))
                 .Normalized();
