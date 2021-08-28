@@ -10,7 +10,11 @@ public struct Event<E>
     {
         if (Target is Target target)
         {
-            world.Add(target.Resolve(self, other), Component);
+            var entityId = target.Resolve(self, other);
+            if (entityId != -1)
+            {
+                world.Add(entityId, Component);
+            }
         }
     }
 }
