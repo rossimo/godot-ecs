@@ -31,7 +31,6 @@ public class HealthSystem : IEcsRunSystem
 
             foreach (var update in updates)
             {
-                Console.WriteLine($"Health delta {update.Delta}");
                 health.Value += update.Delta;
             }
 

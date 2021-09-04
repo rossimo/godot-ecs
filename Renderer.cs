@@ -10,8 +10,13 @@ public struct Sprite
 public struct RenderNode
 {
     public Godot.Node2D Node;
-    public Godot.Tween ModulateTween;
 }
+
+public struct ModulateTween
+{
+    public Tween Tween;
+}
+
 
 [Editor]
 public struct LowRenderPriority { }
@@ -45,6 +50,7 @@ public class RendererSystem : IEcsRunSystem
     [EcsPool] readonly EcsPool<RenderNode> renders = default;
     [EcsPool] readonly EcsPool<FrameTime> deltas = default;
     [EcsPool] readonly EcsPool<Flash> flashes = default;
+    [EcsPool] readonly EcsPool<ModulateTween> modulates = default;
 
     public void Run(EcsSystems systems)
     {
@@ -55,20 +61,21 @@ public class RendererSystem : IEcsRunSystem
             delta = deltas.Get(entity).Value;
         }
 
-        foreach (var entity in world.Filter<RenderNode>().Inc<Notify<Flash>>().End())
+        foreach (var entity in world.Filter<RenderNode>().Inc<ModulateTween>().Inc<Notify<Flash>>().End())
         {
-            ref var spriteNode = ref renders.Get(entity);
-
-            var flash = flashes.Get(entity);
+            ref var render = ref renders.Get(entity);
+            ref var modulate = ref modulates.Get(entity);
+            ref var flash = ref flashes.Get(entity);
+            
             flashes.Del(entity);
 
-            var node = spriteNode.Node;
-            var tween = spriteNode.ModulateTween;
+            var node = render.Node;
+            var tween = modulate.Tween;
 
             tween.InterpolateProperty(node, "modulate",
                 new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue),
                 new Godot.Color(1, 1, 1),
-                .33f);
+                1f);
 
             tween.Start();
         }

@@ -481,8 +481,14 @@ public static class Utils
         where T : struct
     {
         ref var reference = ref pool.Ensure(entity);
-        pool.AddNotify<T>(entity);
+        pool.Notify<T>(entity);
         reference = value;
+    }
+
+    public static bool SafeHas<T>(this EcsPool<T> pool, int entity)
+        where T : struct
+    {
+        return entity != -1 && pool.Has(entity);
     }
 
     public static void ReflectionAdd<T>(EcsPool<T> pool, int entity, T value)
@@ -518,7 +524,9 @@ public static class Utils
 
     public static int GetEntity(this Godot.Object obj, EcsWorld world)
     {
-        if (obj == null)
+        if (obj == null || 
+            !obj.HasMeta("entity/id") || 
+            !obj.HasMeta("entity/gen"))
         {
             return -1;
         }

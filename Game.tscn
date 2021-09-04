@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=2]
+[gd_scene load_steps=10 format=2]
 
 [ext_resource path="res://Game.cs" type="Script" id=1]
 [ext_resource path="res://resources/tiles/tile072.png" type="Texture" id=2]
@@ -6,15 +6,45 @@
 [ext_resource path="res://resources/tiles/tile481.png" type="Texture" id=4]
 [ext_resource path="res://resources/tiles/tile570.png" type="Texture" id=5]
 
-[sub_resource type="CircleShape2D" id=1]
-radius = 5.0
-
-[sub_resource type="CapsuleShape2D" id=2]
+[sub_resource type="CapsuleShape2D" id=1]
 radius = 15.0
 height = 15.0
 
+[sub_resource type="CapsuleShape2D" id=2]
+
+[sub_resource type="CircleShape2D" id=3]
+radius = 5.0
+
+[sub_resource type="CircleShape2D" id=4]
+
 [node name="Game" type="YSort"]
 script = ExtResource( 1 )
+
+[node name="player" type="Sprite" parent="."]
+position = Vector2( 157, 160 )
+scale = Vector2( 3, 3 )
+texture = ExtResource( 2 )
+__meta__ = {
+"components/destination/x": 10.0,
+"components/destination/y": 0.0,
+"components/health/value": 40,
+"components/player": true,
+"components/speed/value": 2.0
+}
+
+[node name="physics" type="KinematicBody2D" parent="player"]
+scale = Vector2( 0.333333, 0.333333 )
+
+[node name="collision" type="CollisionShape2D" parent="player/physics"]
+shape = SubResource( 1 )
+
+[node name="area" type="Area2D" parent="player"]
+position = Vector2( 0, 5 )
+scale = Vector2( 0.333333, 0.333333 )
+
+[node name="collision" type="CollisionShape2D" parent="player/area"]
+rotation = 1.5708
+shape = SubResource( 2 )
 
 [node name="fire" type="Sprite" parent="."]
 position = Vector2( 400, 200 )
@@ -29,32 +59,29 @@ __meta__ = {
 
 [node name="collision" type="CollisionShape2D" parent="fire/physics"]
 position = Vector2( 0, 2.5 )
-shape = SubResource( 1 )
+shape = SubResource( 3 )
 
 [node name="potion" type="Sprite" parent="."]
 position = Vector2( 200, 300 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 5 )
+__meta__ = {
+"components/area[]()/0/component/healthupdate[]/0/delta": 10,
+"components/area[]()/0/target/targetother": true,
+"components/area[]()/1/component/delete": true,
+"components/area[]()/1/target/targetself": true,
+"components/area[]()/2/component/flash/color/blue": 1.0,
+"components/area[]()/2/component/flash/color/green": 2.0,
+"components/area[]()/2/component/flash/color/red": 1.0,
+"components/area[]()/2/target/targetother": true
+}
+
+[node name="area" type="Area2D" parent="potion"]
+
+[node name="collision" type="CollisionShape2D" parent="potion/area"]
+shape = SubResource( 4 )
 
 [node name="button" type="Sprite" parent="."]
 position = Vector2( 300, 300 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 4 )
-
-[node name="sprite" type="Sprite" parent="."]
-position = Vector2( 157, 160 )
-scale = Vector2( 3, 3 )
-texture = ExtResource( 2 )
-__meta__ = {
-"components/destination/x": 10.0,
-"components/destination/y": 0.0,
-"components/health/value": 40,
-"components/player": true,
-"components/speed/value": 2.0
-}
-
-[node name="physics" type="KinematicBody2D" parent="sprite"]
-scale = Vector2( 0.333333, 0.333333 )
-
-[node name="collision" type="CollisionShape2D" parent="sprite/physics"]
-shape = SubResource( 2 )

@@ -199,7 +199,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             }
         }
 
-        foreach (var entity in world.Filter<Area>().Inc<Notify<AreaNode>>().End())
+        foreach (var entity in world.Filter<Many<Event<Area>>>().Inc<Notify<AreaNode>>().End())
         {
             ref var area = ref areaNodes.Get(entity);
             ref var ev = ref areaEvents.Get(entity);
