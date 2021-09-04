@@ -13,7 +13,7 @@ public struct Event<E>
             var entityId = target.Resolve(self, other);
             if (entityId != -1)
             {
-                world.Add(entityId, Component);
+                world.AddNotify(entityId, Component);
             }
         }
     }

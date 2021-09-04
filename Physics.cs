@@ -31,7 +31,7 @@ public struct Direction
 [Editor, IsMany, IsEvent]
 public struct Collision { }
 
-[Editor]
+[Editor, IsMany, IsEvent]
 public struct Area { }
 
 public struct PhysicsNode
@@ -69,6 +69,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<RenderNode> renders = default;
     [EcsPool] readonly EcsPool<PositionTween> positionTweens = default;
     [EcsPool] readonly EcsPool<AreaNode> areaNodes = default;
+    [EcsPool] readonly EcsPool<Many<Event<Area>>> areaEvents = default;
     [EcsPool] readonly EcsPool<Many<Event<Collision>>> collisionEvents = default;
 
     public void Init(EcsSystems systems)
@@ -198,23 +199,21 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             }
         }
 
-        /*
-        foreach (var entity in world.Filter<AreaNode>().Inc<Notify<Trigger<Area>>>().End())
+        foreach (var entity in world.Filter<Area>().Inc<Notify<AreaNode>>().End())
         {
-            ref var areaNode = ref areaNodes.Get(entity);
-            ref var trigger = ref areaTriggers.Get(entity);
-            var node = areaNode.Node;
+            ref var area = ref areaNodes.Get(entity);
+            ref var ev = ref areaEvents.Get(entity);
+            var node = area.Node;
 
-            if (node.IsConnected("area_entered", game, nameof(game._Event)))
+            if (node.IsConnected("area_entered", game, nameof(game.AreaEvent)))
             {
-                node.Disconnect("area_entered", game, nameof(game._Event));
+                node.Disconnect("area_entered", game, nameof(game.AreaEvent));
             }
 
-            node.Connect("area_entered", game, nameof(game._Event), new Godot.Collections.Array() {
-                new GodotWrapper(world.PackEntity(entity)), new GodotWrapper(trigger.Tasks)
+            node.Connect("area_entered", game, nameof(game.AreaEvent), new Godot.Collections.Array() {
+                new GodotWrapper(world.PackEntity(entity))
             });
         }
-        */
 
         foreach (int entity in world.Filter<AreaNode>().Inc<Delete>().End())
         {

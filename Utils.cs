@@ -447,7 +447,7 @@ public static class Utils
     private static Dictionary<Type, MethodInfo> addMethodCache =
         new Dictionary<Type, MethodInfo>();
 
-    public static void Add(this EcsWorld world, int entity, object component)
+    public static void AddNotify(this EcsWorld world, int entity, object component)
     {
         var type = component.GetType();
         var poolType = type;
@@ -468,13 +468,21 @@ public static class Utils
         addMethodCache.TryGetValue(type, out addMethod);
         if (addMethod == null)
         {
-            addMethod = typeof(Utils).GetMethod("ReflectionAdd")
+            addMethod = typeof(Utils).GetMethod("ReflectionAddNotify")
                 .MakeGenericMethod(poolType);
 
             addMethodCache.Add(type, addMethod);
         }
 
         addMethod.Invoke(null, new[] { pool, entity, component });
+    }
+
+    public static void ReflectionAddNotify<T>(EcsPool<T> pool, int entity, T value)
+        where T : struct
+    {
+        ref var reference = ref pool.Ensure(entity);
+        pool.AddNotify<T>(entity);
+        reference = value;
     }
 
     public static void ReflectionAdd<T>(EcsPool<T> pool, int entity, T value)
