@@ -65,7 +65,7 @@ public class RendererSystem : IEcsRunSystem
         {
             ref var render = ref renders.Get(entity);
             ref var modulate = ref modulates.Get(entity);
-            ref var flash = ref flashes.Get(entity);
+            var flash = flashes.Get(entity);
             
             flashes.Del(entity);
 
@@ -75,7 +75,7 @@ public class RendererSystem : IEcsRunSystem
             tween.InterpolateProperty(node, "modulate",
                 new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue),
                 new Godot.Color(1, 1, 1),
-                1f);
+                .33f);
 
             tween.Start();
         }

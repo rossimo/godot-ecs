@@ -54,10 +54,10 @@ position = Vector2( 400, 200 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 3 )
 __meta__ = {
-"components/collision[]()/0/component/flash/color/blue": 1.0,
-"components/collision[]()/0/component/flash/color/green": 1.0,
-"components/collision[]()/0/component/flash/color/red": 1.5,
-"components/collision[]()/0/target/targetself": true,
+"components/collision[]()/0/component/flash/color/blue": 0.0,
+"components/collision[]()/0/component/flash/color/green": 0.0,
+"components/collision[]()/0/component/flash/color/red": 1,
+"components/collision[]()/0/target/targetother": true,
 "components/health/value": 100
 }
 
@@ -85,8 +85,8 @@ __meta__ = {
 "components/area[]()/1/component/delete": true,
 "components/area[]()/1/target/targetself": true,
 "components/area[]()/2/component/flash/color/blue": 1.0,
-"components/area[]()/2/component/flash/color/green": 2.0,
-"components/area[]()/2/component/flash/color/red": 1.0,
+"components/area[]()/2/component/flash/color/green": 0,
+"components/area[]()/2/component/flash/color/red": 0,
 "components/area[]()/2/target/targetother": true
 }
 
