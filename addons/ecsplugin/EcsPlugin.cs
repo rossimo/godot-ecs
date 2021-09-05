@@ -234,13 +234,11 @@ public class EcsPlugin : EditorPlugin
 
 				var componentField = type.GetField("Component");
 				var component = componentField.GetValue(obj);
-
 				var childComponentLayout = new HBoxContainer()
 				{
 					SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
 				};
 				childLayout.AddChild(childComponentLayout);
-
 
 				var childComponentIconLayout = new VBoxContainer() { };
 				childComponentLayout.AddChild(childComponentIconLayout);
@@ -288,11 +286,18 @@ public class EcsPlugin : EditorPlugin
 				return;
 			}
 
+			var componentPrimitiveOuterLayout = new VBoxContainer()
+			{
+				SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
+				SizeFlagsVertical = 0
+			};
+			parent.AddChild(componentPrimitiveOuterLayout);
+
 			var componentPrimitiveLayout = new HBoxContainer()
 			{
 				SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill
 			};
-			parent.AddChild(componentPrimitiveLayout);
+			componentPrimitiveOuterLayout.AddChild(componentPrimitiveLayout);
 
 			var titleLayout = new HBoxContainer()
 			{
@@ -376,7 +381,7 @@ public class EcsPlugin : EditorPlugin
 							SizeFlagsHorizontal = (int)Control.SizeFlags.ExpandFill,
 							SizeFlagsVertical = 0
 						};
-						parent.AddChild(indentLayout);
+						componentPrimitiveOuterLayout.AddChild(indentLayout);
 
 						indentLayout.AddChild(new Control()
 						{

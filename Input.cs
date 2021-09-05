@@ -29,11 +29,8 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<MouseRight> mouseRights = default;
     [EcsPool] readonly EcsPool<Move> moves = default;
     [EcsPool] readonly EcsPool<Tick> ticks = default;
-    [EcsPool] readonly EcsPool<PositionTween> positionTweens = default;
     [EcsPool] readonly EcsPool<Direction> directions = default;
-    [EcsPool] readonly EcsPool<Speed> speeds = default;
     [EcsPool] readonly EcsPool<Expiration> expirations = default;
-    [EcsPool] readonly EcsPool<RenderNode> renders = default;
     [EcsPool] readonly EcsPool<PhysicsNode> physicsNodes = default;
 
     public void Init(EcsSystems systems)
@@ -104,26 +101,15 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
                     .DirectionTo(mousePosition)
                     .Normalized();
 
-                var bullet = world.NewEntity();
+                var node = GD.Load<PackedScene>("res://bullet.tscn").Instance<Node2D>();
+                node.Position = playerNode.Position;
+                game.AddChild(node);
 
-                ref var node2dComponent = ref renders.Add(bullet);
-                node2dComponent.Node = new Godot.Sprite()
-                {
-                    Texture = GD.Load<Texture>("res://resources/tiles/tile663.png"),
-                    Position = playerNode.Position
-                };
-                game.AddChild(node2dComponent.Node);
-
-                ref var positionTweenComponent = ref positionTweens.Add(bullet);
-                positionTweenComponent.Tween = new Tween() { Name = "position" };
-                node2dComponent.Node.AddChild(positionTweenComponent.Tween);
+                var bullet = game.DiscoverEntity(node);
 
                 ref var direction = ref directions.Add(bullet);
                 direction.X = directionVec.x;
                 direction.Y = directionVec.y;
-
-                ref var speed = ref speeds.Add(bullet);
-                speed.Value = 10f;
 
                 ref var expiration = ref expirations.Add(bullet);
                 expiration.Tick = PhysicsSystem.MillisToTicks(1 * 1000) + tick;

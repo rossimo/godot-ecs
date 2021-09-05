@@ -1,9 +1,9 @@
-[gd_scene load_steps=10 format=2]
+[gd_scene load_steps=11 format=2]
 
 [ext_resource path="res://Game.cs" type="Script" id=1]
 [ext_resource path="res://resources/tiles/tile072.png" type="Texture" id=2]
 [ext_resource path="res://resources/tiles/tile495.png" type="Texture" id=3]
-[ext_resource path="res://resources/tiles/tile481.png" type="Texture" id=4]
+[ext_resource path="res://spider.tscn" type="PackedScene" id=4]
 [ext_resource path="res://resources/tiles/tile570.png" type="Texture" id=5]
 
 [sub_resource type="CapsuleShape2D" id=1]
@@ -16,6 +16,9 @@ height = 15.0
 radius = 5.0
 
 [sub_resource type="CircleShape2D" id=4]
+radius = 5.0
+
+[sub_resource type="CircleShape2D" id=5]
 
 [node name="Game" type="YSort"]
 script = ExtResource( 1 )
@@ -51,8 +54,11 @@ position = Vector2( 400, 200 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 3 )
 __meta__ = {
-"components/collision[]()/0/component/speed/value": 5.0,
-"components/collision[]()/0/target/targetother": true
+"components/collision[]()/0/component/flash/color/blue": 1.0,
+"components/collision[]()/0/component/flash/color/green": 1.0,
+"components/collision[]()/0/component/flash/color/red": 1.5,
+"components/collision[]()/0/target/targetself": true,
+"components/health/value": 100
 }
 
 [node name="physics" type="KinematicBody2D" parent="fire"]
@@ -61,12 +67,20 @@ __meta__ = {
 position = Vector2( 0, 2.5 )
 shape = SubResource( 3 )
 
+[node name="area" type="Area2D" parent="fire"]
+position = Vector2( 0, 2.5 )
+collision_layer = 2
+collision_mask = 2
+
+[node name="collision" type="CollisionShape2D" parent="fire/area"]
+shape = SubResource( 4 )
+
 [node name="potion" type="Sprite" parent="."]
 position = Vector2( 200, 300 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 5 )
 __meta__ = {
-"components/area[]()/0/component/healthupdate[]/0/delta": 10,
+"components/area[]()/0/component/speed/value": 4.0,
 "components/area[]()/0/target/targetother": true,
 "components/area[]()/1/component/delete": true,
 "components/area[]()/1/target/targetself": true,
@@ -79,9 +93,10 @@ __meta__ = {
 [node name="area" type="Area2D" parent="potion"]
 
 [node name="collision" type="CollisionShape2D" parent="potion/area"]
-shape = SubResource( 4 )
+shape = SubResource( 5 )
 
-[node name="button" type="Sprite" parent="."]
-position = Vector2( 300, 300 )
-scale = Vector2( 2, 2 )
-texture = ExtResource( 4 )
+[node name="spider" parent="." instance=ExtResource( 4 )]
+position = Vector2( 581, 72 )
+
+[node name="spider2" parent="." instance=ExtResource( 4 )]
+position = Vector2( 458, 390 )
