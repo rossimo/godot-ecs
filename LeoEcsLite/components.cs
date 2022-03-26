@@ -1,7 +1,7 @@
 // ----------------------------------------------------------------------------
 // The MIT License
 // Lightweight ECS framework https://github.com/Leopotam/ecslite
-// Copyright (c) 2021 Leopotam <leopotam@gmail.com>
+// Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
 // ----------------------------------------------------------------------------
 
 using System;
@@ -16,7 +16,9 @@ namespace Leopotam.EcsLite {
         void Resize (int capacity);
         bool Has (int entity);
         void Del (int entity);
+        void AddRaw (int entity, object dataRaw);
         object GetRaw (int entity);
+        void SetRaw (int entity, object dataRaw);
         int GetId ();
         Type GetComponentType ();
     }
@@ -44,24 +46,24 @@ namespace Leopotam.EcsLite {
         T _autoresetFakeInstance;
 #endif
 
-        internal EcsPool (EcsWorld world, int id, int denseCapacity, int sparseCapacity) {
+        internal EcsPool (EcsWorld world, int id, int denseCapacity, int sparseCapacity, int recycledCapacity) {
             _type = typeof (T);
             _world = world;
             _id = id;
             _denseItems = new T[denseCapacity + 1];
             _sparseItems = new int[sparseCapacity];
             _denseItemsCount = 1;
-            _recycledItems = new int[512];
+            _recycledItems = new int[recycledCapacity];
             _recycledItemsCount = 0;
             var isAutoReset = typeof (IEcsAutoReset<T>).IsAssignableFrom (_type);
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             if (!isAutoReset && _type.GetInterface ("IEcsAutoReset`1") != null) {
                 throw new Exception ($"IEcsAutoReset should have <{typeof (T).Name}> constraint for component \"{typeof (T).Name}\".");
             }
 #endif
             if (isAutoReset) {
                 var autoResetMethod = typeof (T).GetMethod (nameof (IEcsAutoReset<T>.AutoReset));
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
                 if (autoResetMethod == null) {
                     throw new Exception (
                         $"IEcsAutoReset<{typeof (T).Name}> explicit implementation not supported, use implicit instead.");
@@ -77,7 +79,15 @@ namespace Leopotam.EcsLite {
                     autoResetMethod);
             }
         }
-        
+
+#if UNITY_2020_3_OR_NEWER
+        [UnityEngine.Scripting.Preserve]
+#endif
+        void ReflectionSupportHack () {
+            _world.GetPool<T> ();
+            _world.Filter<T> ().Exc<T> ().End ();
+        }
+
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public EcsWorld GetWorld () {
             return _world;
@@ -98,21 +108,49 @@ namespace Leopotam.EcsLite {
         }
 
         object IEcsPool.GetRaw (int entity) {
-            return _denseItems[_sparseItems[entity]];
+            return Get (entity);
+        }
+
+        void IEcsPool.SetRaw (int entity, object dataRaw) {
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
+            if (dataRaw == null || dataRaw.GetType () != _type) { throw new Exception ("Invalid component data, valid \"{typeof (T).Name}\" instance required."); }
+            if (_sparseItems[entity] <= 0) { throw new Exception ($"Component \"{typeof (T).Name}\" not attached to entity."); }
+#endif
+            _denseItems[_sparseItems[entity]] = (T) dataRaw;
+        }
+
+        void IEcsPool.AddRaw (int entity, object dataRaw) {
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
+            if (dataRaw == null || dataRaw.GetType () != _type) { throw new Exception ("Invalid component data, valid \"{typeof (T).Name}\" instance required."); }
+#endif
+            ref var data = ref Add (entity);
+            data = (T) dataRaw;
         }
 
         public T[] GetRawDenseItems () {
             return _denseItems;
         }
 
+        public ref int GetRawDenseItemsCount () {
+            return ref _denseItemsCount;
+        }
+
         public int[] GetRawSparseItems () {
             return _sparseItems;
         }
 
+        public int[] GetRawRecycledItems () {
+            return _recycledItems;
+        }
+
+        public ref int GetRawRecycledItemsCount () {
+            return ref _recycledItemsCount;
+        }
+
         public ref T Add (int entity) {
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             if (!_world.IsEntityAliveInternal (entity)) { throw new Exception ("Cant touch destroyed entity."); }
-            if (_sparseItems[entity] > 0) { throw new Exception ("Already attached."); }
+            if (_sparseItems[entity] > 0) { throw new Exception ($"Component \"{typeof (T).Name}\" already attached to entity."); }
 #endif
             int idx;
             if (_recycledItemsCount > 0) {
@@ -126,7 +164,7 @@ namespace Leopotam.EcsLite {
                 _autoReset?.Invoke (ref _denseItems[idx]);
             }
             _sparseItems[entity] = idx;
-            _world.OnEntityChange (entity, _id, true);
+            _world.OnEntityChangeInternal (entity, _id, true);
             _world.Entities[entity].ComponentsCount++;
 
             ref var component = ref _denseItems[idx];
@@ -138,33 +176,35 @@ namespace Leopotam.EcsLite {
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public ref T Get (int entity) {
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             if (!_world.IsEntityAliveInternal (entity)) { throw new Exception ("Cant touch destroyed entity."); }
-            if (_sparseItems[entity] == 0) { throw new Exception ("Not attached."); }
+            if (_sparseItems[entity] == 0) { throw new Exception ($"Cant get \"{typeof (T).Name}\" component - not attached."); }
 #endif
             return ref _denseItems[_sparseItems[entity]];
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public bool Has (int entity) {
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             if (!_world.IsEntityAliveInternal (entity)) { throw new Exception ("Cant touch destroyed entity."); }
 #endif
             return _sparseItems[entity] > 0;
         }
 
         public void Del (int entity) {
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             if (!_world.IsEntityAliveInternal (entity)) { throw new Exception ("Cant touch destroyed entity."); }
 #endif
             ref var sparseData = ref _sparseItems[entity];
             if (sparseData > 0) {
-                _world.OnEntityChange (entity, _id, false);
+                _world.OnEntityChangeInternal (entity, _id, false);
                 if (_recycledItemsCount == _recycledItems.Length) {
                     Array.Resize (ref _recycledItems, _recycledItemsCount << 1);
                 }
-                var component = _denseItems[sparseData];
                 _recycledItems[_recycledItemsCount++] = sparseData;
+#if DEBUG || LEOECSLITE_WORLD_EVENTS
+                var component = _denseItems[sparseData];
+#endif
                 if (_autoReset != null) {
                     _autoReset.Invoke (ref _denseItems[sparseData]);
                 } else {

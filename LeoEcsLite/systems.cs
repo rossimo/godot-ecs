@@ -1,7 +1,7 @@
 // ----------------------------------------------------------------------------
 // The MIT License
 // Lightweight ECS framework https://github.com/Leopotam/ecslite
-// Copyright (c) 2021 Leopotam <leopotam@gmail.com>
+// Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
 // ----------------------------------------------------------------------------
 
 using System.Collections.Generic;
@@ -38,7 +38,7 @@ namespace Leopotam.EcsLite {
     [Il2CppSetOption (Option.NullChecks, false)]
     [Il2CppSetOption (Option.ArrayBoundsChecks, false)]
 #endif
-    public sealed class EcsSystems {
+    public class EcsSystems {
         readonly EcsWorld _defaultWorld;
         readonly Dictionary<string, EcsWorld> _worlds;
         readonly List<IEcsSystem> _allSystems;
@@ -99,7 +99,7 @@ namespace Leopotam.EcsLite {
             for (var i = _allSystems.Count - 1; i >= 0; i--) {
                 if (_allSystems[i] is IEcsDestroySystem destroySystem) {
                     destroySystem.Destroy (this);
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
                     var worldName = CheckForLeakedEntities ();
                     if (worldName != null) { throw new System.Exception ($"Empty entity detected in world \"{worldName}\" after {destroySystem.GetType ().Name}.Destroy()."); }
 #endif
@@ -108,7 +108,7 @@ namespace Leopotam.EcsLite {
             for (var i = _allSystems.Count - 1; i >= 0; i--) {
                 if (_allSystems[i] is IEcsPostDestroySystem postDestroySystem) {
                     postDestroySystem.PostDestroy (this);
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
                     var worldName = CheckForLeakedEntities ();
                     if (worldName != null) { throw new System.Exception ($"Empty entity detected in world \"{worldName}\" after {postDestroySystem.GetType ().Name}.PostDestroy()."); }
 #endif
@@ -119,7 +119,7 @@ namespace Leopotam.EcsLite {
         }
 
         public EcsSystems AddWorld (EcsWorld world, string name) {
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             if (string.IsNullOrEmpty (name)) { throw new System.Exception ("World name cant be null or empty."); }
 #endif
             _worlds[name] = world;
@@ -141,7 +141,7 @@ namespace Leopotam.EcsLite {
             foreach (var system in _allSystems) {
                 if (system is IEcsPreInitSystem initSystem) {
                     initSystem.PreInit (this);
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
                     var worldName = CheckForLeakedEntities ();
                     if (worldName != null) { throw new System.Exception ($"Empty entity detected in world \"{worldName}\" after {initSystem.GetType ().Name}.PreInit()."); }
 #endif
@@ -151,7 +151,7 @@ namespace Leopotam.EcsLite {
             foreach (var system in _allSystems) {
                 if (system is IEcsInitSystem initSystem) {
                     initSystem.Init (this);
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
                     var worldName = CheckForLeakedEntities ();
                     if (worldName != null) { throw new System.Exception ($"Empty entity detected in world \"{worldName}\" after {initSystem.GetType ().Name}.Init()."); }
 #endif
@@ -165,14 +165,14 @@ namespace Leopotam.EcsLite {
         public void Run () {
             for (int i = 0, iMax = _runSystemsCount; i < iMax; i++) {
                 _runSystems[i].Run (this);
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
                 var worldName = CheckForLeakedEntities ();
                 if (worldName != null) { throw new System.Exception ($"Empty entity detected in world \"{worldName}\" after {_runSystems[i].GetType ().Name}.Run()."); }
 #endif
             }
         }
 
-#if DEBUG
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
         public string CheckForLeakedEntities () {
             if (_defaultWorld.CheckForLeakedEntities ()) { return "default"; }
             foreach (var pair in _worlds) {

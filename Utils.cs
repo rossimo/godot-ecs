@@ -553,7 +553,7 @@ public static class Utils
         return array;
     }
 
-    public static int[] Find(this EcsFilter.Mask mask)
+    public static int[] Find(this EcsWorld.Mask mask)
     {
         return mask.End().Find();
     }
