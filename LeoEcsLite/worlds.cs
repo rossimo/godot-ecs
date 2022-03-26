@@ -12,12 +12,14 @@ using System.Runtime.CompilerServices;
 using Unity.IL2CPP.CompilerServices;
 #endif
 
-namespace Leopotam.EcsLite {
+namespace Leopotam.EcsLite
+{
 #if ENABLE_IL2CPP
     [Il2CppSetOption (Option.NullChecks, false)]
     [Il2CppSetOption (Option.ArrayBoundsChecks, false)]
 #endif
-    public sealed class EcsWorld {
+    public sealed class EcsWorld
+    {
         internal EntityData[] Entities;
         int _entitiesCount;
         int[] _recycledEntities;
@@ -34,44 +36,61 @@ namespace Leopotam.EcsLite {
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
         List<IEcsWorldEventListener> _eventListeners;
 
-        public void AddEventListener (IEcsWorldEventListener listener) {
+        public void AddEventListener(IEcsWorldEventListener listener)
+        {
 #if DEBUG
-            if (listener == null) { throw new Exception ("Listener is null."); }
+            if (listener == null) { throw new Exception("Listener is null."); }
 #endif
-            _eventListeners.Add (listener);
+            _eventListeners.Add(listener);
         }
 
-        public void RemoveEventListener (IEcsWorldEventListener listener) {
+        public void RemoveEventListener(IEcsWorldEventListener listener)
+        {
 #if DEBUG
-            if (listener == null) { throw new Exception ("Listener is null."); }
+            if (listener == null) { throw new Exception("Listener is null."); }
 #endif
-            _eventListeners.Remove (listener);
+            _eventListeners.Remove(listener);
         }
 
-        public void RaiseEntityChangeEvent (int entity) {
-            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                _eventListeners[ii].OnEntityChanged (entity);
+        public void RaiseComponentAddedEvent(int entity, object component)
+        {
+            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++)
+            {
+                _eventListeners[ii].OnComponentAdded(entity, component);
+            }
+        }
+
+        public void RaiseComponentRemovedEvent(int entity, object component)
+        {
+            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++)
+            {
+                _eventListeners[ii].OnComponentRemoved(entity, component);
             }
         }
 #endif
 #if DEBUG
-        readonly List<int> _leakedEntities = new List<int> (512);
+        readonly List<int> _leakedEntities = new List<int>(512);
 
-        internal bool CheckForLeakedEntities () {
-            if (_leakedEntities.Count > 0) {
-                for (int i = 0, iMax = _leakedEntities.Count; i < iMax; i++) {
+        internal bool CheckForLeakedEntities()
+        {
+            if (_leakedEntities.Count > 0)
+            {
+                for (int i = 0, iMax = _leakedEntities.Count; i < iMax; i++)
+                {
                     ref var entityData = ref Entities[_leakedEntities[i]];
-                    if (entityData.Gen > 0 && entityData.ComponentsCount == 0) {
+                    if (entityData.Gen > 0 && entityData.ComponentsCount == 0)
+                    {
                         return true;
                     }
                 }
-                _leakedEntities.Clear ();
+                _leakedEntities.Clear();
             }
             return false;
         }
 #endif
 
-        public EcsWorld (in Config cfg = default) {
+        public EcsWorld(in Config cfg = default)
+        {
             // entities.
             var capacity = cfg.Entities > 0 ? cfg.Entities : Config.EntitiesDefault;
             Entities = new EntityData[capacity];
@@ -82,71 +101,84 @@ namespace Leopotam.EcsLite {
             // pools.
             capacity = cfg.Pools > 0 ? cfg.Pools : Config.PoolsDefault;
             _pools = new IEcsPool[capacity];
-            _poolHashes = new Dictionary<Type, IEcsPool> (capacity);
+            _poolHashes = new Dictionary<Type, IEcsPool>(capacity);
             _filtersByIncludedComponents = new List<EcsFilter>[capacity];
             _filtersByExcludedComponents = new List<EcsFilter>[capacity];
             _poolsCount = 0;
             // filters.
             capacity = cfg.Filters > 0 ? cfg.Filters : Config.FiltersDefault;
-            _hashedFilters = new Dictionary<int, EcsFilter> (capacity);
-            _allFilters = new List<EcsFilter> (capacity);
+            _hashedFilters = new Dictionary<int, EcsFilter>(capacity);
+            _allFilters = new List<EcsFilter>(capacity);
             _poolDenseSize = cfg.PoolDenseSize > 0 ? cfg.PoolDenseSize : Config.PoolDenseSizeDefault;
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-            _eventListeners = new List<IEcsWorldEventListener> (4);
+            _eventListeners = new List<IEcsWorldEventListener>(4);
 #endif
             _destroyed = false;
         }
 
-        public void Destroy () {
+        public void Destroy()
+        {
 #if DEBUG
-            if (CheckForLeakedEntities ()) { throw new Exception ($"Empty entity detected before EcsWorld.Destroy()."); }
+            if (CheckForLeakedEntities()) { throw new Exception($"Empty entity detected before EcsWorld.Destroy()."); }
 #endif
             _destroyed = true;
-            for (var i = _entitiesCount - 1; i >= 0; i--) {
+            for (var i = _entitiesCount - 1; i >= 0; i--)
+            {
                 ref var entityData = ref Entities[i];
-                if (entityData.ComponentsCount > 0) {
-                    DelEntity (i);
+                if (entityData.ComponentsCount > 0)
+                {
+                    DelEntity(i);
                 }
             }
-            _pools = Array.Empty<IEcsPool> ();
-            _poolHashes.Clear ();
-            _hashedFilters.Clear ();
-            _allFilters.Clear ();
-            _filtersByIncludedComponents = Array.Empty<List<EcsFilter>> ();
-            _filtersByExcludedComponents = Array.Empty<List<EcsFilter>> ();
+            _pools = Array.Empty<IEcsPool>();
+            _poolHashes.Clear();
+            _hashedFilters.Clear();
+            _allFilters.Clear();
+            _filtersByIncludedComponents = Array.Empty<List<EcsFilter>>();
+            _filtersByExcludedComponents = Array.Empty<List<EcsFilter>>();
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-            for (var ii = _eventListeners.Count - 1; ii >= 0; ii--) {
-                _eventListeners[ii].OnWorldDestroyed (this);
+            for (var ii = _eventListeners.Count - 1; ii >= 0; ii--)
+            {
+                _eventListeners[ii].OnWorldDestroyed(this);
             }
 #endif
         }
 
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public bool IsAlive () {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool IsAlive()
+        {
             return !_destroyed;
         }
 
-        public int NewEntity () {
+        public int NewEntity()
+        {
             int entity;
-            if (_recycledEntitiesCount > 0) {
+            if (_recycledEntitiesCount > 0)
+            {
                 entity = _recycledEntities[--_recycledEntitiesCount];
                 ref var entityData = ref Entities[entity];
-                entityData.Gen = (short) -entityData.Gen;
-            } else {
+                entityData.Gen = (short)-entityData.Gen;
+            }
+            else
+            {
                 // new entity.
-                if (_entitiesCount == Entities.Length) {
+                if (_entitiesCount == Entities.Length)
+                {
                     // resize entities and component pools.
                     var newSize = _entitiesCount << 1;
-                    Array.Resize (ref Entities, newSize);
-                    for (int i = 0, iMax = _poolsCount; i < iMax; i++) {
-                        _pools[i].Resize (newSize);
+                    Array.Resize(ref Entities, newSize);
+                    for (int i = 0, iMax = _poolsCount; i < iMax; i++)
+                    {
+                        _pools[i].Resize(newSize);
                     }
-                    for (int i = 0, iMax = _allFilters.Count; i < iMax; i++) {
-                        _allFilters[i].ResizeSparseIndex (newSize);
+                    for (int i = 0, iMax = _allFilters.Count; i < iMax; i++)
+                    {
+                        _allFilters[i].ResizeSparseIndex(newSize);
                     }
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-                    for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                        _eventListeners[ii].OnWorldResized (newSize);
+                    for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++)
+                    {
+                        _eventListeners[ii].OnWorldResized(newSize);
                     }
 #endif
                 }
@@ -154,109 +186,131 @@ namespace Leopotam.EcsLite {
                 Entities[entity].Gen = 1;
             }
 #if DEBUG
-            _leakedEntities.Add (entity);
+            _leakedEntities.Add(entity);
 #endif
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                _eventListeners[ii].OnEntityCreated (entity);
+            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++)
+            {
+                _eventListeners[ii].OnEntityCreated(entity);
             }
 #endif
             return entity;
         }
 
-        public void DelEntity (int entity) {
+        public void DelEntity(int entity)
+        {
 #if DEBUG
-            if (entity < 0 || entity >= _entitiesCount) {
-                throw new Exception ("Cant touch destroyed entity.");
+            if (entity < 0 || entity >= _entitiesCount)
+            {
+                throw new Exception("Cant touch destroyed entity.");
             }
 #endif
             ref var entityData = ref Entities[entity];
-            if (entityData.Gen < 0) {
+            if (entityData.Gen < 0)
+            {
                 return;
             }
             // kill components.
-            if (entityData.ComponentsCount > 0) {
+            if (entityData.ComponentsCount > 0)
+            {
                 var idx = 0;
-                while (entityData.ComponentsCount > 0 && idx < _poolsCount) {
-                    for (; idx < _poolsCount; idx++) {
-                        if (_pools[idx].Has (entity)) {
-                            _pools[idx++].Del (entity);
+                while (entityData.ComponentsCount > 0 && idx < _poolsCount)
+                {
+                    for (; idx < _poolsCount; idx++)
+                    {
+                        if (_pools[idx].Has(entity))
+                        {
+                            _pools[idx++].Del(entity);
                             break;
                         }
                     }
                 }
 #if DEBUG
-                if (entityData.ComponentsCount != 0) { throw new Exception ($"Invalid components count on entity {entity} => {entityData.ComponentsCount}."); }
+                if (entityData.ComponentsCount != 0) { throw new Exception($"Invalid components count on entity {entity} => {entityData.ComponentsCount}."); }
 #endif
                 return;
             }
-            entityData.Gen = (short) (entityData.Gen == short.MaxValue ? -1 : -(entityData.Gen + 1));
-            if (_recycledEntitiesCount == _recycledEntities.Length) {
-                Array.Resize (ref _recycledEntities, _recycledEntitiesCount << 1);
+            entityData.Gen = (short)(entityData.Gen == short.MaxValue ? -1 : -(entityData.Gen + 1));
+            if (_recycledEntitiesCount == _recycledEntities.Length)
+            {
+                Array.Resize(ref _recycledEntities, _recycledEntitiesCount << 1);
             }
             _recycledEntities[_recycledEntitiesCount++] = entity;
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                _eventListeners[ii].OnEntityDestroyed (entity);
+            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++)
+            {
+                _eventListeners[ii].OnEntityDestroyed(entity);
             }
 #endif
         }
 
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public int GetComponentsCount (int entity) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetComponentsCount(int entity)
+        {
             return Entities[entity].ComponentsCount;
         }
 
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public short GetEntityGen (int entity) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public short GetEntityGen(int entity)
+        {
             return Entities[entity].Gen;
         }
 
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public int GetAllocatedEntitiesCount () {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetAllocatedEntitiesCount()
+        {
             return _entitiesCount;
         }
 
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public int GetWorldSize () {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetWorldSize()
+        {
             return Entities.Length;
         }
 
 #if UNITY_2020_3_OR_NEWER
         [UnityEngine.Scripting.Preserve]
 #endif
-        public EcsPool<T> GetPool<T> () where T : struct {
-            var poolType = typeof (EcsPool<T>);
-            if (_poolHashes.TryGetValue (poolType, out var rawPool)) {
-                return (EcsPool<T>) rawPool;
+        public EcsPool<T> GetPool<T>() where T : struct
+        {
+            var poolType = typeof(EcsPool<T>);
+            if (_poolHashes.TryGetValue(poolType, out var rawPool))
+            {
+                return (EcsPool<T>)rawPool;
             }
-            var pool = new EcsPool<T> (this, _poolsCount, _poolDenseSize, Entities.Length);
+            var pool = new EcsPool<T>(this, _poolsCount, _poolDenseSize, Entities.Length);
             _poolHashes[poolType] = pool;
-            if (_poolsCount == _pools.Length) {
+            if (_poolsCount == _pools.Length)
+            {
                 var newSize = _poolsCount << 1;
-                Array.Resize (ref _pools, newSize);
-                Array.Resize (ref _filtersByIncludedComponents, newSize);
-                Array.Resize (ref _filtersByExcludedComponents, newSize);
+                Array.Resize(ref _pools, newSize);
+                Array.Resize(ref _filtersByIncludedComponents, newSize);
+                Array.Resize(ref _filtersByExcludedComponents, newSize);
             }
             _pools[_poolsCount++] = pool;
             return pool;
         }
 
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public IEcsPool GetPoolById (int typeId) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public IEcsPool GetPoolById(int typeId)
+        {
             return typeId >= 0 && typeId < _poolsCount ? _pools[typeId] : null;
         }
 
-        public int GetAllEntities (ref int[] entities) {
+        public int GetAllEntities(ref int[] entities)
+        {
             var count = _entitiesCount - _recycledEntitiesCount;
-            if (entities == null || entities.Length < count) {
+            if (entities == null || entities.Length < count)
+            {
                 entities = new int[count];
             }
             var id = 0;
-            for (int i = 0, iMax = _entitiesCount; i < iMax; i++) {
+            for (int i = 0, iMax = _entitiesCount; i < iMax; i++)
+            {
                 ref var entityData = ref Entities[i];
                 // should we skip empty entities here?
-                if (entityData.ComponentsCount >= 0) {
+                if (entityData.ComponentsCount >= 0)
+                {
                     entities[id++] = i;
                 }
             }
@@ -266,166 +320,211 @@ namespace Leopotam.EcsLite {
 #if UNITY_2020_3_OR_NEWER
         [UnityEngine.Scripting.Preserve]
 #endif
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public EcsFilter.Mask Filter<T> () where T : struct {
-            return EcsFilter.Mask.New (this).Inc<T> ();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EcsFilter.Mask Filter<T>() where T : struct
+        {
+            return EcsFilter.Mask.New(this).Inc<T>();
         }
 
-        public int GetComponents (int entity, ref object[] list) {
+        public int GetComponents(int entity, ref object[] list)
+        {
             var itemsCount = Entities[entity].ComponentsCount;
             if (itemsCount == 0) { return 0; }
-            if (list == null || list.Length < itemsCount) {
+            if (list == null || list.Length < itemsCount)
+            {
                 list = new object[_pools.Length];
             }
-            for (int i = 0, j = 0, iMax = _poolsCount; i < iMax; i++) {
-                if (_pools[i].Has (entity)) {
-                    list[j++] = _pools[i].GetRaw (entity);
+            for (int i = 0, j = 0, iMax = _poolsCount; i < iMax; i++)
+            {
+                if (_pools[i].Has(entity))
+                {
+                    list[j++] = _pools[i].GetRaw(entity);
                 }
             }
             return itemsCount;
         }
 
-        public int GetComponentTypes (int entity, ref Type[] list) {
+        public int GetComponentTypes(int entity, ref Type[] list)
+        {
             var itemsCount = Entities[entity].ComponentsCount;
             if (itemsCount == 0) { return 0; }
-            if (list == null || list.Length < itemsCount) {
+            if (list == null || list.Length < itemsCount)
+            {
                 list = new Type[_pools.Length];
             }
-            for (int i = 0, j = 0, iMax = _poolsCount; i < iMax; i++) {
-                if (_pools[i].Has (entity)) {
-                    list[j++] = _pools[i].GetComponentType ();
+            for (int i = 0, j = 0, iMax = _poolsCount; i < iMax; i++)
+            {
+                if (_pools[i].Has(entity))
+                {
+                    list[j++] = _pools[i].GetComponentType();
                 }
             }
             return itemsCount;
         }
 
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        internal bool IsEntityAliveInternal (int entity) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool IsEntityAliveInternal(int entity)
+        {
             return entity >= 0 && entity < _entitiesCount && Entities[entity].Gen > 0;
         }
 
-        internal (EcsFilter, bool) GetFilterInternal (EcsFilter.Mask mask, int capacity = 512) {
+        internal (EcsFilter, bool) GetFilterInternal(EcsFilter.Mask mask, int capacity = 512)
+        {
             var hash = mask.Hash;
-            var exists = _hashedFilters.TryGetValue (hash, out var filter);
+            var exists = _hashedFilters.TryGetValue(hash, out var filter);
             if (exists) { return (filter, false); }
-            filter = new EcsFilter (this, mask, capacity, Entities.Length);
+            filter = new EcsFilter(this, mask, capacity, Entities.Length);
             _hashedFilters[hash] = filter;
-            _allFilters.Add (filter);
+            _allFilters.Add(filter);
             // add to component dictionaries for fast compatibility scan.
-            for (int i = 0, iMax = mask.IncludeCount; i < iMax; i++) {
+            for (int i = 0, iMax = mask.IncludeCount; i < iMax; i++)
+            {
                 var list = _filtersByIncludedComponents[mask.Include[i]];
-                if (list == null) {
-                    list = new List<EcsFilter> (8);
+                if (list == null)
+                {
+                    list = new List<EcsFilter>(8);
                     _filtersByIncludedComponents[mask.Include[i]] = list;
                 }
-                list.Add (filter);
+                list.Add(filter);
             }
-            for (int i = 0, iMax = mask.ExcludeCount; i < iMax; i++) {
+            for (int i = 0, iMax = mask.ExcludeCount; i < iMax; i++)
+            {
                 var list = _filtersByExcludedComponents[mask.Exclude[i]];
-                if (list == null) {
-                    list = new List<EcsFilter> (8);
+                if (list == null)
+                {
+                    list = new List<EcsFilter>(8);
                     _filtersByExcludedComponents[mask.Exclude[i]] = list;
                 }
-                list.Add (filter);
+                list.Add(filter);
             }
             // scan exist entities for compatibility with new filter.
-            for (int i = 0, iMax = _entitiesCount; i < iMax; i++) {
+            for (int i = 0, iMax = _entitiesCount; i < iMax; i++)
+            {
                 ref var entityData = ref Entities[i];
-                if (entityData.ComponentsCount > 0 && IsMaskCompatible (mask, i)) {
-                    filter.AddEntity (i);
+                if (entityData.ComponentsCount > 0 && IsMaskCompatible(mask, i))
+                {
+                    filter.AddEntity(i);
                 }
             }
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                _eventListeners[ii].OnFilterCreated (filter);
+            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++)
+            {
+                _eventListeners[ii].OnFilterCreated(filter);
             }
 #endif
             return (filter, true);
         }
 
-        internal void OnEntityChange (int entity, int componentType, bool added) {
+        internal void OnEntityChange(int entity, int componentType, bool added)
+        {
             var includeList = _filtersByIncludedComponents[componentType];
             var excludeList = _filtersByExcludedComponents[componentType];
-            if (added) {
+            if (added)
+            {
                 // add component.
-                if (includeList != null) {
-                    foreach (var filter in includeList) {
-                        if (IsMaskCompatible (filter.GetMask (), entity)) {
+                if (includeList != null)
+                {
+                    foreach (var filter in includeList)
+                    {
+                        if (IsMaskCompatible(filter.GetMask(), entity))
+                        {
 #if DEBUG
-                            if (filter.SparseEntities[entity] > 0) { throw new Exception ("Entity already in filter."); }
+                            if (filter.SparseEntities[entity] > 0) { throw new Exception("Entity already in filter."); }
 #endif
-                            filter.AddEntity (entity);
+                            filter.AddEntity(entity);
                         }
                     }
                 }
-                if (excludeList != null) {
-                    foreach (var filter in excludeList) {
-                        if (IsMaskCompatibleWithout (filter.GetMask (), entity, componentType)) {
+                if (excludeList != null)
+                {
+                    foreach (var filter in excludeList)
+                    {
+                        if (IsMaskCompatibleWithout(filter.GetMask(), entity, componentType))
+                        {
 #if DEBUG
-                            if (filter.SparseEntities[entity] == 0) { throw new Exception ("Entity not in filter."); }
+                            if (filter.SparseEntities[entity] == 0) { throw new Exception("Entity not in filter."); }
 #endif
-                            filter.RemoveEntity (entity);
+                            filter.RemoveEntity(entity);
                         }
                     }
                 }
-            } else {
+            }
+            else
+            {
                 // remove component.
-                if (includeList != null) {
-                    foreach (var filter in includeList) {
-                        if (IsMaskCompatible (filter.GetMask (), entity)) {
+                if (includeList != null)
+                {
+                    foreach (var filter in includeList)
+                    {
+                        if (IsMaskCompatible(filter.GetMask(), entity))
+                        {
 #if DEBUG
-                            if (filter.SparseEntities[entity] == 0) { throw new Exception ("Entity not in filter."); }
+                            if (filter.SparseEntities[entity] == 0) { throw new Exception("Entity not in filter."); }
 #endif
-                            filter.RemoveEntity (entity);
+                            filter.RemoveEntity(entity);
                         }
                     }
                 }
-                if (excludeList != null) {
-                    foreach (var filter in excludeList) {
-                        if (IsMaskCompatibleWithout (filter.GetMask (), entity, componentType)) {
+                if (excludeList != null)
+                {
+                    foreach (var filter in excludeList)
+                    {
+                        if (IsMaskCompatibleWithout(filter.GetMask(), entity, componentType))
+                        {
 #if DEBUG
-                            if (filter.SparseEntities[entity] > 0) { throw new Exception ("Entity already in filter."); }
+                            if (filter.SparseEntities[entity] > 0) { throw new Exception("Entity already in filter."); }
 #endif
-                            filter.AddEntity (entity);
+                            filter.AddEntity(entity);
                         }
                     }
                 }
             }
         }
 
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        bool IsMaskCompatible (EcsFilter.Mask filterMask, int entity) {
-            for (int i = 0, iMax = filterMask.IncludeCount; i < iMax; i++) {
-                if (!_pools[filterMask.Include[i]].Has (entity)) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        bool IsMaskCompatible(EcsFilter.Mask filterMask, int entity)
+        {
+            for (int i = 0, iMax = filterMask.IncludeCount; i < iMax; i++)
+            {
+                if (!_pools[filterMask.Include[i]].Has(entity))
+                {
                     return false;
                 }
             }
-            for (int i = 0, iMax = filterMask.ExcludeCount; i < iMax; i++) {
-                if (_pools[filterMask.Exclude[i]].Has (entity)) {
+            for (int i = 0, iMax = filterMask.ExcludeCount; i < iMax; i++)
+            {
+                if (_pools[filterMask.Exclude[i]].Has(entity))
+                {
                     return false;
                 }
             }
             return true;
         }
 
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        bool IsMaskCompatibleWithout (EcsFilter.Mask filterMask, int entity, int componentId) {
-            for (int i = 0, iMax = filterMask.IncludeCount; i < iMax; i++) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        bool IsMaskCompatibleWithout(EcsFilter.Mask filterMask, int entity, int componentId)
+        {
+            for (int i = 0, iMax = filterMask.IncludeCount; i < iMax; i++)
+            {
                 var typeId = filterMask.Include[i];
-                if (typeId == componentId || !_pools[typeId].Has (entity)) {
+                if (typeId == componentId || !_pools[typeId].Has(entity))
+                {
                     return false;
                 }
             }
-            for (int i = 0, iMax = filterMask.ExcludeCount; i < iMax; i++) {
+            for (int i = 0, iMax = filterMask.ExcludeCount; i < iMax; i++)
+            {
                 var typeId = filterMask.Exclude[i];
-                if (typeId != componentId && _pools[typeId].Has (entity)) {
+                if (typeId != componentId && _pools[typeId].Has(entity))
+                {
                     return false;
                 }
             }
             return true;
         }
 
-        public struct Config {
+        public struct Config
+        {
             public int Entities;
             public int RecycledEntities;
             public int Pools;
@@ -439,20 +538,23 @@ namespace Leopotam.EcsLite {
             internal const int PoolDenseSizeDefault = 512;
         }
 
-        internal struct EntityData {
+        internal struct EntityData
+        {
             public short Gen;
             public short ComponentsCount;
         }
     }
 
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-    public interface IEcsWorldEventListener {
-        void OnEntityCreated (int entity);
-        void OnEntityChanged (int entity);
-        void OnEntityDestroyed (int entity);
-        void OnFilterCreated (EcsFilter filter);
-        void OnWorldResized (int newSize);
-        void OnWorldDestroyed (EcsWorld world);
+    public interface IEcsWorldEventListener
+    {
+        void OnEntityCreated(int entity);
+        void OnComponentAdded(int entity, object component);
+        void OnComponentRemoved(int entity, object component);
+        void OnEntityDestroyed(int entity);
+        void OnFilterCreated(EcsFilter filter);
+        void OnWorldResized(int newSize);
+        void OnWorldDestroyed(EcsWorld world);
     }
 #endif
 }

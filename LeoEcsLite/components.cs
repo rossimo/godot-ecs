@@ -128,10 +128,12 @@ namespace Leopotam.EcsLite {
             _sparseItems[entity] = idx;
             _world.OnEntityChange (entity, _id, true);
             _world.Entities[entity].ComponentsCount++;
+
+            ref var component = ref _denseItems[idx];
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-            _world.RaiseEntityChangeEvent (entity);
+            _world.RaiseComponentAddedEvent (entity, component);
 #endif
-            return ref _denseItems[idx];
+            return ref component;
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
@@ -161,6 +163,7 @@ namespace Leopotam.EcsLite {
                 if (_recycledItemsCount == _recycledItems.Length) {
                     Array.Resize (ref _recycledItems, _recycledItemsCount << 1);
                 }
+                var component = _denseItems[sparseData];
                 _recycledItems[_recycledItemsCount++] = sparseData;
                 if (_autoReset != null) {
                     _autoReset.Invoke (ref _denseItems[sparseData]);
@@ -171,7 +174,7 @@ namespace Leopotam.EcsLite {
                 ref var entityData = ref _world.Entities[entity];
                 entityData.ComponentsCount--;
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-                _world.RaiseEntityChangeEvent (entity);
+                _world.RaiseComponentRemovedEvent (entity, component);
 #endif
                 if (entityData.ComponentsCount == 0) {
                     _world.DelEntity (entity);

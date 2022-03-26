@@ -524,8 +524,8 @@ public static class Utils
 
     public static int GetEntity(this Godot.Object obj, EcsWorld world)
     {
-        if (obj == null || 
-            !obj.HasMeta("entity/id") || 
+        if (obj == null ||
+            !obj.HasMeta("entity/id") ||
             !obj.HasMeta("entity/gen"))
         {
             return -1;
@@ -538,5 +538,23 @@ public static class Utils
         int entityId = -1;
         packed.Unpack(world, out entityId);
         return entityId;
+    }
+
+    public static int[] Find(this EcsFilter filter)
+    {
+        var array = new int[filter.GetEntitiesCount()];
+
+        var i = 0;
+        foreach (var entity in filter)
+        {
+            array[i++] = entity;
+        }
+
+        return array;
+    }
+
+    public static int[] Find(this EcsFilter.Mask mask)
+    {
+        return mask.End().Find();
     }
 }
