@@ -5,12 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Godot Attach",
-            "type": "mono",
-            "request": "attach",
-            "address": "localhost",
-            "port": 23685,
-            "preLaunchTask": "godot",
-        },
+            "name": "Launch",
+            "type": "godot-mono",
+            "request": "launch",
+            "mode": "executable",
+            "preLaunchTask": "build",
+            "executable": "godot",
+            "executableArguments": [
+                "--path",
+                ""
+            ]
+        }
     ]
 }
