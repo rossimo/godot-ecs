@@ -38,6 +38,9 @@ namespace Leopotam.EcsLite {
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
         List<IEcsWorldEventListener> _eventListeners;
 
+        private static Dictionary<Type, List<IEcsWorldComponentListener>> _componentEventListeners =
+            new Dictionary<Type, List<IEcsWorldComponentListener>>();
+
         public void AddEventListener (IEcsWorldEventListener listener) {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             if (listener == null) { throw new Exception ("Listener is null."); }
@@ -52,16 +55,36 @@ namespace Leopotam.EcsLite {
             _eventListeners.Remove (listener);
         }
 
-        public void RaiseComponentAddedEvent (int entity, object component) {
-            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                _eventListeners[ii].OnComponentAdded (entity, component);
+        public void RaiseComponentAddedEvent<T>(int entity, T component) {
+            foreach(var listener in FindComponentListeners(typeof(T))) {
+                (listener as IEcsWorldComponentListener<T>).OnComponentCreated(entity, component);
             }
         }
 
-        public void RaiseComponentRemovedEvent (int entity, object component) {
-            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                _eventListeners[ii].OnComponentRemoved (entity, component);
+        public void RaiseComponentRemovedEvent<T>(int entity, T component) {
+            foreach(var listener in FindComponentListeners(typeof(T))) {
+                (listener as IEcsWorldComponentListener<T>).OnComponentDeleted(entity, component);
             }
+        }
+
+        public void AddComponentListener<T>(IEcsWorldComponentListener<T> listener) {
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
+            if (listener == null) { throw new Exception ("Listener is null."); }
+#endif
+            FindComponentListeners(typeof(T)).Add (listener);
+        }
+
+        public void RemoveComponentListener<T>(IEcsWorldComponentListener<T> listener) {
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
+            if (listener == null) { throw new Exception ("Listener is null."); }
+#endif
+            FindComponentListeners(typeof(T)).Remove (listener);
+        }
+
+        private List<IEcsWorldComponentListener> FindComponentListeners(Type type) {           
+            return  _componentEventListeners.ContainsKey(type) 
+                ? _componentEventListeners[type]
+                : _componentEventListeners[type] = new List<IEcsWorldComponentListener>();
         }
 #endif
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
@@ -566,14 +589,24 @@ namespace Leopotam.EcsLite {
     }
 
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-    public interface IEcsWorldEventListener {
-        void OnEntityCreated (int entity);
-        void OnComponentAdded (int entity, object component);
-        void OnComponentRemoved (int entity, object component);
-        void OnEntityDestroyed (int entity);
-        void OnFilterCreated (EcsFilter filter);
-        void OnWorldResized (int newSize);
-        void OnWorldDestroyed (EcsWorld world);
+    public interface IEcsWorldEventListener 
+    {
+        void OnEntityCreated (int entity) { }
+        void OnEntityDestroyed (int entity) { }
+        void OnFilterCreated (EcsFilter filter) { }
+        void OnWorldResized (int newSize) { }
+        void OnWorldDestroyed (EcsWorld world) { }
+    }
+
+    public interface IEcsWorldComponentListener
+    {
+
+    }
+
+    public interface IEcsWorldComponentListener<T> : IEcsWorldComponentListener
+    {
+        void OnComponentCreated(int entityId, T component);
+        void OnComponentDeleted(int entityId, T component);
     }
 #endif
 }

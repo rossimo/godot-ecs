@@ -3,9 +3,7 @@ using System;
 using System.Linq;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 
 public class Game : Godot.YSort
 {
@@ -21,7 +19,7 @@ public class Game : Godot.YSort
     private EcsPool<ModulateTween> modulates;
     private EcsPool<RenderNode> renders;
 
-    public class TaskListener<T> : IEcsWorldEventListener
+    public class TaskListener<T> : IEcsWorldComponentListener<T>
     {
         public int[] Entities = new int[] { };
 
@@ -32,38 +30,16 @@ public class Game : Godot.YSort
             return source.Task;
         }
 
-        public void OnEntityCreated(int entity)
+        public void OnComponentCreated(int entity, T component)
         {
-
-        }
-
-        public void OnComponentAdded(int entity, object component)
-        {
-            if (source != null && component is T found && (Entities?.Length == 0 || Entities.Contains(entity)))
+            if (source != null && (Entities?.Length == 0 || Entities.Contains(entity)))
             {
-                source.SetResult((entity, found));
+                source.SetResult((entity, component));
                 source = null;
             }
         }
 
-        public void OnComponentRemoved(int entity, object component)
-        {
-
-        }
-
-        public void OnEntityDestroyed(int entity)
-        {
-
-        }
-        public void OnFilterCreated(EcsFilter filter)
-        {
-
-        }
-        public void OnWorldResized(int newSize)
-        {
-
-        }
-        public void OnWorldDestroyed(EcsWorld world)
+        public void OnComponentDeleted(int entity, T component)
         {
 
         }
@@ -113,16 +89,17 @@ public class Game : Godot.YSort
 
     public Task<(int, T)> Added<T>(params int[] entities)
     {
+        var type = typeof(T);
         var task = new TaskListener<T>()
         {
             Entities = entities
         };
 
-        world.AddEventListener(task);
+        world.AddComponentListener<T>(task);
 
         return task.Find().ContinueWith(action =>
         {
-            world.RemoveEventListener(task);
+            world.RemoveComponentListener<T>(task);
             return action.Result;
         });
     }
