@@ -1,4 +1,8 @@
 using System.Threading.Tasks;
+using System;
+using Leopotam.EcsLite;
+using System.Threading;
+using System.Threading.Tasks;
 
 using static Utils;
 
@@ -10,16 +14,15 @@ public class Spider : Godot.Sprite
     {
         var game = this.GetParent() as Game;
 
-        this.AttachEntity(game.world).ContinueWith(action =>
+        Game.GodoTasks.Run(async () =>
         {
-            Entity = action.Result;
-            return Script(Entity).SafeCancel();
+            await Script(await this.AttachEntity(game.world));
         });
     }
 
     public override void _ExitTree()
     {
-        Entity.Cancel();
+        Entity?.Cancel();
     }
 
     public async Task Script(Entity entity)

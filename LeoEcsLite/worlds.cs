@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using 	System.Threading.Tasks ;
 
 #if ENABLE_IL2CPP
 using Unity.IL2CPP.CompilerServices;
@@ -35,6 +36,10 @@ namespace Leopotam.EcsLite {
         int _masksCount;
 
         bool _destroyed;
+
+	public Game.GodotSynchronizationContext Context = new Game.GodotSynchronizationContext();
+
+
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
         List<IEcsWorldEventListener> _eventListeners;
 
@@ -61,6 +66,7 @@ namespace Leopotam.EcsLite {
                 (listener as IEcsWorldComponentListener<T>).OnComponentCreated(entity, component);
                 };
             }
+            Game.GodotSynchronizationContext.Update();
         }
 
         public void RaiseComponentRemovedEvent<T>(int entity, T component) {
@@ -69,6 +75,7 @@ namespace Leopotam.EcsLite {
                 (listener as IEcsWorldComponentListener<T>).OnComponentDeleted(entity, component);
                 };
             }
+            Game.GodotSynchronizationContext.Update();
         }
 
         public void AddComponentListener<T>(IEcsWorldComponentListener<T> listener) {
