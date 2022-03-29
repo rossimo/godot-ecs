@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Leopotam.EcsLite;
 using System.Runtime.CompilerServices;
-using Nito.AsyncEx.Synchronous;
 
 public enum MetaType
 {
