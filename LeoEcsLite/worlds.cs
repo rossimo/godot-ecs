@@ -56,14 +56,18 @@ namespace Leopotam.EcsLite {
         }
 
         public void RaiseComponentAddedEvent<T>(int entity, T component) {
-            foreach(var listener in FindComponentListeners(typeof(T))) {
+            foreach(var listener in new List<IEcsWorldComponentListener>(FindComponentListeners(typeof(T)))) {
+                if (listener != null) {
                 (listener as IEcsWorldComponentListener<T>).OnComponentCreated(entity, component);
+                };
             }
         }
 
         public void RaiseComponentRemovedEvent<T>(int entity, T component) {
-            foreach(var listener in FindComponentListeners(typeof(T))) {
+            foreach(var listener in new List<IEcsWorldComponentListener>(FindComponentListeners(typeof(T)))) {
+                if (listener != null) {
                 (listener as IEcsWorldComponentListener<T>).OnComponentDeleted(entity, component);
+                };
             }
         }
 

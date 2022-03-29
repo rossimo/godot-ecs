@@ -28,8 +28,6 @@ position = Vector2( 157, 160 )
 scale = Vector2( 3, 3 )
 texture = ExtResource( 2 )
 __meta__ = {
-"components/destination/x": 10.0,
-"components/destination/y": 0.0,
 "components/health/value": 40,
 "components/player": true,
 "components/speed/value": 2.0
@@ -76,7 +74,7 @@ collision_mask = 2
 shape = SubResource( 4 )
 
 [node name="potion" type="Sprite" parent="."]
-position = Vector2( 200, 300 )
+position = Vector2( 515.099, 75.3826 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 5 )
 __meta__ = {

@@ -18,7 +18,8 @@ public struct MouseRight
 [Editor]
 public struct Move
 {
-    public Destination Destination;
+    public float X;
+    public float Y;
 }
 
 public class InputSystem : IEcsInitSystem, IEcsRunSystem
@@ -51,8 +52,8 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
         foreach (var entity in world.Filter<Player>().Inc<RenderNode>().End())
         {
             ref var move = ref moves.Ensure(entity);
-            move.Destination.X = position.x;
-            move.Destination.Y = position.y;
+            move.X = position.x;
+            move.Y = position.y;
         }
     }
 

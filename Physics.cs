@@ -15,13 +15,6 @@ public struct Speed
 }
 
 [Editor]
-public struct Destination
-{
-    public float X;
-    public float Y;
-}
-
-[Editor]
 public struct Direction
 {
     public float X;
@@ -70,7 +63,8 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<PositionTween> positionTweens = default;
     [EcsPool] readonly EcsPool<AreaNode> areaNodes = default;
     [EcsPool] readonly EcsPool<Many<Event<Area>>> areaEvents = default;
-    [EcsPool] readonly EcsPool<Many<Event<Collision>>> collisionEvents = default;
+    [EcsPool] readonly EcsPool<Collision> collisionEvents = default;
+    [EcsPool] readonly EcsPool<Many<Event<Collision>>> collisionEventsTriggers = default;
 
     public void Init(EcsSystems systems)
     {
@@ -93,8 +87,8 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             ref var nodeComponent = ref physicsNodes.Get(entity);
             ref var move = ref moves.Get(entity);
 
-            if (move.Destination.X == nodeComponent.Node.Position.x &&
-                move.Destination.Y == nodeComponent.Node.Position.y)
+            if (move.X == nodeComponent.Node.Position.x &&
+                move.Y == nodeComponent.Node.Position.y)
             {
                 moves.Del(entity);
                 directions.Del(entity);
@@ -102,7 +96,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             }
 
             var directionVec = nodeComponent.Node.Position
-                .DirectionTo(new Vector2(move.Destination.X, move.Destination.Y))
+                .DirectionTo(new Vector2(move.X, move.Y))
                 .Normalized();
 
             ref var direction = ref directions.Ensure(entity);
@@ -129,7 +123,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 ref var move = ref moves.Get(entity);
 
                 var moveDistance = renderNode.Position
-                    .DistanceTo(new Vector2(move.Destination.X, move.Destination.Y));
+                    .DistanceTo(new Vector2(move.X, move.Y));
 
                 if (moveDistance < intentDistance)
                 {
@@ -160,18 +154,21 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
 
                     var other = collision.Collider.GetEntity(world);
 
-                    if (collisionEvents.Has(entity))
+                    collisionEvents.Ensure(entity);
+                    collisionEvents.Ensure(other);
+
+                    if (collisionEventsTriggers.Has(entity))
                     {
-                        ref var events = ref collisionEvents.Get(entity);
+                        ref var events = ref collisionEventsTriggers.Get(entity);
                         foreach (var ev in events)
                         {
                             ev.Add(world, entity, other);
                         }
                     }
 
-                    if (other != -1 && collisionEvents.Has(other))
+                    if (other != -1 && collisionEventsTriggers.Has(other))
                     {
-                        ref var events = ref collisionEvents.Get(other);
+                        ref var events = ref collisionEventsTriggers.Get(other);
                         foreach (var ev in events)
                         {
                             ev.Add(world, other, entity);

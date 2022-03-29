@@ -35,6 +35,14 @@ public class DeleteEntitySystem : IEcsRunSystem
     {
         foreach (var entity in _filter)
         {
+            var remaining = new object[world.GetComponentsCount(entity)];
+            world.GetComponents(entity, ref remaining);
+            foreach (var component in remaining)
+            {
+                world.GetPoolByType(component.GetType()).Del(entity);
+            }
+
+
             world.DelEntity(entity);
         }
     }

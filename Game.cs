@@ -3,271 +3,230 @@ using System;
 using System.Linq;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
-using System.Threading.Tasks;
+using System.Collections.Generic;
 
 public class Game : Godot.YSort
 {
-    public EcsWorld world;
-    public EcsSystems systems;
-    public Shared shared;
-    public InputSystem input;
-    public FrameTimeSystem frameTime;
+	public EcsWorld world = new EcsWorld();
+	public EcsSystems systems;
+	public Shared shared;
+	public InputSystem input;
+	public FrameTimeSystem frameTime;
 
-    private EcsPool<PhysicsNode> physicsComponents;
-    private EcsPool<AreaNode> areaComponents;
-    private EcsPool<PositionTween> positions;
-    private EcsPool<ModulateTween> modulates;
-    private EcsPool<RenderNode> renders;
+	public interface RunListener
+	{
+		void Run();
+		void Cancel();
+	}
 
-    public class TaskListener<T> : IEcsWorldComponentListener<T>
-    {
-        public int[] Entities = new int[] { };
+	private EcsPool<PhysicsNode> physicsComponents;
+	private EcsPool<AreaNode> areaComponents;
+	private EcsPool<PositionTween> positions;
+	private EcsPool<ModulateTween> modulates;
+	private EcsPool<RenderNode> renders;
+	public List<RunListener> RunListeners = new List<RunListener>();
 
-        private TaskCompletionSource<(int, T)> source = new TaskCompletionSource<(int, T)>();
+	public override void _Ready()
+	{
+		physicsComponents = world.GetPool<PhysicsNode>();
+		areaComponents = world.GetPool<AreaNode>();
+		positions = world.GetPool<PositionTween>();
+		modulates = world.GetPool<ModulateTween>();
+		renders = world.GetPool<RenderNode>();
 
-        public Task<(int, T)> Find()
-        {
-            return source.Task;
-        }
+		shared = new Shared() { Game = this };
 
-        public void OnComponentCreated(int entity, T component)
-        {
-            if (source != null && (Entities?.Length == 0 || Entities.Contains(entity)))
-            {
-                source.SetResult((entity, component));
-                source = null;
-            }
-        }
+		frameTime = new FrameTimeSystem();
+		input = new InputSystem();
 
-        public void OnComponentDeleted(int entity, T component)
-        {
+		systems = new EcsSystems(world, shared);
 
-        }
-    }
+		systems
+			.Add(frameTime)
+			.Add(input)
+			.Add(new CombatSystem())
+			.Add(new HealthSystem())
+			.Add(new PhysicsSystem())
+			.Add(new RendererSystem())
+			.Add(new DeleteComponentSystem<Notify<AreaNode>>())
+			.Add(new DeleteComponentSystem<Notify<Sprite>>())
+			.Add(new DeleteComponentSystem<Notify<Flash>>())
+			.Add(new DeleteComponentSystem<Notify<Area>>())
+			.Add(new DeleteComponentSystem<Collision>())
+			.Add(new DeleteEntitySystem())
+			.Inject()
+			.Init();
 
-    public override void _Ready()
-    {
-        world = new EcsWorld();
+		foreach (var node in GetChildren().OfType<Godot.Node>())
+		{
+			DiscoverEntity(node);
+		}
 
-        physicsComponents = world.GetPool<PhysicsNode>();
-        areaComponents = world.GetPool<AreaNode>();
-        positions = world.GetPool<PositionTween>();
-        modulates = world.GetPool<ModulateTween>();
-        renders = world.GetPool<RenderNode>();
+		systems.Init();
+	}
 
-        shared = new Shared() { Game = this };
+	public override void _ExitTree()
+	{
+		foreach (var listener in RunListeners)
+		{
+			listener.Cancel();
+		}
+	}
 
-        frameTime = new FrameTimeSystem();
-        input = new InputSystem();
+	public int DiscoverEntity(Node node)
+	{
+		var components = node.ToComponents("components/");
+		if (components.Length == 0) return -1;
 
-        systems = new EcsSystems(world, shared);
+		var entity = world.NewEntity();
 
-        systems
-            .Add(frameTime)
-            .Add(input)
-            .Add(new CombatSystem())
-            .Add(new HealthSystem())
-            .Add(new PhysicsSystem())
-            .Add(new RendererSystem())
-            .Add(new DeleteComponentSystem<Notify<AreaNode>>())
-            .Add(new DeleteComponentSystem<Notify<Sprite>>())
-            .Add(new DeleteComponentSystem<Notify<Flash>>())
-            .Add(new DeleteComponentSystem<Notify<Area>>())
-            .Add(new DeleteEntitySystem())
-            .Inject()
-            .Init();
+		foreach (var component in components)
+		{
+			world.AddNotify(entity, component);
+		}
 
-        foreach (var node in GetChildren().OfType<Godot.Node>())
-        {
-            DiscoverEntity(node);
-        }
+		Node2D renderNode = null;
+		KinematicBody2D physicsNode = null;
+		Area2D areaNode = null;
 
-        systems.Init();
+		if (node is KinematicBody2D foundPhysics)
+		{
+			physicsNode = foundPhysics;
+		}
+		if (node is Area2D foundArea)
+		{
+			areaNode = foundArea;
+		}
+		else if (node is Node2D found)
+		{
+			renderNode = found;
+		}
 
-        Script();
-    }
+		if (areaNode == null)
+		{
+			foreach (var parent in new[] { physicsNode, renderNode })
+			{
+				var potential = parent?.GetChildren().ToArray<Godot.Node>().OfType<Area2D>().FirstOrDefault();
+				if (potential != null)
+				{
+					areaNode = potential;
+					break;
+				}
+			}
+		}
 
-    public Task<(int, T)> Added<T>(params int[] entities)
-    {
-        var type = typeof(T);
-        var task = new TaskListener<T>()
-        {
-            Entities = entities
-        };
+		if (physicsNode == null)
+		{
+			foreach (var parent in new[] { renderNode })
+			{
+				var potential = parent?.GetChildren().ToArray<Godot.Node>().OfType<KinematicBody2D>().FirstOrDefault();
+				if (potential != null)
+				{
+					physicsNode = potential;
+					break;
+				}
+			}
+		}
 
-        world.AddComponentListener<T>(task);
+		if (physicsNode != null)
+		{
+			var position = physicsNode.GlobalPosition;
+			if (physicsNode.GetParent() != this)
+			{
+				physicsNode.GetParent().RemoveChild(physicsNode);
+				AddChild(physicsNode);
+			}
 
-        return task.Find().ContinueWith(action =>
-        {
-            world.RemoveComponentListener<T>(task);
-            return action.Result;
-        });
-    }
+			physicsNode.GlobalPosition = position;
+			physicsNode.Scale *= renderNode.Scale;
+			physicsNode.Rotation += renderNode.Rotation;
 
-    public async Task Script()
-    {
-        var players = world.Filter<Player>().Find();
+			physicsNode.SetEntity(world, entity);
 
-        var count = 0;
-        while (count < 3)
-        {
-            var (player, move) = await Added<Move>(players);
-            count++;
-        }
+			ref var physicsComponent = ref physicsComponents.Add(entity);
+			physicsComponent.Node = physicsNode;
+		}
 
-        Console.WriteLine("moved 3 times");
-    }
+		if (areaNode != null)
+		{
+			if (physicsNode != null && areaNode.GetParent() != physicsNode)
+			{
+				var position = areaNode.GlobalPosition;
 
-    public int DiscoverEntity(Node node)
-    {
-        var components = node.ToComponents("components/");
-        if (components.Length == 0) return -1;
+				areaNode.GetParent().RemoveChild(areaNode);
+				physicsNode.AddChild(areaNode);
 
-        var entity = world.NewEntity();
+				areaNode.GlobalPosition = position;
+				areaNode.Scale *= renderNode.Scale;
+				areaNode.Rotation += renderNode.Rotation;
+			}
 
-        foreach (var component in components)
-        {
-            world.AddNotify(entity, component);
-        }
+			areaNode.SetEntity(world, entity);
 
-        Node2D renderNode = null;
-        KinematicBody2D physicsNode = null;
-        Area2D areaNode = null;
+			ref var areaComponent = ref areaComponents.Add(entity);
+			areaComponents.Notify(entity);
+			areaComponent.Node = areaNode;
+		}
 
-        if (node is KinematicBody2D foundPhysics)
-        {
-            physicsNode = foundPhysics;
-        }
-        if (node is Area2D foundArea)
-        {
-            areaNode = foundArea;
-        }
-        else if (node is Node2D found)
-        {
-            renderNode = found;
-        }
+		if (renderNode != null)
+		{
+			renderNode.SetEntity(world, entity);
 
-        if (areaNode == null)
-        {
-            foreach (var parent in new[] { physicsNode, renderNode })
-            {
-                var potential = parent?.GetChildren().ToArray<Godot.Node>().OfType<Area2D>().FirstOrDefault();
-                if (potential != null)
-                {
-                    areaNode = potential;
-                    break;
-                }
-            }
-        }
+			ref var render = ref renders.Add(entity);
+			render.Node = renderNode;
 
-        if (physicsNode == null)
-        {
-            foreach (var parent in new[] { renderNode })
-            {
-                var potential = parent?.GetChildren().ToArray<Godot.Node>().OfType<KinematicBody2D>().FirstOrDefault();
-                if (potential != null)
-                {
-                    physicsNode = potential;
-                    break;
-                }
-            }
-        }
+			ref var position = ref positions.Add(entity);
+			position.Tween = new Tween() { Name = "position" };
+			renderNode.AddChild(position.Tween);
 
-        if (physicsNode != null)
-        {
-            var position = physicsNode.GlobalPosition;
-            if (physicsNode.GetParent() != this)
-            {
-                physicsNode.GetParent().RemoveChild(physicsNode);
-                AddChild(physicsNode);
-            }
+			ref var modulate = ref modulates.Add(entity);
+			modulate.Tween = new Tween() { Name = "modulate" };
+			renderNode.AddChild(modulate.Tween);
+		}
 
-            physicsNode.GlobalPosition = position;
-            physicsNode.Scale *= renderNode.Scale;
-            physicsNode.Rotation += renderNode.Rotation;
+		return entity;
+	}
 
-            physicsNode.SetEntity(world, entity);
+	public override void _Input(InputEvent @event)
+	{
+		input.Run(systems, @event);
+	}
 
-            ref var physicsComponent = ref physicsComponents.Add(entity);
-            physicsComponent.Node = physicsNode;
-        }
+	public override void _PhysicsProcess(float deltaValue)
+	{
+		frameTime.Run(systems, deltaValue);
+		systems.Run();
+		foreach (var listener in RunListeners)
+		{
+			listener.Run();
+		}
+	}
 
-        if (areaNode != null)
-        {
-            if (physicsNode != null && areaNode.GetParent() != physicsNode)
-            {
-                var position = areaNode.GlobalPosition;
+	public void AreaEvent(Node targetNode, GodotWrapper sourceWrapper)
+	{
+		var packedSource = sourceWrapper.Get<EcsPackedEntity>();
+		int entity = -1;
+		packedSource.Unpack(world, out entity);
 
-                areaNode.GetParent().RemoveChild(areaNode);
-                physicsNode.AddChild(areaNode);
+		int other = targetNode.GetEntity(world);
 
-                areaNode.GlobalPosition = position;
-                areaNode.Scale *= renderNode.Scale;
-                areaNode.Rotation += renderNode.Rotation;
-            }
+		var pool = world.GetPool<Many<Event<Area>>>();
+		if (pool.SafeHas(entity))
+		{
+			ref var events = ref pool.Get(entity);
+			foreach (var ev in events)
+			{
+				ev.Add(world, entity, other);
+			}
+		}
 
-            areaNode.SetEntity(world, entity);
-
-            ref var areaComponent = ref areaComponents.Add(entity);
-            areaComponents.Notify(entity);
-            areaComponent.Node = areaNode;
-        }
-
-        if (renderNode != null)
-        {
-            renderNode.SetEntity(world, entity);
-
-            ref var render = ref renders.Add(entity);
-            render.Node = renderNode;
-
-            ref var position = ref positions.Add(entity);
-            position.Tween = new Tween() { Name = "position" };
-            renderNode.AddChild(position.Tween);
-
-            ref var modulate = ref modulates.Add(entity);
-            modulate.Tween = new Tween() { Name = "modulate" };
-            renderNode.AddChild(modulate.Tween);
-        }
-
-        return entity;
-    }
-
-    public override void _Input(InputEvent @event)
-    {
-        input.Run(systems, @event);
-    }
-
-    public override void _PhysicsProcess(float deltaValue)
-    {
-        frameTime.Run(systems, deltaValue);
-        systems.Run();
-    }
-
-    public void AreaEvent(Node targetNode, GodotWrapper sourceWrapper)
-    {
-        var packedSource = sourceWrapper.Get<EcsPackedEntity>();
-        int entity = -1;
-        packedSource.Unpack(world, out entity);
-
-        int other = targetNode.GetEntity(world);
-
-        var pool = world.GetPool<Many<Event<Area>>>();
-        if (pool.SafeHas(entity))
-        {
-            ref var events = ref pool.Get(entity);
-            foreach (var ev in events)
-            {
-                ev.Add(world, entity, other);
-            }
-        }
-
-        if (pool.SafeHas(other))
-        {
-            ref var events = ref pool.Get(other);
-            foreach (var ev in events)
-            {
-                ev.Add(world, other, entity);
-            }
-        }
-    }
+		if (pool.SafeHas(other))
+		{
+			ref var events = ref pool.Get(other);
+			foreach (var ev in events)
+			{
+				ev.Add(world, other, entity);
+			}
+		}
+	}
 }

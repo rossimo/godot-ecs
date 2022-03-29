@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Leopotam.EcsLite;
 
 public enum MetaType
@@ -11,10 +12,242 @@ public enum MetaType
     Target
 }
 
+public class RunTask : Game.RunListener
+{
+    private TaskCompletionSource<bool> source = new TaskCompletionSource<bool>();
+    private Boolean canceled = false;
+
+    public Task<bool> Alive()
+    {
+        return source.Task;
+    }
+
+    public void Run()
+    {
+        var old = source;
+        source = new TaskCompletionSource<bool>();
+        old.SetResult(true);
+    }
+
+    public void Cancel()
+    {
+        var old = source;
+        source = new TaskCompletionSource<bool>();
+        old.SetResult(false);
+    }
+}
+
+/*
+    public async Task WaitSeconds(float seconds)
+    {
+        var filter = world.Filter<Tick>().End();
+
+        var ticks = seconds * PhysicsSystem.TARGET_PHYSICS_FPS;
+
+        while (ticks > 0 && await Runner.Alive())
+        {
+            ticks--;
+        }
+    }
+*/
+
+public class Entity : Utils.Cancellable
+{
+    public EcsWorld World;
+    public int ID;
+
+    private List<Utils.Cancellable> cancellables = new List<Utils.Cancellable>();
+
+    public Task<(int, T)> Removed<T>()
+    {
+        var (listener, task) = World.Removed<T>(ID);
+        cancellables.Add(listener);
+        return task.ContinueWith(action =>
+        {
+            cancellables.Remove(listener);
+            return action.Result;
+        });
+    }
+
+    public Task<(int, T)> Added<T>()
+    {
+        var (listener, task) = World.Added<T>(ID);
+        cancellables.Add(listener);
+        return task.ContinueWith(action =>
+        {
+            cancellables.Remove(listener);
+            return action.Result;
+        });
+    }
+
+    public ref T Get<T>() where T : struct
+    {
+        return ref World.GetPool<T>().Get(ID);
+    }
+
+    public ref T Set<T>(T component) where T : struct
+    {
+        ref var current = ref World.GetPool<T>().Ensure(ID);
+        current = component;
+        return ref current;
+    }
+
+    public void Cancel()
+    {
+        foreach (var cancel in cancellables.ToList())
+        {
+            cancel.Cancel();
+        }
+    }
+}
+
 public static class Utils
 {
     public static readonly List<Type> COMPONENTS = GetComponents().ToList();
     public static readonly List<Type> TARGETS = GetTargets().ToList();
+
+    public static async Task<Entity> AttachEntity(this Godot.Object obj, EcsWorld world)
+    {
+        if (!obj.HasUserSignal("entity"))
+        {
+            obj.AddUserSignal("entity");
+        }
+
+        var id = obj.GetEntity(world);
+
+        if (id == -1)
+        {
+            await obj.ToSignal(obj, "entity");
+
+            id = obj.GetEntity(world);
+        }
+
+        return new Entity()
+        {
+            ID = id,
+            World = world
+        };
+    }
+
+    public static async Task<Task> When(params Task[] tasks)
+    {
+        return await Task.WhenAny(tasks);
+    }
+
+    public static Task SafeCancel(this Task task)
+    {
+        return task.ContinueWith(action =>
+            {
+                foreach (var exception in action.Exception.Flatten().InnerExceptions)
+                {
+                    if (!(exception is OperationCanceledException))
+                    {
+                        throw action.Exception;
+                    }
+                }
+            }, TaskContinuationOptions.OnlyOnFaulted);
+    }
+
+    public class AddListener<T> : IEcsWorldComponentListener<T>, Cancellable
+    {
+        public int[] Entities = new int[] { };
+
+        private TaskCompletionSource<(int, T)> source = new TaskCompletionSource<(int, T)>();
+
+        public Task<(int, T)> Find()
+        {
+            return source.Task;
+        }
+
+        public void OnComponentCreated(int entity, T component)
+        {
+            if (source != null && (Entities?.Length == 0 || Entities.Contains(entity)))
+            {
+                source.SetResult((entity, component));
+                source = null;
+            }
+        }
+
+        public void Cancel()
+        {
+            source?.SetException(new OperationCanceledException());
+            source = null;
+        }
+
+        public void OnComponentDeleted(int entity, T component)
+        {
+
+        }
+    }
+
+    public interface Cancellable
+    {
+        void Cancel();
+    }
+
+    public class RemoveListener<T> : IEcsWorldComponentListener<T>, Cancellable
+    {
+        public int[] Entities = new int[] { };
+
+        private TaskCompletionSource<(int, T)> source = new TaskCompletionSource<(int, T)>();
+
+        public Task<(int, T)> Find()
+        {
+            return source.Task;
+        }
+
+        public void OnComponentCreated(int entity, T component)
+        {
+
+        }
+
+        public void Cancel()
+        {
+            source?.SetException(new OperationCanceledException());
+            source = null;
+        }
+
+        public void OnComponentDeleted(int entity, T component)
+        {
+            if (source != null && (Entities?.Length == 0 || Entities.Contains(entity)))
+            {
+                source.SetResult((entity, component));
+                source = null;
+            }
+        }
+    }
+
+    public static (AddListener<T>, Task<(int, T)>) Added<T>(this EcsWorld world, params int[] entities)
+    {
+        var task = new AddListener<T>()
+        {
+            Entities = entities
+        };
+
+        world.AddComponentListener<T>(task);
+
+        return (task, task.Find().ContinueWith(action =>
+        {
+            world.RemoveComponentListener<T>(task);
+            return action.Result;
+        })); ;
+    }
+
+    public static (RemoveListener<T>, Task<(int, T)>) Removed<T>(this EcsWorld world, params int[] entities)
+    {
+        var task = new RemoveListener<T>()
+        {
+            Entities = entities
+        };
+
+        world.AddComponentListener<T>(task);
+
+        return (task, task.Find().ContinueWith(action =>
+        {
+            world.RemoveComponentListener<T>(task);
+            return action.Result;
+        }));
+    }
 
     public static T[] ToArray<T>(this Godot.Collections.Array array)
     {
@@ -520,6 +753,13 @@ public static class Utils
         var packed = world.PackEntity(entity);
         obj.SetMeta("entity/id", packed.Id);
         obj.SetMeta("entity/gen", packed.Gen);
+
+        if (!obj.HasUserSignal("entity"))
+        {
+            obj.AddUserSignal("entity");
+        }
+
+        obj.EmitSignal("entity", new object[] { });
     }
 
     public static int GetEntity(this Godot.Object obj, EcsWorld world)
