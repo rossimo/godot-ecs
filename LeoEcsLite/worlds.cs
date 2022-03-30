@@ -61,17 +61,15 @@ namespace Leopotam.EcsLite {
         }
 
         public void RaiseComponentAddedEvent<T>(int entity, T component) {
-            foreach(var listener in FindComponentListeners(typeof(T)).NotNull().ToArray()) {
+            foreach(var listener in FindComponentListeners(typeof(T))) {
                 (listener as IEcsWorldComponentListener<T>).OnComponentCreated(entity, component);
             }
-            Game.GodotSynchronizationContext.Update();
         }
 
         public void RaiseComponentRemovedEvent<T>(int entity, T component) {
-            foreach(var listener in FindComponentListeners(typeof(T)).NotNull().ToArray()) {
+            foreach(var listener in FindComponentListeners(typeof(T))) {
                 (listener as IEcsWorldComponentListener<T>).OnComponentDeleted(entity, component);
             }
-            Game.GodotSynchronizationContext.Update();
         }
 
         public void AddComponentListener<T>(IEcsWorldComponentListener<T> listener) {

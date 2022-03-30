@@ -42,13 +42,13 @@ public class Spider : Godot.Sprite
         {
             entity.Set(end);
 
-            await Until(
+            await UntilAny(
                 entity.Removed<Move>(),
                 entity.Added<Collision>());
 
             entity.Set(start);
 
-            await Until(
+            await UntilAny(
                 entity.Removed<Move>(),
                 entity.Added<Collision>());
         } while (true);
@@ -59,7 +59,7 @@ public class Spider : Godot.Sprite
         var walk = Walk(entity);
         var dead = entity.Added<Delete>();
 
-        var result = await Until(walk, dead);
+        var result = await UntilAny(walk, dead);
         if (result == dead)
         {
             Console.WriteLine("dead");

@@ -127,7 +127,7 @@ public static class Utils
         };
     }
 
-    public static async Task<Task> Until(params Task[] tasks)
+    public static async Task<Task> UntilAny(params Task[] tasks)
     {
         var result = await Task.WhenAny(tasks);
         if (result.Exception != null)

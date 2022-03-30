@@ -27,7 +27,6 @@ public class Game : Godot.YSort
     private EcsPool<PositionTween> positions;
     private EcsPool<ModulateTween> modulates;
     private EcsPool<RenderNode> renders;
-    public List<RunListener> RunListeners = new List<RunListener>();
     public GodotSynchronizationContext Context = new GodotSynchronizationContext();
 
     public override void _Ready()
@@ -57,6 +56,7 @@ public class Game : Godot.YSort
             .Add(new DeleteComponentSystem<Notify<Flash>>())
             .Add(new DeleteComponentSystem<Notify<Area>>())
             .Add(new DeleteComponentSystem<Collision>())
+            .Add(new AsyncSystem())
             .Add(new DeleteEntitySystem())
             .Inject()
             .Init();
@@ -67,14 +67,6 @@ public class Game : Godot.YSort
         }
 
         systems.Init();
-    }
-
-    public override void _ExitTree()
-    {
-        foreach (var listener in RunListeners)
-        {
-            listener.Cancel();
-        }
     }
 
     public int DiscoverEntity(Node node)
@@ -200,13 +192,6 @@ public class Game : Godot.YSort
     {
         frameTime.Run(systems, deltaValue);
         systems.Run();
-
-        foreach (var listener in RunListeners)
-        {
-            listener.Run();
-        }
-
-        GodotSynchronizationContext.Update();
     }
 
     public void AreaEvent(Node targetNode, GodotWrapper sourceWrapper)

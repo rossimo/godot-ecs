@@ -23,6 +23,14 @@ public static class NotifyUtils
     }
 }
 
+public class AsyncSystem : IEcsRunSystem
+{
+    public void Run(EcsSystems systems)
+    {
+        Game.GodotSynchronizationContext.Update();
+    }
+}
+
 [Editor]
 public struct Delete { }
 
