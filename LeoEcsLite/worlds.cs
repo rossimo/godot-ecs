@@ -7,7 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using 	System.Threading.Tasks ;
+using System.Linq;
 
 #if ENABLE_IL2CPP
 using Unity.IL2CPP.CompilerServices;
@@ -61,19 +61,15 @@ namespace Leopotam.EcsLite {
         }
 
         public void RaiseComponentAddedEvent<T>(int entity, T component) {
-            foreach(var listener in new List<IEcsWorldComponentListener>(FindComponentListeners(typeof(T)))) {
-                if (listener != null) {
+            foreach(var listener in FindComponentListeners(typeof(T)).NotNull().ToArray()) {
                 (listener as IEcsWorldComponentListener<T>).OnComponentCreated(entity, component);
-                };
             }
             Game.GodotSynchronizationContext.Update();
         }
 
         public void RaiseComponentRemovedEvent<T>(int entity, T component) {
-            foreach(var listener in new List<IEcsWorldComponentListener>(FindComponentListeners(typeof(T)))) {
-                if (listener != null) {
+            foreach(var listener in FindComponentListeners(typeof(T)).NotNull().ToArray()) {
                 (listener as IEcsWorldComponentListener<T>).OnComponentDeleted(entity, component);
-                };
             }
             Game.GodotSynchronizationContext.Update();
         }

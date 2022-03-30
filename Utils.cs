@@ -250,6 +250,10 @@ public static class Utils
         }));
     }
 
+    public static IEnumerable<T> NotNull<T>(this IEnumerable<T> collection) {
+        return collection.Where(el => el != null);
+    }
+
     public static T[] ToArray<T>(this Godot.Collections.Array array)
     {
         var list = new List<T>();
