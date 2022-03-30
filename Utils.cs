@@ -5,7 +5,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Leopotam.EcsLite;
-using System.Runtime.CompilerServices;
+using System.Threading;
+
 
 public enum MetaType
 {
@@ -59,26 +60,22 @@ public class Entity : Utils.Cancellable
 
     private List<Utils.Cancellable> cancellables = new List<Utils.Cancellable>();
 
-    public Task<(int, T)> Removed<T>()
+    public async Task<(int, T)> Removed<T>()
     {
         var (listener, task) = World.Removed<T>(ID);
         cancellables.Add(listener);
-        return task.ContinueWith(action =>
-        {
-            cancellables.Remove(listener);
-            return action.Result;
-        });
+        var result = await task;
+        cancellables.Remove(listener);
+        return result;
     }
 
-    public Task<(int, T)> Added<T>()
+    public async Task<(int, T)> Added<T>()
     {
         var (listener, task) = World.Added<T>(ID);
         cancellables.Add(listener);
-        return task.ContinueWith(action =>
-        {
-            cancellables.Remove(listener);
-            return action.Result;
-        });
+        var result = await task;
+        cancellables.Remove(listener);
+        return result;
     }
 
     public ref T Get<T>() where T : struct
@@ -130,9 +127,14 @@ public static class Utils
         };
     }
 
-    public static async Task<Task> When(params Task[] tasks)
+    public static async Task<Task> Until(params Task[] tasks)
     {
-        return await Task.WhenAny(tasks);
+        var result = await Task.WhenAny(tasks);
+        if (result.Exception != null)
+        {
+            Console.WriteLine(result.Exception);
+        }
+        return result;
     }
 
     public static Task SafeCancel(this Task task)
@@ -146,7 +148,7 @@ public static class Utils
                         throw action.Exception;
                     }
                 }
-            }, TaskContinuationOptions.OnlyOnFaulted);
+            }, Game.GodotTasks.Scheduler);
     }
 
     public class AddListener<T> : IEcsWorldComponentListener<T>, Cancellable
@@ -226,12 +228,11 @@ public static class Utils
         };
 
         world.AddComponentListener<T>(task);
-
         return (task, task.Find().ContinueWith(action =>
         {
             world.RemoveComponentListener<T>(task);
             return action.Result;
-        })); ;
+        }, Game.GodotTasks.Scheduler));
     }
 
     public static (RemoveListener<T>, Task<(int, T)>) Removed<T>(this EcsWorld world, params int[] entities)
@@ -242,15 +243,15 @@ public static class Utils
         };
 
         world.AddComponentListener<T>(task);
-
         return (task, task.Find().ContinueWith(action =>
         {
             world.RemoveComponentListener<T>(task);
             return action.Result;
-        }));
+        }, Game.GodotTasks.Scheduler));
     }
 
-    public static IEnumerable<T> NotNull<T>(this IEnumerable<T> collection) {
+    public static IEnumerable<T> NotNull<T>(this IEnumerable<T> collection)
+    {
         return collection.Where(el => el != null);
     }
 

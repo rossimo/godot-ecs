@@ -1,7 +1,4 @@
-using System.Threading.Tasks;
 using System;
-using Leopotam.EcsLite;
-using System.Threading;
 using System.Threading.Tasks;
 
 using static Utils;
@@ -14,7 +11,7 @@ public class Spider : Godot.Sprite
     {
         var game = this.GetParent() as Game;
 
-        Game.GodoTasks.Run(async () =>
+        Game.GodotTasks.Run(async () =>
         {
             await Script(await this.AttachEntity(game.world));
         });
@@ -25,7 +22,7 @@ public class Spider : Godot.Sprite
         Entity?.Cancel();
     }
 
-    public async Task Script(Entity entity)
+    public async Task Walk(Entity entity)
     {
         var position = entity.Get<PhysicsNode>().Node.Position;
 
@@ -45,15 +42,27 @@ public class Spider : Godot.Sprite
         {
             entity.Set(end);
 
-            await When(
+            await Until(
                 entity.Removed<Move>(),
                 entity.Added<Collision>());
 
             entity.Set(start);
 
-            await When(
+            await Until(
                 entity.Removed<Move>(),
                 entity.Added<Collision>());
         } while (true);
+    }
+
+    public async Task Script(Entity entity)
+    {
+        var walk = Walk(entity);
+        var dead = entity.Added<Delete>();
+
+        var result = await Until(walk, dead);
+        if (result == dead)
+        {
+            Console.WriteLine("dead");
+        }
     }
 }

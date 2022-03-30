@@ -292,11 +292,11 @@ public class Game : Godot.YSort
         }
     }
 
-    public static class GodoTasks
+    public static class GodotTasks
     {
-        private static readonly TaskScheduler Scheduler;
+        public static readonly TaskScheduler Scheduler;
 
-        static GodoTasks()
+        static GodotTasks()
         {
             var context = new GodotSynchronizationContext();
             SynchronizationContext.SetSynchronizationContext(context);
