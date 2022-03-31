@@ -277,31 +277,60 @@ public class Game : Godot.YSort
         }
     }
 
+    public class GodotScheduler : TaskScheduler
+    {
+        private List<Task> tasksCollection = new List<Task>();
+
+        public void Execute()
+        {
+            foreach (var task in tasksCollection)
+            {
+                TryExecuteTask(task);
+            }
+        }
+
+        public void Forget(Task task)
+        {
+            tasksCollection.Remove(task);
+        }
+
+        protected override IEnumerable<Task> GetScheduledTasks()
+        {
+            return tasksCollection.ToArray();
+        }
+
+        protected override void QueueTask(Task task)
+        {
+            if (task != null)
+            {
+                tasksCollection.Add(task);
+            }
+        }
+
+        protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
+        {
+            return false;
+        }
+    }
+
     public static class GodotTasks
     {
-        public static readonly TaskScheduler Scheduler;
-
-        public static CancellationToken DEFAULT = new CancellationToken();
+        public static readonly GodotScheduler Scheduler;
 
         static GodotTasks()
         {
             var context = new GodotSynchronizationContext();
             SynchronizationContext.SetSynchronizationContext(context);
-            Scheduler = TaskScheduler.FromCurrentSynchronizationContext();
+            Scheduler = new GodotScheduler();
         }
 
         public static Task Run(Func<Task> func)
-        {
-            return Run(func, CancellationToken.None);
-        }
-
-        public static Task Run(Func<Task> func, CancellationToken token)
         {
             if (func == null)
                 throw new ArgumentNullException("func");
 
             var task = Task.Factory
-                .StartNew(func, token, TaskCreationOptions.DenyChildAttach, Scheduler)
+                .StartNew(func, CancellationToken.None, TaskCreationOptions.DenyChildAttach, Scheduler)
                 .Unwrap();
 
             return task;

@@ -28,6 +28,7 @@ public class AsyncSystem : IEcsRunSystem
     public void Run(EcsSystems systems)
     {
         Game.GodotSynchronizationContext.Update();
+        Game.GodotTasks.Scheduler.Execute();
     }
 }
 

@@ -18,11 +18,6 @@ public class Spider : Godot.Sprite
         });
     }
 
-    public override void _ExitTree()
-    {
-        Entity?.Cancel();
-    }
-
     public async Task Walk(Entity entity)
     {
         var position = entity.Get<PhysicsNode>().Node.Position;
@@ -48,6 +43,7 @@ public class Spider : Godot.Sprite
                 entity.Added<Collision>());
 
             entity.Set(start);
+
 
             await UntilAny(
                 entity.Removed<Move>(),

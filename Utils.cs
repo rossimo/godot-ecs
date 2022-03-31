@@ -14,31 +14,6 @@ public enum MetaType
     Target
 }
 
-public class RunTask : Game.RunListener
-{
-    private TaskCompletionSource<bool> source = new TaskCompletionSource<bool>();
-    private Boolean canceled = false;
-
-    public Task<bool> Alive()
-    {
-        return source.Task;
-    }
-
-    public void Run()
-    {
-        var old = source;
-        source = new TaskCompletionSource<bool>();
-        old.SetResult(true);
-    }
-
-    public void Cancel()
-    {
-        var old = source;
-        source = new TaskCompletionSource<bool>();
-        old.SetResult(false);
-    }
-}
-
 /*
     public async Task WaitSeconds(float seconds)
     {
@@ -60,14 +35,14 @@ public class Entity : Utils.Cancellable
 
     private List<Utils.Cancellable> cancellables = new List<Utils.Cancellable>();
 
-    public Task<(int, T)> Removed<T>()
+    public async Task<(int, T)> Removed<T>()
     {
-        return World.Removed<T>(ID);
+        return await World.Removed<T>(ID);
     }
 
-    public Task<(int, T)> Added<T>()
+    public async Task<(int, T)> Added<T>()
     {
-        return World.Added<T>(ID);
+        return await World.Added<T>(ID);
     }
 
     public ref T Get<T>() where T : struct
@@ -122,58 +97,18 @@ public static class Utils
     public static async Task<Task> UntilAny(params Task[] tasks)
     {
         var result = await Task.WhenAny(tasks);
+
+        foreach (var task in tasks.Where(el => el != result))
+        {
+            Game.GodotTasks.Scheduler.Forget(task);
+        }
+
         if (result.Exception != null)
         {
             Console.WriteLine(result.Exception);
         }
+
         return result;
-    }
-
-    public static Task SafeCancel(this Task task)
-    {
-        return task.ContinueWith(action =>
-            {
-                foreach (var exception in action.Exception.Flatten().InnerExceptions)
-                {
-                    if (!(exception is OperationCanceledException))
-                    {
-                        throw action.Exception;
-                    }
-                }
-            }, Game.GodotTasks.Scheduler);
-    }
-
-    public class AddListener<T> : IEcsWorldComponentListener<T>, Cancellable
-    {
-        public int[] Entities = new int[] { };
-
-        private MyAwaiter<(int, T)> source = new MyAwaiter<(int, T)>();
-
-        public MyAwaiter<(int, T)> GetAwaiter()
-        {
-            return source;
-        }
-
-        public void OnComponentCreated(int entity, T component)
-        {
-            if (Entities.Contains(entity) & !source.Done)
-            {
-                source.Done = true;
-                source.Result = (entity, component);
-
-                source.Next();
-            }
-        }
-
-        public void Cancel()
-        {
-            source.Next();
-        }
-
-        public void OnComponentDeleted(int entity, T component)
-        {
-
-        }
     }
 
     public interface Cancellable
@@ -181,10 +116,11 @@ public static class Utils
         void Cancel();
     }
 
-    public class MyAwaiter<T> : INotifyCompletion
+    public class EventLoopAwaiter<T> : INotifyCompletion, Cancellable
     {
         public bool Done;
         public Action Continuation;
+        public Action OnDone;
 
         public T Result;
 
@@ -194,6 +130,11 @@ public static class Utils
 
             if (IsCompleted)
             {
+                if (OnDone != null)
+                {
+                    OnDone();
+                }
+
                 continuation();
             }
         }
@@ -203,11 +144,32 @@ public static class Utils
             var context = SynchronizationContext.Current;
             if (context == null)
             {
+                if (OnDone != null)
+                {
+                    OnDone();
+                }
+
                 Continuation();
             }
             else
             {
-                context.Post(_ => Continuation(), null);
+                context.Post(_ =>
+                {
+                    if (OnDone != null)
+                    {
+                        OnDone();
+                    }
+
+                    Continuation();
+                }, null);
+            }
+        }
+
+        public void Cancel()
+        {
+            if (OnDone != null)
+            {
+                OnDone();
             }
         }
 
@@ -225,73 +187,118 @@ public static class Utils
         }
     }
 
-    public class RemoveListener<T> : IEcsWorldComponentListener<T>, Cancellable
+    public class EventLoopListener<T>
     {
-        public int[] Entities = new int[] { };
+        private EventLoopAwaiter<T> source = new EventLoopAwaiter<T>();
 
-        private MyAwaiter<(int, T)> source = new MyAwaiter<(int, T)>();
-
-        public MyAwaiter<(int, T)> GetAwaiter()
+        public EventLoopAwaiter<T> GetAwaiter()
         {
             return source;
         }
+
+        public void SetOnDone(Action action)
+        {
+            source.OnDone = action;
+        }
+
+        protected void Done(T result)
+        {
+            if (!source.Done)
+            {
+                source.Done = true;
+                source.Result = result;
+                source.Next();
+            }
+        }
+    }
+
+    public class AddListener<T> : EventLoopListener<(int, T)>, IEcsWorldComponentListener<T>
+    {
+        public int[] Entities = new int[] { };
+
+        public void OnComponentCreated(int entity, T component)
+        {
+            if (Entities.Length == 0 || Entities.Contains(entity))
+            {
+                Done((entity, component));
+            }
+        }
+
+        public void OnComponentDeleted(int entity, T component)
+        {
+
+        }
+    }
+
+    public class RemoveListener<T> : EventLoopListener<(int, T)>, IEcsWorldComponentListener<T>
+    {
+        public int[] Entities = new int[] { };
 
         public void OnComponentCreated(int entity, T component)
         {
 
         }
 
-        public void Cancel()
-        {
-            source.Next();
-        }
-
         public void OnComponentDeleted(int entity, T component)
         {
-            if (Entities.Contains(entity) && !source.Done)
+            if (Entities.Length == 0 || Entities.Contains(entity))
             {
-                source.Done = true;
-                source.Result = (entity, component);
-
-                source.Next();
+                Done((entity, component));
             }
         }
     }
 
-    public static async Task<(int, T)> Added<T>(this EcsWorld world, params int[] entities)
+    public class Canceller : Cancellable
     {
-        var task = new AddListener<T>()
-        {
-            Entities = entities
-        };
-        world.AddComponentListener<T>(task);
+        public List<Cancellable> Listeners = new List<Cancellable>();
 
-        try
+        public Canceller()
         {
-            return await task;
+
         }
-        finally
+
+        public void Cancel()
         {
-            world.RemoveComponentListener<T>(task);
+            foreach (var listener in Listeners)
+            {
+                listener.Cancel();
+            }
         }
     }
 
-    public static async Task<(int, T)> Removed<T>(this EcsWorld world, params int[] entities)
+    public static void Connect<T>(IEcsWorldComponentListener<T> listener, EcsWorld world)
     {
-        var task = new RemoveListener<T>()
+        world.AddComponentListener<T>(listener);
+
+        if (listener is EventLoopListener<(int, T)> loopListener)
+        {
+            loopListener.SetOnDone(() =>
+            {
+                world.RemoveComponentListener<T>(listener);
+            });
+        }
+    }
+
+    public static EventLoopListener<(int, T)> Added<T>(this EcsWorld world, params int[] entities)
+    {
+        var listener = new AddListener<T>()
         {
             Entities = entities
         };
-        world.AddComponentListener<T>(task);
+        Connect(listener, world);
 
-        try
+        return listener;
+    }
+
+    public static EventLoopListener<(int, T)> Removed<T>(this EcsWorld world, params int[] entities)
+    {
+        var listener = new RemoveListener<T>()
         {
-            return await task;
-        }
-        finally
-        {
-            world.RemoveComponentListener<T>(task);
-        }
+            Entities = entities
+        };
+        Connect(listener, world);
+
+        return listener;
     }
 
     public static IEnumerable<T> NotNull<T>(this IEnumerable<T> collection)
