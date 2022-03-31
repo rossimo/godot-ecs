@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Leopotam.EcsLite;
 using System.Threading;
-
+using System.Runtime.CompilerServices;
 
 public enum MetaType
 {
@@ -60,22 +60,14 @@ public class Entity : Utils.Cancellable
 
     private List<Utils.Cancellable> cancellables = new List<Utils.Cancellable>();
 
-    public async Task<(int, T)> Removed<T>()
+    public Task<(int, T)> Removed<T>()
     {
-        var (listener, task) = World.Removed<T>(ID);
-        cancellables.Add(listener);
-        var result = await task;
-        cancellables.Remove(listener);
-        return result;
+        return World.Removed<T>(ID);
     }
 
-    public async Task<(int, T)> Added<T>()
+    public Task<(int, T)> Added<T>()
     {
-        var (listener, task) = World.Added<T>(ID);
-        cancellables.Add(listener);
-        var result = await task;
-        cancellables.Remove(listener);
-        return result;
+        return World.Added<T>(ID);
     }
 
     public ref T Get<T>() where T : struct
@@ -155,26 +147,26 @@ public static class Utils
     {
         public int[] Entities = new int[] { };
 
-        private TaskCompletionSource<(int, T)> source = new TaskCompletionSource<(int, T)>();
+        private MyAwaiter<T> source = new MyAwaiter<T>();
 
-        public Task<(int, T)> Find()
+        public MyAwaiter<T> GetAwaiter()
         {
-            return source.Task;
+            return source;
         }
 
         public void OnComponentCreated(int entity, T component)
         {
-            if (source != null && (Entities?.Length == 0 || Entities.Contains(entity)))
+            if (Entities.Contains(entity) & !source.Done)
             {
-                source.SetResult((entity, component));
-                source = null;
+                source.Done = true;
+                source.ID = entity;
+                source.Result = component;
             }
         }
 
         public void Cancel()
         {
-            source?.SetException(new OperationCanceledException());
-            source = null;
+            source.Next();
         }
 
         public void OnComponentDeleted(int entity, T component)
@@ -188,15 +180,60 @@ public static class Utils
         void Cancel();
     }
 
+    public class MyAwaiter<T> : INotifyCompletion
+    {
+        public bool Done;
+        public Action Continuation;
+
+        public T Result;
+        public int ID;
+
+        public void OnCompleted(Action continuation)
+        {
+            this.Continuation = continuation;
+
+            if (IsCompleted)
+            {
+                continuation();
+            }
+        }
+
+        public void Next()
+        {
+            var context = SynchronizationContext.Current;
+            if (context == null)
+            {
+                Continuation();
+            }
+            else
+            {
+                context.Post(_ => Continuation(), null);
+            }
+        }
+
+        public bool IsCompleted
+        {
+            get
+            {
+                return Done;
+            }
+        }
+
+        public (int, T) GetResult()
+        {
+            return (ID, Result);
+        }
+    }
+
     public class RemoveListener<T> : IEcsWorldComponentListener<T>, Cancellable
     {
         public int[] Entities = new int[] { };
 
-        private TaskCompletionSource<(int, T)> source = new TaskCompletionSource<(int, T)>();
+        private MyAwaiter<T> source = new MyAwaiter<T>();
 
-        public Task<(int, T)> Find()
+        public MyAwaiter<T> GetAwaiter()
         {
-            return source.Task;
+            return source;
         }
 
         public void OnComponentCreated(int entity, T component)
@@ -206,48 +243,56 @@ public static class Utils
 
         public void Cancel()
         {
-            source?.SetException(new OperationCanceledException());
-            source = null;
+            source.Next();
         }
 
         public void OnComponentDeleted(int entity, T component)
         {
-            if (source != null && (Entities?.Length == 0 || Entities.Contains(entity)))
+            if (Entities.Contains(entity) && !source.Done)
             {
-                source.SetResult((entity, component));
-                source = null;
+                source.Done = true;
+                source.ID = entity;
+                source.Result = component;
+
+                source.Next();
             }
         }
     }
 
-    public static (AddListener<T>, Task<(int, T)>) Added<T>(this EcsWorld world, params int[] entities)
+    public static async Task<(int, T)> Added<T>(this EcsWorld world, params int[] entities)
     {
         var task = new AddListener<T>()
         {
             Entities = entities
         };
-
         world.AddComponentListener<T>(task);
-        return (task, task.Find().ContinueWith(action =>
+
+        try
+        {
+            return await task;
+        }
+        finally
         {
             world.RemoveComponentListener<T>(task);
-            return action.Result;
-        }, Game.GodotTasks.Scheduler));
+        }
     }
 
-    public static (RemoveListener<T>, Task<(int, T)>) Removed<T>(this EcsWorld world, params int[] entities)
+    public static async Task<(int, T)> Removed<T>(this EcsWorld world, params int[] entities)
     {
         var task = new RemoveListener<T>()
         {
             Entities = entities
         };
-
         world.AddComponentListener<T>(task);
-        return (task, task.Find().ContinueWith(action =>
+
+        try
+        {
+            return await task;
+        }
+        finally
         {
             world.RemoveComponentListener<T>(task);
-            return action.Result;
-        }, Game.GodotTasks.Scheduler));
+        }
     }
 
     public static IEnumerable<T> NotNull<T>(this IEnumerable<T> collection)

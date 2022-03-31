@@ -281,6 +281,8 @@ public class Game : Godot.YSort
     {
         public static readonly TaskScheduler Scheduler;
 
+        public static CancellationToken DEFAULT = new CancellationToken();
+
         static GodotTasks()
         {
             var context = new GodotSynchronizationContext();
@@ -290,11 +292,16 @@ public class Game : Godot.YSort
 
         public static Task Run(Func<Task> func)
         {
+            return Run(func, CancellationToken.None);
+        }
+
+        public static Task Run(Func<Task> func, CancellationToken token)
+        {
             if (func == null)
                 throw new ArgumentNullException("func");
 
             var task = Task.Factory
-                .StartNew(func, CancellationToken.None, TaskCreationOptions.DenyChildAttach, Scheduler)
+                .StartNew(func, token, TaskCreationOptions.DenyChildAttach, Scheduler)
                 .Unwrap();
 
             return task;

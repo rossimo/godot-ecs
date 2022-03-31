@@ -43,7 +43,7 @@ namespace Leopotam.EcsLite {
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
         List<IEcsWorldEventListener> _eventListeners;
 
-        private static Dictionary<Type, List<IEcsWorldComponentListener>> _componentEventListeners =
+        private Dictionary<Type, List<IEcsWorldComponentListener>> _componentEventListeners =
             new Dictionary<Type, List<IEcsWorldComponentListener>>();
 
         public void AddEventListener (IEcsWorldEventListener listener) {
@@ -61,13 +61,13 @@ namespace Leopotam.EcsLite {
         }
 
         public void RaiseComponentAddedEvent<T>(int entity, T component) {
-            foreach(var listener in FindComponentListeners(typeof(T))) {
+            foreach(var listener in FindComponentListeners(typeof(T)).ToArray()) {
                 (listener as IEcsWorldComponentListener<T>).OnComponentCreated(entity, component);
             }
         }
 
         public void RaiseComponentRemovedEvent<T>(int entity, T component) {
-            foreach(var listener in FindComponentListeners(typeof(T))) {
+            foreach(var listener in FindComponentListeners(typeof(T)).ToArray()) {
                 (listener as IEcsWorldComponentListener<T>).OnComponentDeleted(entity, component);
             }
         }
@@ -400,13 +400,16 @@ namespace Leopotam.EcsLite {
         public void OnEntityChangeInternal (int entity, int componentType, bool added) {
             var includeList = _filtersByIncludedComponents[componentType];
             var excludeList = _filtersByExcludedComponents[componentType];
+
             if (added) {
                 // add component.
                 if (includeList != null) {
                     foreach (var filter in includeList) {
                         if (IsMaskCompatible (filter.GetMask (), entity)) {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
-                            if (filter.SparseEntities[entity] > 0) { throw new Exception ("Entity already in filter."); }
+                            if (filter.SparseEntities[entity] > 0) { 
+                                throw new Exception ("Entity already in filter."); 
+                                }
 #endif
                             filter.AddEntity (entity);
                         }
