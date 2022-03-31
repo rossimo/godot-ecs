@@ -147,9 +147,9 @@ public static class Utils
     {
         public int[] Entities = new int[] { };
 
-        private MyAwaiter<T> source = new MyAwaiter<T>();
+        private MyAwaiter<(int, T)> source = new MyAwaiter<(int, T)>();
 
-        public MyAwaiter<T> GetAwaiter()
+        public MyAwaiter<(int, T)> GetAwaiter()
         {
             return source;
         }
@@ -159,8 +159,9 @@ public static class Utils
             if (Entities.Contains(entity) & !source.Done)
             {
                 source.Done = true;
-                source.ID = entity;
-                source.Result = component;
+                source.Result = (entity, component);
+
+                source.Next();
             }
         }
 
@@ -186,7 +187,6 @@ public static class Utils
         public Action Continuation;
 
         public T Result;
-        public int ID;
 
         public void OnCompleted(Action continuation)
         {
@@ -219,9 +219,9 @@ public static class Utils
             }
         }
 
-        public (int, T) GetResult()
+        public T GetResult()
         {
-            return (ID, Result);
+            return Result;
         }
     }
 
@@ -229,9 +229,9 @@ public static class Utils
     {
         public int[] Entities = new int[] { };
 
-        private MyAwaiter<T> source = new MyAwaiter<T>();
+        private MyAwaiter<(int, T)> source = new MyAwaiter<(int, T)>();
 
-        public MyAwaiter<T> GetAwaiter()
+        public MyAwaiter<(int, T)> GetAwaiter()
         {
             return source;
         }
@@ -251,8 +251,7 @@ public static class Utils
             if (Entities.Contains(entity) && !source.Done)
             {
                 source.Done = true;
-                source.ID = entity;
-                source.Result = component;
+                source.Result = (entity, component);
 
                 source.Next();
             }
