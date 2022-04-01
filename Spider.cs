@@ -58,10 +58,6 @@ public class Spider : Godot.Sprite
         var walk = Walk(ctx, entity);
         var dead = entity.Added<Delete>().Create(ctx);
 
-        var result = await WhenAny(walk, dead);
-        if (result == dead)
-        {
-            Console.WriteLine("dead");
-        }
+        await WhenAny(walk, dead);
     }
 }

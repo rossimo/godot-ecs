@@ -6,24 +6,6 @@ using System.Threading;
 using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
 
-public class Canceller : Cancellable
-{
-    public List<Cancellable> Listeners = new List<Cancellable>();
-
-    public Canceller()
-    {
-
-    }
-
-    public void Cancel()
-    {
-        foreach (var listener in Listeners)
-        {
-            listener.Cancel();
-        }
-    }
-}
-
 public interface Cancellable
 {
     void Cancel();
@@ -33,16 +15,6 @@ public class TaskContext : Cancellable
 {
     public bool Running = true;
     public List<Cancellable> Listeners = new List<Cancellable>();
-
-    public TaskContext()
-    {
-
-    }
-
-    public TaskContext(TaskContext parent)
-    {
-        parent.Listeners.Add(this);
-    }
 
     public void Cancel()
     {
@@ -63,7 +35,6 @@ public interface Taskable<T> : Taskable
 {
     Task<T> CreateAs(TaskContext ctx);
 }
-
 
 public class EventLoopAwaiter<T> : INotifyCompletion, Cancellable
 {
@@ -146,11 +117,7 @@ public class EventLoopScheduler : TaskScheduler
             TryExecuteTask(task);
         }
 
-        var removed = tasksCollection.RemoveAll(el => el.IsCanceled || el.IsCompleted || el.IsFaulted);
-        if (removed > 0)
-        {
-            Console.WriteLine($"Removed {removed} tasks");
-        }
+        tasksCollection.RemoveAll(el => el.IsCanceled || el.IsCompleted || el.IsFaulted);
     }
 
     protected override IEnumerable<Task> GetScheduledTasks()
@@ -163,7 +130,6 @@ public class EventLoopScheduler : TaskScheduler
         if (task != null)
         {
             tasksCollection.Add(task);
-            Console.WriteLine("Added 1 task");
         }
     }
 
@@ -268,11 +234,12 @@ public static class EventLoop
 
     public static async Task<Task> WhenAny(TaskContext ctx, params Taskable[] taskables)
     {
-        ctx = new TaskContext(ctx);
+        var child = new TaskContext();
+        ctx.Listeners.Add(child);
 
         try
         {
-            var result = await Task.WhenAny(taskables.Select(taskable => taskable.Create(ctx)));
+            var result = await Task.WhenAny(taskables.Select(taskable => taskable.Create(child)));
 
             if (result.Exception != null)
             {
@@ -283,7 +250,8 @@ public static class EventLoop
         }
         finally
         {
-            ctx.Cancel();
+            child.Cancel();
+            ctx.Listeners.Remove(child);
         }
     }
 }
