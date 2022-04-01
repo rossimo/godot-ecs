@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 public class Game : Godot.YSort
 {
@@ -280,18 +281,31 @@ public class Game : Godot.YSort
     public class GodotScheduler : TaskScheduler
     {
         private List<Task> tasksCollection = new List<Task>();
+        public static Utils.Cancellable QueuedCancellable;
+        public static Dictionary<Task, Utils.Cancellable> hey = new Dictionary<Task, Utils.Cancellable>();
 
         public void Execute()
         {
-            foreach (var task in tasksCollection)
+            foreach (var task in tasksCollection.ToArray())
             {
+                if (hey.ContainsKey(task))
+                {
+                    Console.WriteLine(task);
+                }
                 TryExecuteTask(task);
             }
+
+            tasksCollection = tasksCollection.Where(el => !(el.IsCanceled || el.IsCompleted || el.IsFaulted)).ToList();
         }
 
         public void Forget(Task task)
         {
             tasksCollection.Remove(task);
+            if (hey.ContainsKey(task))
+            {
+                hey[task].Cancel();
+                hey.Remove(task);
+            }
         }
 
         protected override IEnumerable<Task> GetScheduledTasks()
@@ -303,6 +317,7 @@ public class Game : Godot.YSort
         {
             if (task != null)
             {
+
                 tasksCollection.Add(task);
             }
         }
@@ -317,11 +332,14 @@ public class Game : Godot.YSort
     {
         public static readonly GodotScheduler Scheduler;
 
+        private static TaskFactory Factory;
+
         static GodotTasks()
         {
             var context = new GodotSynchronizationContext();
             SynchronizationContext.SetSynchronizationContext(context);
             Scheduler = new GodotScheduler();
+            Factory = new TaskFactory(Scheduler);
         }
 
         public static Task Run(Func<Task> func)
@@ -329,9 +347,21 @@ public class Game : Godot.YSort
             if (func == null)
                 throw new ArgumentNullException("func");
 
-            var task = Task.Factory
-                .StartNew(func, CancellationToken.None, TaskCreationOptions.DenyChildAttach, Scheduler)
-                .Unwrap();
+            var parent = func();
+
+            var another = Factory
+                .StartNew(() => parent, CancellationToken.None, TaskCreationOptions.DenyChildAttach, Scheduler);
+
+            var task = another.Unwrap();
+
+            if (GodotScheduler.QueuedCancellable != null)
+            {
+                Game.GodotScheduler.hey[parent] = GodotScheduler.QueuedCancellable;
+                Game.GodotScheduler.hey[another] = GodotScheduler.QueuedCancellable;
+                Game.GodotScheduler.hey[task] = GodotScheduler.QueuedCancellable;
+                GodotScheduler.QueuedCancellable= null;
+            }
+
 
             return task;
         }
@@ -341,9 +371,20 @@ public class Game : Godot.YSort
             if (func == null)
                 throw new ArgumentNullException("func");
 
-            var task = Task.Factory
-                .StartNew(func, CancellationToken.None, TaskCreationOptions.DenyChildAttach, Scheduler)
-                .Unwrap();
+            var parent = func();
+
+            var another = Factory
+                .StartNew(() => parent, CancellationToken.None, TaskCreationOptions.DenyChildAttach, Scheduler);
+
+            var task = another.Unwrap();
+
+                        if (GodotScheduler.QueuedCancellable != null)
+            {
+                Game.GodotScheduler.hey[parent] = GodotScheduler.QueuedCancellable;
+                Game.GodotScheduler.hey[another] = GodotScheduler.QueuedCancellable;
+                Game.GodotScheduler.hey[task] = GodotScheduler.QueuedCancellable;
+                GodotScheduler.QueuedCancellable= null;
+            }
 
             return task;
         }
@@ -353,7 +394,7 @@ public class Game : Godot.YSort
             if (action == null)
                 throw new ArgumentNullException("action");
 
-            var task = Task.Factory
+            var task = Factory
                 .StartNew(action, CancellationToken.None, TaskCreationOptions.DenyChildAttach, Scheduler);
 
             return task;
@@ -364,7 +405,7 @@ public class Game : Godot.YSort
             if (func == null)
                 throw new ArgumentNullException("func");
 
-            var task = Task.Factory
+            var task = Factory
                 .StartNew(func, CancellationToken.None, TaskCreationOptions.DenyChildAttach, Scheduler);
 
             return task;

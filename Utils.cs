@@ -286,8 +286,6 @@ public static class Utils
             {
 
                 Console.WriteLine("Removed");
-
-
                 world.RemoveComponentListener<T>(listener);
             });
         }
