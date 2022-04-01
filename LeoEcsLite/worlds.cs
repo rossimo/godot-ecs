@@ -37,8 +37,6 @@ namespace Leopotam.EcsLite {
 
         bool _destroyed;
 
-	public Game.GodotSynchronizationContext Context = new Game.GodotSynchronizationContext();
-
 
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
         List<IEcsWorldEventListener> _eventListeners;
