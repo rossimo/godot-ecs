@@ -35,14 +35,23 @@ public class Entity : Utils.Cancellable
 
     private List<Utils.Cancellable> cancellables = new List<Utils.Cancellable>();
 
-    public async Task<(int, T)> Removed<T>()
+    public Task<(int, T)> Removed<T>()
     {
-        return await World.Removed<T>(ID);
+        var listener = World.Removed<T>(ID);
+        var awaiter = listener.GetAwaiter();
+        Game.GodotScheduler.QueuedCancellable = awaiter;
+
+        return Game.GodotTasks.Run(async () => await listener);
     }
 
-    public async Task<(int, T)> Added<T>()
+    public Task<(int, T)> Added<T>()
     {
-        return await World.Added<T>(ID);
+        var listener = World.Added<T>(ID);
+        var awaiter = listener.GetAwaiter();
+
+        Game.GodotScheduler.QueuedCancellable = awaiter;
+
+        return Game.GodotTasks.Run(async () => await listener);
     }
 
     public ref T Get<T>() where T : struct
@@ -268,12 +277,17 @@ public static class Utils
 
     public static void Connect<T>(IEcsWorldComponentListener<T> listener, EcsWorld world)
     {
+        Console.WriteLine("Added");
         world.AddComponentListener<T>(listener);
 
         if (listener is EventLoopListener<(int, T)> loopListener)
         {
             loopListener.SetOnDone(() =>
             {
+
+                Console.WriteLine("Removed");
+
+
                 world.RemoveComponentListener<T>(listener);
             });
         }
