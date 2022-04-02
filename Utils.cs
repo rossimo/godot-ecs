@@ -29,14 +29,14 @@ public class Entity
         return World.Added<T>(ID);
     }
 
-    public Task<(int, T)> Removed<T>(TaskContext ctx)
+    public (Action, Task<(int, T)>) RemovedTask<T>()
     {
-        return World.Removed<T>(ID).CreateAs(ctx);
+        return World.Removed<T>(ID).TaskAs();
     }
 
-    public Task<(int, T)> Added<T>(TaskContext ctx)
+    public (Action, Task<(int, T)>) AddedTask<T>()
     {
-        return World.Added<T>(ID).CreateAs(ctx);
+        return World.Added<T>(ID).TaskAs();
     }
 
     public ref T Get<T>() where T : struct
@@ -112,15 +112,15 @@ public static class Utils
             }
         }
 
-        public Task<T> CreateAs(TaskContext ctx)
+        public (Action, Task<T>) TaskAs()
         {
-            ctx.Listeners.Add(this);
-            return EventLoop.Run(async () => await this);
+            Action cleanup = () => this.Cancel();
+            return (cleanup, EventLoop.Run(async () => await this));
         }
 
-        public Task Create(TaskContext ctx)
+        public (Action, Task) Task()
         {
-            return CreateAs(ctx);
+            return TaskAs();
         }
 
         public void Cancel()
@@ -182,16 +182,6 @@ public static class Utils
                 world.RemoveComponentListener<T>(listener);
             };
         }
-    }
-
-    public static Task<(int, T)> AddedTask<T>(this EcsWorld world, TaskContext ctx, params int[] entities)
-    {
-        return world.Added<T>(entities).CreateAs(ctx);
-    }
-
-    public static Task<(int, T)> RemovedTask<T>(this EcsWorld world, TaskContext ctx, params int[] entities)
-    {
-        return world.Removed<T>(entities).CreateAs(ctx);
     }
 
     public static Taskable<(int, T)> Added<T>(this EcsWorld world, params int[] entities)

@@ -6,20 +6,26 @@ using static System.Threading.Tasks.Task;
 
 public class Spider : Godot.Sprite
 {
+    private bool Running = true;
+
     public override void _Ready()
     {
         var game = this.GetParent() as Game;
 
-        var thisCtx = new TaskContext();
-
         EventLoop.Run(async () =>
         {
-            await Script(thisCtx, await this.AttachEntity(game.world));
-            thisCtx.Cancel();
+            await Script(await this.AttachEntity(game.world));
         });
     }
 
-    public async Task Walk(TaskContext ctx, Entity entity)
+    public override void _ExitTree()
+    {
+        base._ExitTree();
+
+        Running = false;
+    }
+
+    public async Task Walk(Entity entity)
     {
         var position = entity.Get<PhysicsNode>().Node.Position;
 
@@ -35,29 +41,30 @@ public class Spider : Godot.Sprite
             Y = position.y
         };
 
-        while (ctx.Running)
+        while (Running)
         {
             entity.Set(end);
 
-            await WhenAny(ctx,
+            await WhenAny(
                 entity.Removed<Move>(),
                 entity.Added<Collision>());
 
-            if (!ctx.Running) break;
+            if (!Running) break;
 
             entity.Set(start);
 
-            await WhenAny(ctx,
+            await WhenAny(
                 entity.Removed<Move>(),
                 entity.Added<Collision>());
         }
     }
 
-    public async Task Script(TaskContext ctx, Entity entity)
+    public async Task Script(Entity entity)
     {
-        var walk = Walk(ctx, entity);
-        var dead = entity.Added<Delete>().Create(ctx);
+        var walk = Walk(entity);
+        var (cleanup, dead) = entity.Added<Delete>().Task();
 
         await WhenAny(walk, dead);
+        cleanup();
     }
 }

@@ -11,29 +11,14 @@ public interface Cancellable
     void Cancel();
 }
 
-public class TaskContext : Cancellable
-{
-    public bool Running = true;
-    public List<Cancellable> Listeners = new List<Cancellable>();
-
-    public void Cancel()
-    {
-        Running = false;
-        foreach (var listener in Listeners)
-        {
-            listener.Cancel();
-        }
-    }
-}
-
 public interface Taskable
 {
-    Task Create(TaskContext ctx);
+    (Action, Task) Task();
 }
 
 public interface Taskable<T> : Taskable
 {
-    Task<T> CreateAs(TaskContext ctx);
+    (Action, Task<T>) TaskAs();
 }
 
 public class EventLoopAwaiter<T> : INotifyCompletion, Cancellable
@@ -232,14 +217,13 @@ public static class EventLoop
             .StartNew(func, CancellationToken.None, TaskCreationOptions.DenyChildAttach, Scheduler);
     }
 
-    public static async Task<Task> WhenAny(TaskContext ctx, params Taskable[] taskables)
+    public static async Task<Task> WhenAny(params Taskable[] taskables)
     {
-        var child = new TaskContext();
-        ctx.Listeners.Add(child);
+        var tasks = taskables.Select(taskable => taskable.Task());
 
         try
         {
-            var result = await Task.WhenAny(taskables.Select(taskable => taskable.Create(child)));
+            var result = await Task.WhenAny(tasks.Select(el => el.Item2));
 
             if (result.Exception != null)
             {
@@ -250,8 +234,10 @@ public static class EventLoop
         }
         finally
         {
-            child.Cancel();
-            ctx.Listeners.Remove(child);
+            foreach (var cleanup in tasks.Select(el => el.Item1))
+            {
+                cleanup();
+            }
         }
     }
 }
