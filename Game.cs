@@ -2,12 +2,6 @@ using Godot;
 using System.Linq;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
 
 public class Game : Godot.YSort
 {
@@ -194,11 +188,13 @@ public class Game : Godot.YSort
         systems.Run();
     }
 
-    public void AreaEvent(Node targetNode, GodotWrapper sourceWrapper)
+    public void AreaEvent(Node targetNode, int id, int gen)
     {
-        var packedSource = sourceWrapper.Get<EcsPackedEntity>();
         int entity = -1;
-        packedSource.Unpack(world, out entity);
+        new EcsPackedEntity() {
+            Id = id,
+            Gen = gen
+        }.Unpack(world, out entity);
 
         int other = targetNode.GetEntity(world);
 

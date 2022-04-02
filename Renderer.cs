@@ -85,7 +85,7 @@ public class RendererSystem : IEcsRunSystem
             ref var sprite = ref renders.Get(entity);
 
             var node = sprite.Node;
-            game.RemoveChild(node);
+            node.GetParent()?.RemoveChild(node);
             node.QueueFree();
         }
     }

@@ -207,8 +207,10 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 node.Disconnect("area_entered", game, nameof(game.AreaEvent));
             }
 
+            var packed = world.PackEntity(entity);
             node.Connect("area_entered", game, nameof(game.AreaEvent), new Godot.Collections.Array() {
-                new GodotWrapper(world.PackEntity(entity))
+                packed.Id,
+                packed.Gen
             });
         }
 
