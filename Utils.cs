@@ -133,7 +133,7 @@ public static class Utils
         }
     }
 
-    public class AddListener<T> : EventLoopListener<(int, T)>, IEcsWorldComponentListener<T>
+    public class AddListener<T> : EventLoopListener<(int, T)>, IEcsWorldComponentListener<T>, IEcsWorldEventListener
     {
         public int[] Entities = new int[] { };
 
@@ -149,9 +149,17 @@ public static class Utils
         {
 
         }
+
+        public void OnEntityDestroyed(int entity)
+        {
+            if (Entities.Contains(entity))
+            {
+                this.Cancel();
+            }
+        }
     }
 
-    public class RemoveListener<T> : EventLoopListener<(int, T)>, IEcsWorldComponentListener<T>
+    public class RemoveListener<T> : EventLoopListener<(int, T)>, IEcsWorldComponentListener<T>, IEcsWorldEventListener
     {
         public int[] Entities = new int[] { };
 
@@ -167,21 +175,44 @@ public static class Utils
                 Done((entity, component));
             }
         }
+
+        public void OnEntityDestroyed(int entity)
+        {
+            if (Entities.Contains(entity))
+            {
+                this.Cancel();
+            }
+        }
     }
 
-    public static void Connect<T>(IEcsWorldComponentListener<T> listener, EcsWorld world)
+    public static void Connect<T>(EventLoopListener<(int, T)> listener, EcsWorld world)
     {
         Console.WriteLine("Listened");
-        world.AddComponentListener<T>(listener);
 
-        if (listener is EventLoopListener<(int, T)> eventListener)
+        if (listener is IEcsWorldComponentListener<T> componentListener)
         {
-            eventListener.Cleanup = () =>
-            {
-                Console.WriteLine("Unlistened");
-                world.RemoveComponentListener<T>(listener);
-            };
+            world.AddComponentListener<T>(componentListener);
         }
+
+        if (listener is IEcsWorldEventListener worldListener)
+        {
+            world.AddEventListener(worldListener);
+        }
+
+        listener.Cleanup = () =>
+        {
+            Console.WriteLine("Unlistened");
+
+            if (listener is IEcsWorldEventListener worldListener)
+            {
+                world.RemoveEventListener(worldListener);
+            }
+
+            if (listener is IEcsWorldComponentListener<T> componentListener)
+            {
+                world.RemoveComponentListener<T>(componentListener);
+            }
+        };
     }
 
     public static Taskable<(int, T)> Added<T>(this EcsWorld world, params int[] entities)
