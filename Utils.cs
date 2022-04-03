@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Leopotam.EcsLite;
+using System.Threading;
 
 public enum MetaType
 {
@@ -15,38 +16,37 @@ public enum MetaType
 public class Entity
 {
     public EcsWorld World;
-    public int ID;
+    public EcsPackedEntity Self;
 
-    private List<Cancellable> cancellables = new List<Cancellable>();
-
-    public Taskable<(int, T)> Removed<T>()
+    private int GetId()
     {
-        return World.Removed<T>(ID);
+        int id;
+        Self.Unpack(World, out id);
+        if (id == -1)
+        {
+            throw new Exception("Entity does not exist");
+        }
+        return id;
     }
 
-    public Taskable<(int, T)> Added<T>()
+    public Task<(int, T)> Removed<T>()
     {
-        return World.Added<T>(ID);
+        return World.Removed<T>(GetId());
     }
 
-    public (Action, Task<(int, T)>) RemovedTask<T>()
+    public Task<(int, T)> Added<T>()
     {
-        return World.Removed<T>(ID).TaskAs();
-    }
-
-    public (Action, Task<(int, T)>) AddedTask<T>()
-    {
-        return World.Added<T>(ID).TaskAs();
+        return World.Added<T>(GetId());
     }
 
     public ref T Get<T>() where T : struct
     {
-        return ref World.GetPool<T>().Get(ID);
+        return ref World.GetPool<T>().Get(GetId());
     }
 
     public ref T Set<T>(T component) where T : struct
     {
-        ref var current = ref World.GetPool<T>().Ensure(ID);
+        ref var current = ref World.GetPool<T>().Ensure(GetId());
         current = component;
         return ref current;
     }
@@ -75,74 +75,27 @@ public static class Utils
 
         return new Entity()
         {
-            ID = id,
+            Self = world.PackEntity(id),
             World = world
         };
     }
 
-    public class EventLoopListener<T> : Taskable<T>, Taskable, Cancellable
-    {
-        private EventLoopAwaiter<T> source = new EventLoopAwaiter<T>();
-
-        public EventLoopAwaiter<T> GetAwaiter()
-        {
-            return source;
-        }
-
-        public Action Cleanup
-        {
-            get
-            {
-                return source.Cleanup;
-            }
-
-            set
-            {
-                source.Cleanup = value;
-            }
-        }
-
-        protected void Done(T result)
-        {
-            if (!source.Completed)
-            {
-                source.Completed = true;
-                source.Result = result;
-                source.Next();
-            }
-        }
-
-        public (Action, Task<T>) TaskAs()
-        {
-            Action cleanup = () => this.Cancel();
-            return (cleanup, EventLoop.Run(async () => await this));
-        }
-
-        public (Action, Task) Task()
-        {
-            return TaskAs();
-        }
-
-        public void Cancel()
-        {
-            if (!source.Completed)
-            {
-                source.Completed = true;
-                source.Cancel();
-            }
-        }
-    }
-
-    public class AddListener<T> : EventLoopListener<(int, T)>, IEcsWorldComponentListener<T>, IEcsWorldEventListener
+    public class AddListener<T> : IEcsWorldComponentListener<T>, IEcsWorldEventListener
     {
         public int[] Entities = new int[] { };
+        private TaskCompletionSource<(int, T)> source = new TaskCompletionSource<(int, T)>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public void OnComponentCreated(int entity, T component)
         {
             if (Entities.Length == 0 || Entities.Contains(entity))
             {
-                Done((entity, component));
+                source.TrySetResult((entity, component));
             }
+        }
+
+        public Task<(int, T)> Task()
+        {
+            return source.Task;
         }
 
         public void OnComponentDeleted(int entity, T component)
@@ -152,89 +105,96 @@ public static class Utils
 
         public void OnEntityDestroyed(int entity)
         {
-            if (Entities.Contains(entity))
+            if (Entities.Length == 0 || Entities.Contains(entity))
             {
-                this.Cancel();
+                source.TrySetException(new Exception("Gone"));
             }
         }
+
+        public void OnEntityCreated(int entity) { }
+        public void OnFilterCreated(EcsFilter filter) { }
+        public void OnWorldResized(int newSize) { }
+        public void OnWorldDestroyed(EcsWorld world) { }
     }
 
-    public class RemoveListener<T> : EventLoopListener<(int, T)>, IEcsWorldComponentListener<T>, IEcsWorldEventListener
+    public class RemoveListener<T> : IEcsWorldComponentListener<T>, IEcsWorldEventListener
     {
         public int[] Entities = new int[] { };
+        private TaskCompletionSource<(int, T)> source = new TaskCompletionSource<(int, T)>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public void OnComponentCreated(int entity, T component)
         {
 
         }
 
+        public Task<(int, T)> Task()
+        {
+            return source.Task;
+        }
+
         public void OnComponentDeleted(int entity, T component)
         {
             if (Entities.Length == 0 || Entities.Contains(entity))
             {
-                Done((entity, component));
+                source.TrySetResult((entity, component));
             }
         }
 
         public void OnEntityDestroyed(int entity)
         {
-            if (Entities.Contains(entity))
+            if (Entities.Length == 0 || Entities.Contains(entity))
             {
-                this.Cancel();
+                source.TrySetException(new Exception("Gone"));
             }
         }
+
+        public void OnEntityCreated(int entity) { }
+        public void OnFilterCreated(EcsFilter filter) { }
+        public void OnWorldResized(int newSize) { }
+        public void OnWorldDestroyed(EcsWorld world) { }
     }
 
-    public static void Connect<T>(EventLoopListener<(int, T)> listener, EcsWorld world)
-    {
-        Console.WriteLine("Listened");
-
-        if (listener is IEcsWorldComponentListener<T> componentListener)
-        {
-            world.AddComponentListener<T>(componentListener);
-        }
-
-        if (listener is IEcsWorldEventListener worldListener)
-        {
-            world.AddEventListener(worldListener);
-        }
-
-        listener.Cleanup = () =>
-        {
-            Console.WriteLine("Unlistened");
-
-            if (listener is IEcsWorldEventListener worldListener)
-            {
-                world.RemoveEventListener(worldListener);
-            }
-
-            if (listener is IEcsWorldComponentListener<T> componentListener)
-            {
-                world.RemoveComponentListener<T>(componentListener);
-            }
-        };
-    }
-
-    public static Taskable<(int, T)> Added<T>(this EcsWorld world, params int[] entities)
+    public static async Task<(int, T)> Added<T>(this EcsWorld world, params int[] entities)
     {
         var listener = new AddListener<T>()
         {
             Entities = entities
         };
-        Connect(listener, world);
 
-        return listener;
+        world.AddComponentListener(listener);
+        world.AddEventListener(listener);
+
+        try
+        {
+            return await listener.Task();
+        }
+        finally
+        {
+            Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
+            world.RemoveComponentListener(listener);
+            world.RemoveEventListener(listener);
+        }
     }
 
-    public static Taskable<(int, T)> Removed<T>(this EcsWorld world, params int[] entities)
+    public static async Task<(int, T)> Removed<T>(this EcsWorld world, params int[] entities)
     {
         var listener = new RemoveListener<T>()
         {
             Entities = entities
         };
-        Connect(listener, world);
 
-        return listener;
+        world.AddComponentListener(listener);
+        world.AddEventListener(listener);
+
+        try
+        {
+            return await listener.Task();
+        }
+        finally
+        {
+            world.RemoveComponentListener(listener);
+            world.RemoveEventListener(listener);
+        }
     }
 
     public static IEnumerable<T> NotNull<T>(this IEnumerable<T> collection)

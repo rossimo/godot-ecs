@@ -1,70 +1,57 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
-using static EventLoop;
 using static System.Threading.Tasks.Task;
 
 public class Spider : Godot.Sprite
 {
-    private bool Running = true;
-
     public override void _Ready()
     {
         var game = this.GetParent() as Game;
 
-        EventLoop.Run(async () =>
+        Func<Task> task = async () =>
         {
             await Script(await this.AttachEntity(game.world));
-        });
+        };
+
+        task().ContinueWith(action =>
+        {
+            Console.WriteLine(action.Exception);
+            return action;
+        }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
     }
 
-    public override void _ExitTree()
-    {
-        base._ExitTree();
-
-        Running = false;
-    }
-
-    public async Task Walk(Entity entity)
+    public static async Task Script(Entity entity)
     {
         var position = entity.Get<PhysicsNode>().Node.Position;
 
-        var start = new Move
+        var move1 = new Move
         {
             X = position.x,
             Y = position.y
         };
 
-        var end = new Move
+        var move2 = new Move
         {
             X = position.x - 300,
             Y = position.y
         };
 
-        while (Running)
+        while (true)
         {
-            entity.Set(end);
+            entity.Set(move2);
+            await MoveOrCollide(entity);
 
-            await WhenAny(
-                entity.Removed<Move>(),
-                entity.Added<Collision>());
-
-            if (!Running) break;
-
-            entity.Set(start);
-
-            await WhenAny(
-                entity.Removed<Move>(),
-                entity.Added<Collision>());
+            entity.Set(move1);
+            await MoveOrCollide(entity);
         }
     }
 
-    public async Task Script(Entity entity)
+    private static async Task<Task> MoveOrCollide(Entity entity)
     {
-        var walk = Walk(entity);
-        var (cleanup, dead) = entity.Added<Delete>().Task();
-
-        await WhenAny(walk, dead);
-        cleanup();
+        return await WhenAny(
+            entity.Removed<Move>(),
+            entity.Removed<Collision>());
     }
 }

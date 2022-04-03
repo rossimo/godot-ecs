@@ -23,15 +23,6 @@ public static class NotifyUtils
     }
 }
 
-public class AsyncSystem : IEcsRunSystem
-{
-    public void Run(EcsSystems systems)
-    {
-        EventLoopSynchronizationContext.Update();
-        EventLoop.Scheduler.Execute();
-    }
-}
-
 [Editor]
 public struct Delete { }
 

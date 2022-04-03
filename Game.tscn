@@ -97,4 +97,4 @@ shape = SubResource( 5 )
 position = Vector2( 581, 72 )
 
 [node name="spider2" parent="." instance=ExtResource( 4 )]
-position = Vector2( 458, 390 )
+position = Vector2( 581, 390 )

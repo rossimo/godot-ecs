@@ -50,7 +50,6 @@ public class Game : Godot.YSort
             .Add(new DeleteComponentSystem<Notify<Flash>>())
             .Add(new DeleteComponentSystem<Notify<Area>>())
             .Add(new DeleteComponentSystem<Collision>())
-            .Add(new AsyncSystem())
             .Add(new DeleteEntitySystem())
             .Inject()
             .Init();
