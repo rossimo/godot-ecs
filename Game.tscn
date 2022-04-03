@@ -96,6 +96,9 @@ shape = SubResource( 5 )
 [node name="spider" parent="." instance=ExtResource( 4 )]
 position = Vector2( 581, 72 )
 
+[node name="spider5" parent="." instance=ExtResource( 4 )]
+position = Vector2( 581.841, 248.588 )
+
 [node name="spider3" parent="." instance=ExtResource( 4 )]
 position = Vector2( 353.959, 465.538 )
 

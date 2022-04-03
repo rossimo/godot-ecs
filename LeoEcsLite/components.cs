@@ -169,7 +169,8 @@ namespace Leopotam.EcsLite {
 
             ref var component = ref _denseItems[idx];
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-            _world.RaiseComponentAddedEvent (entity, component);
+            var gen = _world.Entities[entity].Gen;
+            _world.RaiseComponentAddedEvent (entity, gen, component);
 #endif
             return ref component;
         }
@@ -214,7 +215,8 @@ namespace Leopotam.EcsLite {
                 ref var entityData = ref _world.Entities[entity];
                 entityData.ComponentsCount--;
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-                _world.RaiseComponentRemovedEvent (entity, component);
+                var gen = _world.Entities[entity].Gen;
+                _world.RaiseComponentRemovedEvent (entity, gen, component);
 #endif
                 if (entityData.ComponentsCount == 0) {
                     _world.DelEntity (entity);

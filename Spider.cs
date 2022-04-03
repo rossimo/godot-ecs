@@ -6,25 +6,13 @@ using static System.Threading.Tasks.Task;
 
 public class Spider : Godot.Sprite
 {
-    public override void _Ready()
-    {
-        var game = this.GetParent() as Game;
+	public override void _Ready()
+	{
+		var game = this.GetParent() as Game;
+		var world = game.world;
 
-        Func<Task> task = async () =>
-        {
-            try
-            {
-                var entity = await this.AttachEntity(game.world);
-                await Script(entity);
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine(exception);
-            }
-        };
-
-        task();
-    }
+		this.Run(world, Script);
+	}
 
     public static async Task Script(Entity entity)
     {

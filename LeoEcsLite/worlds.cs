@@ -58,15 +58,15 @@ namespace Leopotam.EcsLite {
             _eventListeners.Remove (listener);
         }
 
-        public void RaiseComponentAddedEvent<T>(int entity, T component) {
+        public void RaiseComponentAddedEvent<T>(int entity, short gen, T component) {
             foreach(var listener in FindComponentListeners(typeof(T)).ToArray()) {
-                (listener as IEcsWorldComponentListener<T>).OnComponentCreated(entity, component);
+                (listener as IEcsWorldComponentListener<T>).OnComponentCreated(entity, gen, component);
             }
         }
 
-        public void RaiseComponentRemovedEvent<T>(int entity, T component) {
+        public void RaiseComponentRemovedEvent<T>(int entity, short gen, T component) {
             foreach(var listener in FindComponentListeners(typeof(T)).ToArray()) {
-                (listener as IEcsWorldComponentListener<T>).OnComponentDeleted(entity, component);
+                (listener as IEcsWorldComponentListener<T>).OnComponentDeleted(entity, gen, component);
             }
         }
 
@@ -209,6 +209,7 @@ namespace Leopotam.EcsLite {
             if (entity < 0 || entity >= _entitiesCount) { throw new Exception ("Cant touch destroyed entity."); }
 #endif
             ref var entityData = ref Entities[entity];
+            var gen = entityData.Gen;
             if (entityData.Gen < 0) {
                 return;
             }
@@ -235,7 +236,7 @@ namespace Leopotam.EcsLite {
             _recycledEntities[_recycledEntitiesCount++] = entity;
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
             for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                _eventListeners[ii].OnEntityDestroyed (entity);
+                _eventListeners[ii].OnEntityDestroyed (entity, gen);
             }
 #endif
         }
@@ -598,7 +599,7 @@ namespace Leopotam.EcsLite {
     public interface IEcsWorldEventListener 
     {
         void OnEntityCreated (int entity);
-        void OnEntityDestroyed (int entity);
+        void OnEntityDestroyed (int entity, short gen);
         void OnFilterCreated (EcsFilter filter);
         void OnWorldResized (int newSize);
         void OnWorldDestroyed (EcsWorld world);
@@ -611,8 +612,8 @@ namespace Leopotam.EcsLite {
 
     public interface IEcsWorldComponentListener<T> : IEcsWorldComponentListener
     {
-        void OnComponentCreated(int entityId, T component);
-        void OnComponentDeleted(int entityId, T component);
+        void OnComponentCreated(int entity, short gen, T component);
+        void OnComponentDeleted(int entity, short gen, T component);
     }
 #endif
 }
