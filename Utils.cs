@@ -21,33 +21,20 @@ public class Entity
     private int GetId()
     {
         int id;
-        Self.Unpack(World, out id);
-        if (id == -1)
+        if (!Self.Unpack(World, out id))
         {
             throw new MissingEntityException(Self);
         }
         return id;
     }
 
-    public Task<(int, T)> Removed<T>()
-    {
-        GetId();
-        return World.Removed<T>(CancellationToken.None, Self);
-    }
-
-    public Task<(int, T)> Added<T>()
-    {
-        GetId();
-        return World.Added<T>(CancellationToken.None, Self);
-    }
-
-    public Task<(int, T)> Removed<T>(CancellationToken token)
+    public Task<(EcsPackedEntity, T)> Removed<T>(CancellationToken token)
     {
         GetId();
         return World.Removed<T>(token, Self);
     }
 
-    public Task<(int, T)> Added<T>(CancellationToken token)
+    public Task<(EcsPackedEntity, T)> Added<T>(CancellationToken token)
     {
         GetId();
         return World.Added<T>(token, Self);
@@ -151,101 +138,80 @@ public static class Utils
         return (task, source);
     }
 
-    public class AddListener<T> : IEcsWorldComponentListener<T>, IEcsWorldEventListener
+    public class EntityListener<T> : IEcsWorldComponentListener<T>, IEcsWorldEventListener
     {
         public EcsPackedEntity[] Entities = new EcsPackedEntity[] { };
         public EcsWorld World;
-        private TaskCompletionSource<(int, T)> source = new TaskCompletionSource<(int, T)>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public void OnComponentCreated(int entity, short gen, T component)
-        {
-            if (Entities.Where(ent => ent.Id == entity && ent.Gen == gen).Count() > 0)
-            {
-                source.TrySetResult((entity, component));
-            }
-        }
-
-        public Task<(int, T)> Task(CancellationToken token)
-        {
-            token.Register(() =>
-            {
-                source.TrySetCanceled();
-            });
-
-            return source.Task;
-        }
-
-        public void OnComponentDeleted(int entity, short gen, T component)
-        {
-
-        }
+        protected TaskCompletionSource<(EcsPackedEntity, T)> Source =
+            new TaskCompletionSource<(EcsPackedEntity, T)>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public void OnEntityDestroyed(int entity, short gen)
         {
-            if (Entities.Where(ent => ent.Id == entity && ent.Gen == gen).Count() > 0)
+            EcsPackedEntity found;
+            if (HasEntity(entity, gen, out found))
             {
-                source.TrySetException(new MissingEntityException(new EcsPackedEntity()
-                {
-                    Id = entity,
-                    Gen = -1
-                }));
+                Source.TrySetException(new MissingEntityException(found));
             }
         }
 
-        public void OnEntityCreated(int entity) { }
-        public void OnFilterCreated(EcsFilter filter) { }
-        public void OnWorldResized(int newSize) { }
-        public void OnWorldDestroyed(EcsWorld world) { }
+        public Task<(EcsPackedEntity, T)> Task(CancellationToken token)
+        {
+            token.Register(() =>
+            {
+                Source.TrySetCanceled();
+            });
+
+            return Source.Task;
+        }
+
+        public bool HasEntity(int id, short gen, out EcsPackedEntity found)
+        {
+            foreach (var entity in Entities)
+            {
+                if (entity.Id == id && entity.Gen == gen)
+                {
+                    found = entity;
+                    return true;
+                }
+            }
+
+            found = default(EcsPackedEntity);
+            return false;
+        }
+
+        public virtual void OnComponentCreated(int entity, short gen, T component) { }
+        public virtual void OnComponentDeleted(int entity, short gen, T component) { }
+        public virtual void OnEntityCreated(int entity) { }
+        public virtual void OnFilterCreated(EcsFilter filter) { }
+        public virtual void OnWorldResized(int newSize) { }
+        public virtual void OnWorldDestroyed(EcsWorld world) { }
     }
 
-    public class RemoveListener<T> : IEcsWorldComponentListener<T>, IEcsWorldEventListener
+    public class AddListener<T> : EntityListener<T>
     {
-        public EcsPackedEntity[] Entities = new EcsPackedEntity[] { };
-        public EcsWorld World;
-        private TaskCompletionSource<(int, T)> source = new TaskCompletionSource<(int, T)>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public void OnComponentCreated(int entity, short gen, T component)
+        public override void OnComponentCreated(int id, short gen, T component)
         {
-
-        }
-
-        public Task<(int, T)> Task(CancellationToken token)
-        {
-            token.Register(() =>
+            EcsPackedEntity entity;
+            if (HasEntity(id, gen, out entity))
             {
-                source.TrySetCanceled();
-            });
-
-            return source.Task;
-        }
-
-        public void OnComponentDeleted(int entity, short gen, T component)
-        {
-            if (Entities.Where(ent => ent.Id == entity && ent.Gen == gen).Count() > 0)
-            {
-                source.TrySetResult((entity, component));
+                Source.TrySetResult((entity, component));
             }
         }
-
-        public void OnEntityDestroyed(int entity, short gen)
-        {
-            if (Entities.Where(ent => ent.Id == entity && ent.Gen == gen).Count() > 0)
-            {
-                source.TrySetException(new MissingEntityException(new EcsPackedEntity()
-                {
-                    Id = entity,
-                    Gen = -1
-                }));
-            }
-        }
-
-        public void OnEntityCreated(int entity) { }
-        public void OnFilterCreated(EcsFilter filter) { }
-        public void OnWorldResized(int newSize) { }
-        public void OnWorldDestroyed(EcsWorld world) { }
     }
 
-    public static async Task<(int, T)> Added<T>(this EcsWorld world, CancellationToken token, params EcsPackedEntity[] entities)
+    public class RemoveListener<T> : EntityListener<T>
+    {
+        public override void OnComponentDeleted(int id, short gen, T component)
+        {
+            EcsPackedEntity entity;
+            if (HasEntity(id, gen, out entity))
+            {
+                Source.TrySetResult((entity, component));
+            }
+        }
+    }
+
+    public static async Task<(EcsPackedEntity, T)> Added<T>(this EcsWorld world, CancellationToken token, params EcsPackedEntity[] entities)
     {
         var listener = new AddListener<T>()
         {
@@ -266,7 +232,7 @@ public static class Utils
         }
     }
 
-    public static async Task<(int, T)> Removed<T>(this EcsWorld world, CancellationToken token, params EcsPackedEntity[] entities)
+    public static async Task<(EcsPackedEntity, T)> Removed<T>(this EcsWorld world, CancellationToken token, params EcsPackedEntity[] entities)
     {
         var listener = new RemoveListener<T>()
         {
