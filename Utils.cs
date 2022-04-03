@@ -31,12 +31,22 @@ public class Entity
 
     public Task<(int, T)> Removed<T>()
     {
-        return World.Removed<T>(GetId());
+        return World.Removed<T>(CancellationToken.None, GetId());
     }
 
     public Task<(int, T)> Added<T>()
     {
-        return World.Added<T>(GetId());
+        return World.Added<T>(CancellationToken.None, GetId());
+    }
+
+    public Task<(int, T)> Removed<T>(CancellationToken token)
+    {
+        return World.Removed<T>(token, GetId());
+    }
+
+    public Task<(int, T)> Added<T>(CancellationToken token)
+    {
+        return World.Added<T>(token, GetId());
     }
 
     public ref T Get<T>() where T : struct
@@ -93,8 +103,13 @@ public static class Utils
             }
         }
 
-        public Task<(int, T)> Task()
+        public Task<(int, T)> Task(CancellationToken token)
         {
+            token.Register(() =>
+            {
+                source.TrySetCanceled();
+            });
+
             return source.Task;
         }
 
@@ -127,8 +142,13 @@ public static class Utils
 
         }
 
-        public Task<(int, T)> Task()
+        public Task<(int, T)> Task(CancellationToken token)
         {
+            token.Register(() =>
+            {
+                source.TrySetCanceled();
+            });
+
             return source.Task;
         }
 
@@ -154,7 +174,7 @@ public static class Utils
         public void OnWorldDestroyed(EcsWorld world) { }
     }
 
-    public static async Task<(int, T)> Added<T>(this EcsWorld world, params int[] entities)
+    public static async Task<(int, T)> Added<T>(this EcsWorld world, CancellationToken token, params int[] entities)
     {
         var listener = new AddListener<T>()
         {
@@ -163,20 +183,21 @@ public static class Utils
 
         world.AddComponentListener(listener);
         world.AddEventListener(listener);
+        Console.WriteLine("Listened");
 
         try
         {
-            return await listener.Task();
+            return await listener.Task(token);
         }
         finally
         {
-            Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
+            Console.WriteLine("Unlistened");
             world.RemoveComponentListener(listener);
             world.RemoveEventListener(listener);
         }
     }
 
-    public static async Task<(int, T)> Removed<T>(this EcsWorld world, params int[] entities)
+    public static async Task<(int, T)> Removed<T>(this EcsWorld world, CancellationToken token, params int[] entities)
     {
         var listener = new RemoveListener<T>()
         {
@@ -185,13 +206,15 @@ public static class Utils
 
         world.AddComponentListener(listener);
         world.AddEventListener(listener);
+        Console.WriteLine("Listened");
 
         try
         {
-            return await listener.Task();
+            return await listener.Task(token);
         }
         finally
         {
+            Console.WriteLine("Unlistened");
             world.RemoveComponentListener(listener);
             world.RemoveEventListener(listener);
         }

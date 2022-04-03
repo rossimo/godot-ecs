@@ -12,14 +12,18 @@ public class Spider : Godot.Sprite
 
         Func<Task> task = async () =>
         {
-            await Script(await this.AttachEntity(game.world));
+            try
+            {
+                var entity = await this.AttachEntity(game.world);
+                await Script(entity);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+            }
         };
 
-        task().ContinueWith(action =>
-        {
-            Console.WriteLine(action.Exception);
-            return action;
-        }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+        task();
     }
 
     public static async Task Script(Entity entity)
@@ -50,8 +54,19 @@ public class Spider : Godot.Sprite
 
     private static async Task<Task> MoveOrCollide(Entity entity)
     {
-        return await WhenAny(
-            entity.Removed<Move>(),
-            entity.Removed<Collision>());
+        var source = new CancellationTokenSource();
+
+        try
+        {
+            var result = await WhenAny(
+                entity.Removed<Move>(source.Token),
+                entity.Removed<Collision>(source.Token));
+
+            return result;
+        }
+        finally
+        {
+            source.Cancel();
+        }
     }
 }
