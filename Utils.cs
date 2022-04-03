@@ -112,29 +112,36 @@ public static class Utils
         };
     }
 
-    public static Task Run(this Godot.Object obj, EcsWorld world, Func<Entity, Task> script)
+    public static Task Run(this Godot.Object obj, EcsWorld world, Func<Entity, CancellationToken, Task> script)
     {
         return obj
             .AttachEntity(world)
             .ContinueWith(task =>
             {
                 var entity = task.Result;
+                var source = new CancellationTokenSource();
 
-                return script(entity).ContinueWith(task =>
-                {
-                    var exception = task.Exception is AggregateException aggregate
-                        && aggregate.InnerException != null
-                            ? aggregate.InnerException
-                            : task.Exception;
-
-                    if (exception is MissingEntityException missing &&
-                        missing.Packed.Id == entity.Self.Id && missing.Packed.Gen == entity.Self.Gen)
+                var deletedTask = entity.Added<Delete>(source.Token);
+                var scriptTask = script(entity, source.Token).ContinueWith(task =>
                     {
-                        return;
-                    }
 
-                    Console.WriteLine(exception);
-                }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+                        var exception = task.Exception is AggregateException aggregate
+                            && aggregate.InnerException != null
+                                ? aggregate.InnerException
+                                : task.Exception;
+
+                        Console.WriteLine(exception);
+
+                    }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+
+                return Task
+                    .WhenAny(deletedTask, scriptTask)
+                    .ContinueWith(task =>
+                    {
+
+                        source.Cancel();
+
+                    }, TaskContinuationOptions.ExecuteSynchronously);
 
             }, TaskContinuationOptions.ExecuteSynchronously);
     }

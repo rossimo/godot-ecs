@@ -6,15 +6,15 @@ using static System.Threading.Tasks.Task;
 
 public class Spider : Godot.Sprite
 {
-	public override void _Ready()
-	{
-		var game = this.GetParent() as Game;
-		var world = game.world;
+    public override void _Ready()
+    {
+        var game = this.GetParent() as Game;
+        var world = game.world;
 
-		this.Run(world, Script);
-	}
+        this.Run(world, Script);
+    }
 
-    public static async Task Script(Entity entity)
+    public static async Task Script(Entity entity, CancellationToken token)
     {
         var position = entity.Get<PhysicsNode>().Node.Position;
 
@@ -30,19 +30,21 @@ public class Spider : Godot.Sprite
             Y = position.y
         };
 
-        while (true)
+        while (!token.IsCancellationRequested)
         {
             entity.Set(move2);
-            await MoveOrCollide(entity);
+            await MoveOrCollide(entity, token);
+
+            if (token.IsCancellationRequested) break;
 
             entity.Set(move1);
-            await MoveOrCollide(entity);
+            await MoveOrCollide(entity, token);
         }
     }
 
-    private static async Task<Task> MoveOrCollide(Entity entity)
+    private static async Task<Task> MoveOrCollide(Entity entity, CancellationToken token)
     {
-        var source = new CancellationTokenSource();
+        var source = CancellationTokenSource.CreateLinkedTokenSource(token);
 
         try
         {
