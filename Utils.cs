@@ -206,7 +206,6 @@ public static class Utils
 
         world.AddComponentListener(listener);
         world.AddEventListener(listener);
-        Console.WriteLine("Listened");
 
         try
         {
@@ -214,7 +213,6 @@ public static class Utils
         }
         finally
         {
-            Console.WriteLine("Unlistened");
             world.RemoveComponentListener(listener);
             world.RemoveEventListener(listener);
         }

@@ -74,7 +74,7 @@ collision_mask = 2
 shape = SubResource( 4 )
 
 [node name="potion" type="Sprite" parent="."]
-position = Vector2( 515.099, 75.3826 )
+position = Vector2( 81.1977, 251.129 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 5 )
 __meta__ = {
@@ -95,6 +95,12 @@ shape = SubResource( 5 )
 
 [node name="spider" parent="." instance=ExtResource( 4 )]
 position = Vector2( 581, 72 )
+
+[node name="spider3" parent="." instance=ExtResource( 4 )]
+position = Vector2( 353.959, 465.538 )
+
+[node name="spider4" parent="." instance=ExtResource( 4 )]
+position = Vector2( 741.611, 311.655 )
 
 [node name="spider2" parent="." instance=ExtResource( 4 )]
 position = Vector2( 581, 390 )
