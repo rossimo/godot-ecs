@@ -112,17 +112,20 @@ public static class Utils
         };
     }
 
-    public static Task Run(this Godot.Object obj, EcsWorld world, Func<Entity, CancellationToken, Task> script)
+    public static (Task, CancellationTokenSource) Run(this Godot.Object obj, EcsWorld world, Func<Entity, CancellationToken, Task> script)
     {
-        return obj
+        var source = new CancellationTokenSource();
+
+        var task = obj
             .AttachEntity(world)
             .ContinueWith(task =>
             {
+
                 var entity = task.Result;
-                var source = new CancellationTokenSource();
 
                 var deletedTask = entity.Added<Delete>(source.Token);
-                var scriptTask = script(entity, source.Token).ContinueWith(task =>
+                var scriptTask = script(entity, source.Token)
+                    .ContinueWith(task =>
                     {
 
                         var exception = task.Exception is AggregateException aggregate
@@ -144,6 +147,8 @@ public static class Utils
                     }, TaskContinuationOptions.ExecuteSynchronously);
 
             }, TaskContinuationOptions.ExecuteSynchronously);
+
+        return (task, source);
     }
 
     public class AddListener<T> : IEcsWorldComponentListener<T>, IEcsWorldEventListener
