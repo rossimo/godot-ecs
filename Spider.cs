@@ -1,4 +1,5 @@
 using System;
+using Leopotam.EcsLite;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -24,24 +25,28 @@ public class Spider : Godot.Sprite
 
         while (!token.IsCancellationRequested)
         {
-            var theta = random.NextDouble() * 2.0d * Math.PI;
-            var radius = random.NextDouble() * 200.0d;
-            var move = new Move()
-            {
-                X = Convert.ToSingle(originX + radius * Math.Cos(theta)),
-                Y = Convert.ToSingle(originy + radius * Math.Sin(theta)),
-            };
-
             var delay = Convert.ToInt32(random.NextDouble() * 5000f);
             await Task.Delay(delay);
-            if (!token.IsCancellationRequested) break;
+            if (token.IsCancellationRequested) break;
 
-            entity.Set(move);
-            await MoveOrCollide(entity, token);
+            while (!token.IsCancellationRequested)
+            {
+                var theta = random.NextDouble() * 2.0d * Math.PI;
+                var radius = 100.0d + random.NextDouble() * 100.0d;
+
+                entity.Set(new Move()
+                {
+                    X = Convert.ToSingle(originX + radius * Math.Cos(theta)),
+                    Y = Convert.ToSingle(originy + radius * Math.Sin(theta)),
+                });
+
+                var task = await MovedOrCollided(entity, token);
+                if (task is Task<(EcsPackedEntity, Move)>) break;
+            }
         }
     }
 
-    private static async Task<Task> MoveOrCollide(Entity entity, CancellationToken token)
+    private static async Task<Task> MovedOrCollided(Entity entity, CancellationToken token)
     {
         var source = CancellationTokenSource.CreateLinkedTokenSource(token);
 
@@ -49,7 +54,7 @@ public class Spider : Godot.Sprite
         {
             var result = await WhenAny(
                 entity.Removed<Move>(source.Token),
-                entity.Removed<Collision>(source.Token));
+                entity.Added<Collision>(source.Token));
 
             return result;
         }

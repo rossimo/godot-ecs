@@ -149,13 +149,13 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
 
                 if (collision != null)
                 {
-                    moves.Del(entity);
-                    directions.Del(entity);
-
                     var other = collision.Collider.GetEntity(world);
 
                     collisionEvents.Ensure(entity);
                     collisionEvents.Ensure(other);
+
+                    moves.Del(entity);
+                    directions.Del(entity);
 
                     if (collisionEventsTriggers.Has(entity))
                     {
@@ -177,7 +177,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 }
             }
 
-            if (positionTweens.Has(entity) && Engine.GetFramesPerSecond() >= PHYSICS_FPS)
+            if (positionTweens.Has(entity))
             {
                 ref var tweenComponent = ref positionTweens.Get(entity);
 
