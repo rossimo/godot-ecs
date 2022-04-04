@@ -11,33 +11,32 @@ public class Spider : Godot.Sprite
         var game = this.GetParent() as Game;
         var world = game.world;
 
-        this.Run(world, Script);
+        this.RunEntityTask(world, Script);
     }
 
     public static async Task Script(Entity entity, CancellationToken token)
     {
-        var position = entity.Get<PhysicsNode>().Node.Position;
+        var origin = entity.Get<PhysicsNode>().Node.Position;
+        var originX = origin.x;
+        var originy = origin.y;
 
-        var move1 = new Move
-        {
-            X = position.x,
-            Y = position.y
-        };
-
-        var move2 = new Move
-        {
-            X = position.x - 300,
-            Y = position.y
-        };
+        var random = new Random();
 
         while (!token.IsCancellationRequested)
         {
-            entity.Set(move2);
-            await MoveOrCollide(entity, token);
+            var theta = random.NextDouble() * 2.0d * Math.PI;
+            var radius = random.NextDouble() * 200.0d;
+            var move = new Move()
+            {
+                X = Convert.ToSingle(originX + radius * Math.Cos(theta)),
+                Y = Convert.ToSingle(originy + radius * Math.Sin(theta)),
+            };
 
-            if (token.IsCancellationRequested) break;
+            var delay = Convert.ToInt32(random.NextDouble() * 5000f);
+            await Task.Delay(delay);
+            if (!token.IsCancellationRequested) break;
 
-            entity.Set(move1);
+            entity.Set(move);
             await MoveOrCollide(entity, token);
         }
     }

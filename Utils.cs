@@ -99,7 +99,7 @@ public static class Utils
         };
     }
 
-    public static (Task, CancellationTokenSource) Run(this Godot.Object obj, EcsWorld world, Func<Entity, CancellationToken, Task> script)
+    public static (Task, CancellationTokenSource) RunEntityTask(this Godot.Object obj, EcsWorld world, Func<Entity, CancellationToken, Task> script)
     {
         var source = new CancellationTokenSource();
 
@@ -110,7 +110,7 @@ public static class Utils
 
                 var entity = task.Result;
 
-                var deletedTask = entity.Added<Delete>(source.Token);
+                var deleteTask = entity.Added<Delete>(source.Token);
                 var scriptTask = script(entity, source.Token)
                     .ContinueWith(task =>
                     {
@@ -125,7 +125,7 @@ public static class Utils
                     }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
 
                 return Task
-                    .WhenAny(deletedTask, scriptTask)
+                    .WhenAny(deleteTask, scriptTask)
                     .ContinueWith(task =>
                     {
 
