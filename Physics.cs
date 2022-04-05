@@ -152,7 +152,10 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                     var other = collision.Collider.GetEntity(world);
 
                     collisionEvents.Ensure(entity);
-                    collisionEvents.Ensure(other);
+                    if (other != -1)
+                    {
+                        collisionEvents.Ensure(other);
+                    }
 
                     moves.Del(entity);
                     directions.Del(entity);

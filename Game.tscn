@@ -1,14 +1,13 @@
-[gd_scene load_steps=11 format=2]
+[gd_scene load_steps=12 format=2]
 
 [ext_resource path="res://Game.cs" type="Script" id=1]
 [ext_resource path="res://resources/tiles/tile072.png" type="Texture" id=2]
 [ext_resource path="res://resources/tiles/tile495.png" type="Texture" id=3]
 [ext_resource path="res://spider.tscn" type="PackedScene" id=4]
 [ext_resource path="res://resources/tiles/tile570.png" type="Texture" id=5]
+[ext_resource path="res://tileset.tres" type="TileSet" id=7]
 
-[sub_resource type="CapsuleShape2D" id=1]
-radius = 15.0
-height = 15.0
+[sub_resource type="CapsuleShape2D" id=6]
 
 [sub_resource type="CapsuleShape2D" id=2]
 
@@ -20,10 +19,21 @@ radius = 5.0
 
 [sub_resource type="CircleShape2D" id=5]
 
-[node name="Game" type="YSort"]
+[node name="Node2D" type="Node2D"]
+
+[node name="terrain" type="TileMap" parent="."]
+position = Vector2( 400, 205 )
+scale = Vector2( 2, 2 )
+tile_set = ExtResource( 7 )
+cell_size = Vector2( 16, 16 )
+show_collision = true
+format = 1
+tile_data = PoolIntArray( -327690, 5, 0, -327689, 5, 0, -393207, 5, 0, -262146, 339, 0, -327670, 5, 0, -262142, 5, 0, -262141, 5, 0, -196604, 5, 0, -196595, 5, 0, -196594, 5, 0, 131068, 5, 0, 196605, 5, 0, 655352, 5, 0, 589833, 5, 0, 589834, 5, 0, 720887, 5, 0, 655371, 5, 0 )
+
+[node name="Game" type="YSort" parent="."]
 script = ExtResource( 1 )
 
-[node name="player" type="Sprite" parent="."]
+[node name="player" type="Sprite" parent="Game"]
 position = Vector2( 157, 160 )
 scale = Vector2( 3, 3 )
 texture = ExtResource( 2 )
@@ -33,21 +43,23 @@ __meta__ = {
 "components/speed/value": 2.0
 }
 
-[node name="physics" type="KinematicBody2D" parent="player"]
+[node name="physics" type="KinematicBody2D" parent="Game/player"]
 scale = Vector2( 0.333333, 0.333333 )
 
-[node name="collision" type="CollisionShape2D" parent="player/physics"]
-shape = SubResource( 1 )
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Game/player/physics"]
+position = Vector2( 0, 15 )
+rotation = 1.5708
+shape = SubResource( 6 )
 
-[node name="area" type="Area2D" parent="player"]
+[node name="area" type="Area2D" parent="Game/player"]
 position = Vector2( 0, 5 )
 scale = Vector2( 0.333333, 0.333333 )
 
-[node name="collision" type="CollisionShape2D" parent="player/area"]
+[node name="collision" type="CollisionShape2D" parent="Game/player/area"]
 rotation = 1.5708
 shape = SubResource( 2 )
 
-[node name="fire" type="Sprite" parent="."]
+[node name="fire" type="Sprite" parent="Game"]
 position = Vector2( 400, 200 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 3 )
@@ -59,21 +71,21 @@ __meta__ = {
 "components/health/value": 100
 }
 
-[node name="physics" type="KinematicBody2D" parent="fire"]
+[node name="physics" type="KinematicBody2D" parent="Game/fire"]
 
-[node name="collision" type="CollisionShape2D" parent="fire/physics"]
+[node name="collision" type="CollisionShape2D" parent="Game/fire/physics"]
 position = Vector2( 0, 2.5 )
 shape = SubResource( 3 )
 
-[node name="area" type="Area2D" parent="fire"]
+[node name="area" type="Area2D" parent="Game/fire"]
 position = Vector2( 0, 2.5 )
 collision_layer = 2
 collision_mask = 2
 
-[node name="collision" type="CollisionShape2D" parent="fire/area"]
+[node name="collision" type="CollisionShape2D" parent="Game/fire/area"]
 shape = SubResource( 4 )
 
-[node name="potion" type="Sprite" parent="."]
+[node name="potion" type="Sprite" parent="Game"]
 position = Vector2( 81.1977, 251.129 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 5 )
@@ -88,22 +100,22 @@ __meta__ = {
 "components/area[]()/2/target/targetother": true
 }
 
-[node name="area" type="Area2D" parent="potion"]
+[node name="area" type="Area2D" parent="Game/potion"]
 
-[node name="collision" type="CollisionShape2D" parent="potion/area"]
+[node name="collision" type="CollisionShape2D" parent="Game/potion/area"]
 shape = SubResource( 5 )
 
-[node name="spider" parent="." instance=ExtResource( 4 )]
+[node name="spider" parent="Game" instance=ExtResource( 4 )]
 position = Vector2( 581, 72 )
 
-[node name="spider5" parent="." instance=ExtResource( 4 )]
+[node name="spider5" parent="Game" instance=ExtResource( 4 )]
 position = Vector2( 581.841, 248.588 )
 
-[node name="spider3" parent="." instance=ExtResource( 4 )]
+[node name="spider3" parent="Game" instance=ExtResource( 4 )]
 position = Vector2( 353.959, 465.538 )
 
-[node name="spider4" parent="." instance=ExtResource( 4 )]
+[node name="spider4" parent="Game" instance=ExtResource( 4 )]
 position = Vector2( 741.611, 311.655 )
 
-[node name="spider2" parent="." instance=ExtResource( 4 )]
+[node name="spider2" parent="Game" instance=ExtResource( 4 )]
 position = Vector2( 581, 390 )

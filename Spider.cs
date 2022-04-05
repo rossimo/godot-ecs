@@ -19,7 +19,7 @@ public class Spider : Godot.Sprite
     {
         var origin = entity.Get<PhysicsNode>().Node.Position;
         var originX = origin.x;
-        var originy = origin.y;
+        var originY = origin.y;
 
         var random = new Random();
 
@@ -37,7 +37,7 @@ public class Spider : Godot.Sprite
                 entity.Set(new Move()
                 {
                     X = Convert.ToSingle(originX + radius * Math.Cos(theta)),
-                    Y = Convert.ToSingle(originy + radius * Math.Sin(theta)),
+                    Y = Convert.ToSingle(originY + radius * Math.Sin(theta)),
                 });
 
                 var task = await MovedOrCollided(entity, token);
