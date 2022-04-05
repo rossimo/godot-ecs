@@ -28,16 +28,24 @@ public class Entity
         return id;
     }
 
-    public Task<(EcsPackedEntity, T)> Removed<T>(CancellationToken token)
+    public Task<T> Removed<T>(CancellationToken token)
     {
         GetId();
-        return World.Removed<T>(token, Self);
+
+        return World.Removed<T>(token, Self).ContinueWith(result =>
+        {
+            return result.Result.Item2;
+        }, TaskContinuationOptions.ExecuteSynchronously);
     }
 
-    public Task<(EcsPackedEntity, T)> Added<T>(CancellationToken token)
+    public Task<T> Added<T>(CancellationToken token)
     {
         GetId();
-        return World.Added<T>(token, Self);
+
+        return World.Added<T>(token, Self).ContinueWith(result =>
+        {
+            return result.Result.Item2;
+        }, TaskContinuationOptions.ExecuteSynchronously);
     }
 
     public ref T Get<T>() where T : struct
@@ -50,6 +58,64 @@ public class Entity
         ref var current = ref World.GetPool<T>().Ensure(GetId());
         current = component;
         return ref current;
+    }
+
+    public TaskChain WhenAny(CancellationToken token)
+    {
+        return new TaskChain(this, token);
+    }
+}
+
+public class TaskWrapper
+{
+    public Task Task;
+}
+
+public class TaskChain
+{
+    private Entity entity;
+    private CancellationToken token;
+    private List<Func<CancellationToken, Task>> links = new List<Func<CancellationToken, Task>>();
+
+    public TaskChain(Entity entity, CancellationToken token)
+    {
+        this.entity = entity;
+        this.token = token;
+    }
+
+    public TaskChain Added<T>()
+    {
+        links.Add((CancellationToken token) =>
+        {
+            return entity.Added<T>(this.token);
+        });
+
+        return this;
+    }
+
+    public TaskChain Removed<T>()
+    {
+        links.Add((CancellationToken token) =>
+        {
+            return entity.Removed<T>(this.token);
+        });
+
+        return this;
+    }
+
+    public async Task<Task> Task()
+    {
+        var source = CancellationTokenSource.CreateLinkedTokenSource(token);
+
+        try
+        {
+            var tasks = links.Select(link => link(token));
+            return await System.Threading.Tasks.Task.WhenAny(tasks);
+        }
+        finally
+        {
+            source.Cancel();
+        }
     }
 }
 
@@ -75,6 +141,11 @@ public static class Utils
 {
     public static readonly List<Type> COMPONENTS = GetComponents().ToList();
     public static readonly List<Type> TARGETS = GetTargets().ToList();
+
+    public static bool Running(this CancellationToken token)
+    {
+        return !token.IsCancellationRequested;
+    }
 
     public static async Task<Entity> AttachEntity(this Godot.Object obj, EcsWorld world)
     {
