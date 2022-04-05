@@ -29,6 +29,10 @@ pixel=false
 2d_physics/layer_1="Pickup"
 2d_physics/layer_2="Combat"
 
+[physics]
+
+common/physics_fps=30
+
 [rendering]
 
 quality/intended_usage/framebuffer_allocation=1
