@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using Leopotam.EcsLite;
 using System.Threading.Tasks;
 
 public class Spider : Godot.Sprite
@@ -22,8 +23,11 @@ public class Spider : Godot.Sprite
 
         while (token.Running())
         {
-            var delay = Convert.ToInt32(random.NextDouble() * 5000f);
-            await Task.Delay(delay);
+            entity.Set(new Timer()
+            {
+                RemainingTicks = PhysicsSystem.MillisToTicks(Convert.ToUInt64(random.NextDouble() * 3000d))
+            });
+            await entity.Removed<Timer>(token);
 
             while (token.Running())
             {
@@ -36,12 +40,12 @@ public class Spider : Godot.Sprite
                     Y = Convert.ToSingle(originY + radius * Math.Sin(theta)),
                 });
 
-                var task = await entity.WhenAny(token)
+                var complete = await entity.WhenAny(token)
                     .Added<Collision>()
                     .Removed<Move>()
                     .Task();
 
-                if (task is Task<Move>) break;
+                if (complete is Task<Move>) break;
             }
         }
     }

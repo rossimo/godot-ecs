@@ -42,6 +42,11 @@ public struct AreaNode
     public Area2D Node;
 }
 
+public struct Timer
+{
+    public ulong RemainingTicks;
+}
+
 public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
 {
     public static float TARGET_PHYSICS_FPS = 60f;
@@ -58,6 +63,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
     [EcsPool] readonly EcsPool<Speed> speeds = default;
     [EcsPool] readonly EcsPool<Direction> directions = default;
     [EcsPool] readonly EcsPool<Tick> ticks = default;
+    [EcsPool] readonly EcsPool<Timer> timers = default;
     [EcsPool] readonly EcsPool<PhysicsNode> physicsNodes = default;
     [EcsPool] readonly EcsPool<RenderNode> renders = default;
     [EcsPool] readonly EcsPool<PositionTween> positionTweens = default;
@@ -81,6 +87,17 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
 
         ref var ticks = ref this.ticks.Get(shared.Physics);
         ticks.Value++;
+
+        foreach (var entity in world.Filter<Timer>().End())
+        {
+            ref var timer = ref timers.Get(entity);
+            timer.RemainingTicks--;
+
+            if (timer.RemainingTicks <= 0)
+            {
+                timers.Del(entity);
+            }
+        }
 
         foreach (var entity in world.Filter<PhysicsNode>().Inc<Move>().End())
         {
