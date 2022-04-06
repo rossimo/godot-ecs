@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=2]
 
-[ext_resource path="res://resources/tiles/tile663.png" type="Texture" id=1]
+[ext_resource path="res://resources/tiles/tile512.png" type="Texture" id=1]
 
 [sub_resource type="CircleShape2D" id=1]
 radius = 5.0
@@ -10,7 +10,9 @@ texture = ExtResource( 1 )
 __meta__ = {
 "components/area[]()/0/component/healthupdate[]/0/delta": -10,
 "components/area[]()/0/target/targetother": true,
-"components/speed/value": 10.0
+"components/area[]()/1/component/delete": true,
+"components/area[]()/1/target/targetself": true,
+"components/speed/value": 8.0
 }
 
 [node name="area" type="Area2D" parent="."]

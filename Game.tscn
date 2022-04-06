@@ -65,9 +65,8 @@ texture = ExtResource( 3 )
 __meta__ = {
 "components/collision[]()/0/component/flash/color/blue": 0.0,
 "components/collision[]()/0/component/flash/color/green": 0.0,
-"components/collision[]()/0/component/flash/color/red": 1,
-"components/collision[]()/0/target/targetother": true,
-"components/health/value": 100
+"components/collision[]()/0/component/flash/color/red": 1.0,
+"components/collision[]()/0/target/targetother": true
 }
 
 [node name="physics" type="KinematicBody2D" parent="Game/fire"]

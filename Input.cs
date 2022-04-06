@@ -22,12 +22,18 @@ public struct Move
     public float Y;
 }
 
+public struct Reloading
+{
+    public ulong RemainingTicks;
+}
+
 public class InputSystem : IEcsInitSystem, IEcsRunSystem
 {
     [EcsWorld] readonly EcsWorld world = default;
     [EcsShared] readonly Shared shared = default;
     [EcsPool] readonly EcsPool<MouseLeft> mouseLefts = default;
     [EcsPool] readonly EcsPool<MouseRight> mouseRights = default;
+    [EcsPool] readonly EcsPool<Reloading> reloadings = default;
     [EcsPool] readonly EcsPool<Move> moves = default;
     [EcsPool] readonly EcsPool<Tick> ticks = default;
     [EcsPool] readonly EcsPool<Direction> directions = default;
@@ -93,7 +99,18 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
 
         var tick = ticks.Get(shared.Physics).Value;
 
-        foreach (var entity in world.Filter<Player>().Inc<PhysicsNode>().End())
+        foreach (var entity in world.Filter<Reloading>().End())
+        {
+            ref var reloading = ref reloadings.Get(entity);
+            reloading.RemainingTicks--;
+
+            if (reloading.RemainingTicks <= 0)
+            {
+                reloadings.Del(entity);
+            }
+        }
+
+        foreach (var entity in world.Filter<Player>().Inc<PhysicsNode>().Exc<Reloading>().End())
         {
             if (mouseLeft.Pressed)
             {
@@ -114,6 +131,12 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
 
                 ref var expiration = ref expirations.Add(bullet);
                 expiration.Tick = PhysicsSystem.MillisToTicks(1 * 1000) + tick;
+
+                ref var reloading = ref reloadings.Ensure(entity);
+                reloading = new Reloading()
+                {
+                    RemainingTicks = PhysicsSystem.MillisToTicks(250)
+                }; ;
             }
         }
 
