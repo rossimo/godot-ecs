@@ -57,6 +57,11 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
         return Convert.ToUInt64((Convert.ToSingle(millis) / 1000f) * PHYSICS_FPS);
     }
 
+    public static ulong MillisToTicks(double millis)
+    {
+        return MillisToTicks(Convert.ToUInt64(millis));
+    }
+
     [EcsWorld] readonly EcsWorld world = default;
     [EcsShared] readonly Shared shared = default;
     [EcsPool] readonly EcsPool<Move> moves = default;

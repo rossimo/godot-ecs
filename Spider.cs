@@ -25,14 +25,14 @@ public class Spider : Godot.Sprite
         {
             entity.Set(new Timer()
             {
-                RemainingTicks = PhysicsSystem.MillisToTicks(Convert.ToUInt64(random.NextDouble() * 3000d))
+                RemainingTicks = PhysicsSystem.MillisToTicks(random.Within(3000))
             });
             await entity.Removed<Timer>(token);
 
             while (token.Running())
             {
-                var theta = random.NextDouble() * 2.0d * Math.PI;
-                var radius = 100.0d + random.NextDouble() * 100.0d;
+                var theta = random.Within(2d * Math.PI);
+                var radius = random.Within(100, 200);
 
                 entity.Set(new Move()
                 {
