@@ -3,7 +3,7 @@ using System.Threading;
 using Leopotam.EcsLite;
 using System.Threading.Tasks;
 
-public class Spider : Godot.Sprite
+public partial class Spider : Godot.Sprite2D
 {
     public override void _Ready()
     {
@@ -16,8 +16,8 @@ public class Spider : Godot.Sprite
     public static async Task Script(Entity entity, CancellationToken token)
     {
         var origin = entity.Get<PhysicsNode>().Node.Position;
-        var originX = origin.x;
-        var originY = origin.y;
+        var originX = origin.X;
+        var originY = origin.Y;
 
         var random = new Random();
 

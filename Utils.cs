@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Leopotam.EcsLite;
 using System.Threading;
+using Godot;
 
 public enum MetaType
 {
@@ -147,7 +148,7 @@ public static class Utils
         return !token.IsCancellationRequested;
     }
 
-    public static async Task<Entity> AttachEntity(this Godot.Object obj, EcsWorld world)
+    public static async Task<Entity> AttachEntity(this Godot.GodotObject obj, EcsWorld world)
     {
         if (!obj.HasUserSignal("entity"))
         {
@@ -170,7 +171,7 @@ public static class Utils
         };
     }
 
-    public static (Task, CancellationTokenSource) RunEntityTask(this Godot.Object obj, EcsWorld world, Func<Entity, CancellationToken, Task> script)
+    public static (Task, CancellationTokenSource) RunEntityTask(this Godot.GodotObject obj, EcsWorld world, Func<Entity, CancellationToken, Task> script)
     {
         var source = new CancellationTokenSource();
 
@@ -329,16 +330,62 @@ public static class Utils
         return collection.Where(el => el != null);
     }
 
-    public static T[] ToArray<T>(this Godot.Collections.Array array)
+    public static T[] ToArray<[MustBeVariant] T>(this Godot.Collections.Array array)
     {
         var list = new List<T>();
 
-        foreach (T element in array)
+        foreach (Godot.Variant element in array)
         {
-            list.Add(element);
+            list.Add(element.As<T>());
         }
 
         return list.ToArray();
+    }
+
+    public static Godot.Variant ToVariant(this object obj)
+    {
+        return obj switch
+        {
+            int v => Variant.From(v),
+            Vector4I v => Variant.From(v),
+            Vector4 v => Variant.From(v),
+            Transform3D v => Variant.From(v),
+            Quaternion v => Variant.From(v),
+            Basis v => Variant.From(v),
+            Vector3I v => Variant.From(v),
+            Vector3 v => Variant.From(v),
+            Transform2D v => Variant.From(v),
+            Rect2I v => Variant.From(v),
+            Rect2 v => Variant.From(v),
+            Vector2I v => Variant.From(v),
+            string v => Variant.From(v),
+            Projection v => Variant.From(v),
+            double v => Variant.From(v),
+            float v => Variant.From(v),
+            ulong v => Variant.From(v),
+            uint v => Variant.From(v),
+            ushort v => Variant.From(v),
+            byte v => Variant.From(v),
+            long v => Variant.From(v),
+            short v => Variant.From(v),
+            sbyte v => Variant.From(v),
+            Vector2 v => Variant.From(v),
+            Aabb v => Variant.From(v),
+            Plane v => Variant.From(v),
+            char v => Variant.From(v),
+            Godot.Collections.Array v => Variant.From(v),
+            Godot.Collections.Dictionary v => Variant.From(v),
+            Rid v => Variant.From(v),
+            NodePath v => Variant.From(v),
+            StringName v => Variant.From(v),
+            GodotObject v => Variant.From(v),
+            GodotObject[] v => Variant.From(v),
+            Signal v => Variant.From(v),
+            Callable v => Variant.From(v),
+            Color v => Variant.From(v),
+            bool v => Variant.From(v),
+            _ => throw new NotSupportedException(),
+        };
     }
 
     public static Dictionary<string, object> ToFieldMap(this object obj)
@@ -435,7 +482,7 @@ public static class Utils
         {
             type = type.GetGenericArguments().First();
             name = type.Name.ToLower();
-            annotations.Add("[]");
+            annotations.Add(EVENT);
         }
 
         var isEvent = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Event<>);
@@ -443,7 +490,7 @@ public static class Utils
         {
             type = type.GetGenericArguments().First();
             name = type.Name.ToLower();
-            annotations.Add("()");
+            annotations.Add(MANY);
         }
 
         return $"{name}{(String.Join("", annotations))}";
@@ -508,7 +555,7 @@ public static class Utils
 
             return new Dictionary<string, object>() {
                 { name, eventDict }
-            }.ToFlat("/");
+            }.ToFlat(DELIMETER);
         };
 
         if (isMany)
@@ -524,14 +571,14 @@ public static class Utils
                 var elementMeta = isEvent ? eventMeta(element) : element.ToMeta();
                 var value = elementMeta.Select(entry =>
                    new KeyValuePair<string, object>(
-                       String.Join("/", entry.Key.Split("/").Skip(1)),
+                       String.Join(DELIMETER, entry.Key.Split(DELIMETER).Skip(1)),
                        entry.Value));
                 manyDict.Add($"{i}", new Dictionary<string, object>(value));
             }
 
             return new Dictionary<string, object>() {
                 { name, manyDict }
-            }.ToFlat("/");
+            }.ToFlat(DELIMETER);
         }
 
         if (isEvent)
@@ -544,33 +591,39 @@ public static class Utils
         {
             return new Dictionary<string, object>() {
                 { name, values }
-            }.ToFlat("/");
+            }.ToFlat(DELIMETER);
         }
 
         return new Dictionary<string, object>() {
             { name, true }
-        }.ToFlat("/");
+        }.ToFlat(DELIMETER);
     }
 
-    public static object[] ToComponents(this Godot.Object obj, string prefix, MetaType metaType = MetaType.Component)
+    public static string DELIMETER = "I";
+    public static string MANY = "M";
+    public static string EVENT = "E";
+
+    public static object[] ToComponents(this Godot.GodotObject obj, string prefix, MetaType metaType = MetaType.Component)
     {
+        prefix = prefix.Replace("/", DELIMETER).Replace("[]", MANY).Replace("()", EVENT);
+        
         var dict = new Dictionary<Type, object>();
         var metalist = obj.GetMetaList() ?? new string[] { };
 
         foreach (var meta in metalist.Where(part => part.StartsWith(prefix)))
         {
             var subpath = new string(meta.Skip(prefix.Length).ToArray())
-                .Split('/')
+                .Split(DELIMETER)
                 .Select(part => part.Trim())
                 .Where(part => part.Length != 0)
                 .ToArray();
 
             if (subpath.Length == 0) continue;
 
-            var isMany = subpath[0].Contains("[]");
-            var isEvent = subpath[0].Contains("()");
+            var isMany = subpath[0].Contains(MANY);
+            var isEvent = subpath[0].Contains(EVENT);
 
-            var name = subpath[0].Replace("[]", string.Empty).Replace("()", string.Empty);
+            var name = subpath[0].Replace(MANY, string.Empty).Replace(EVENT, string.Empty);
             Type componentType = null;
 
             switch (metaType)
@@ -638,25 +691,25 @@ public static class Utils
                     : Activator.CreateInstance(elementType);
             }
 
-            var fieldPath = String.Join('/', subpath.Skip(isMany ? 2 : 1));
+            var fieldPath = String.Join(DELIMETER, subpath.Skip(isMany ? 2 : 1));
 
             if (isEvent)
             {
                 eventComponent = component;
 
-                if (fieldPath.StartsWith("component/"))
+                if (fieldPath.StartsWith("component" + DELIMETER))
                 {
                     var eventComponentPath = new string(meta.SkipLast(fieldPath.Length).ToArray()) + "component";
                     component = obj.ToComponents(eventComponentPath).First();
                 }
-                else if (fieldPath.StartsWith("target/"))
+                else if (fieldPath.StartsWith("target" + DELIMETER))
                 {
                     var eventTargetPath = new string(meta.SkipLast(fieldPath.Length).ToArray()) + "target";
                     component = obj.ToComponents(eventTargetPath, MetaType.Target).First();
                 }
             }
 
-            var value = obj.GetMeta(meta);
+            var value = obj.GetMeta(meta).Obj;
 
             try
             {
@@ -664,18 +717,18 @@ public static class Utils
             }
             catch (Exception ex)
             {
-                var objName = obj is Godot.Node node ? node.Name : obj.ToString();
+                var objName = obj is Godot.Node node ? node.Name.ToString() : obj.ToString();
                 Console.WriteLine($"Unable to set {componentType.Name} {fieldPath} to '{value}' for '{objName}': {ex.Message}");
             }
 
             if (isEvent)
             {
-                if (fieldPath.StartsWith("component/"))
+                if (fieldPath.StartsWith("component" + DELIMETER))
                 {
                     var fieldInfo = eventType.GetField("Component");
                     fieldInfo.SetValue(eventComponent, component);
                 }
-                else if (fieldPath.StartsWith("target/"))
+                else if (fieldPath.StartsWith("target" + DELIMETER))
                 {
                     var fieldInfo = eventType.GetField("Target");
                     fieldInfo.SetValue(eventComponent, component);
@@ -854,32 +907,32 @@ public static class Utils
         return type.GetCustomAttributes(typeof(IsEvent), false)?.Length > 0;
     }
 
-    public static void SetEntity(this Godot.Object obj, EcsWorld world, int entity)
+    public static void SetEntity(this Godot.GodotObject obj, EcsWorld world, int entity)
     {
         var packed = world.PackEntity(entity);
-        obj.SetMeta("entity/id", packed.Id);
-        obj.SetMeta("entity/gen", packed.Gen);
+        obj.SetMeta($"entity{DELIMETER}id", packed.Id);
+        obj.SetMeta($"entity{DELIMETER}gen", packed.Gen);
 
         if (!obj.HasUserSignal("entity"))
         {
             obj.AddUserSignal("entity");
         }
 
-        obj.EmitSignal("entity", new object[] { });
+        obj.EmitSignal("entity", new Godot.Variant[] { });
     }
 
-    public static int GetEntity(this Godot.Object obj, EcsWorld world)
+    public static int GetEntity(this Godot.GodotObject obj, EcsWorld world)
     {
         if (obj == null ||
-            !obj.HasMeta("entity/id") ||
-            !obj.HasMeta("entity/gen"))
+            !obj.HasMeta($"entity{DELIMETER}id") ||
+            !obj.HasMeta($"entity{DELIMETER}gen"))
         {
             return -1;
         }
 
         EcsPackedEntity packed;
-        packed.Id = Convert.ToInt32(obj.GetMeta("entity/id"));
-        packed.Gen = Convert.ToInt32(obj.GetMeta("entity/gen"));
+        packed.Id = obj.GetMeta($"entity{DELIMETER}id").AsInt32();
+        packed.Gen = obj.GetMeta($"entity{DELIMETER}gen").AsInt32();
 
         int entityId = -1;
         packed.Unpack(world, out entityId);

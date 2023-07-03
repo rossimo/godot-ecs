@@ -29,7 +29,7 @@ public struct Area { }
 
 public struct PhysicsNode
 {
-    public KinematicBody2D Node;
+    public CharacterBody2D Node;
 }
 
 public struct PositionTween
@@ -109,8 +109,8 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             ref var nodeComponent = ref physicsNodes.Get(entity);
             ref var move = ref moves.Get(entity);
 
-            if (move.X == nodeComponent.Node.Position.x &&
-                move.Y == nodeComponent.Node.Position.y)
+            if (move.X == nodeComponent.Node.Position.X &&
+                move.Y == nodeComponent.Node.Position.Y)
             {
                 moves.Del(entity);
                 directions.Del(entity);
@@ -122,8 +122,8 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 .Normalized();
 
             ref var direction = ref directions.Ensure(entity);
-            direction.X = directionVec.x;
-            direction.Y = directionVec.y;
+            direction.X = directionVec.X;
+            direction.Y = directionVec.Y;
         }
 
         foreach (var entity in world.Filter<RenderNode>().Inc<Direction>().End())
@@ -171,7 +171,7 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
 
                 if (collision != null)
                 {
-                    var other = collision.Collider.GetEntity(world);
+                    var other = collision.GetCollider().GetEntity(world);
 
                     collisionEvents.Ensure(entity);
                     if (other != -1)
@@ -207,13 +207,9 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
                 ref var tweenComponent = ref positionTweens.Get(entity);
 
                 var deltaRatio = startPosition.DistanceTo(endPosition) / intentDistance;
-
-                tweenComponent.Tween.InterpolateProperty(renderNode, "position",
-                    startPosition,
-                    endPosition,
-                    (1f / PHYSICS_FPS) * deltaRatio);
-
-                tweenComponent.Tween.Start();
+                renderNode.Position = startPosition;
+                tweenComponent.Tween = renderNode.CreateTween();
+                tweenComponent.Tween.TweenProperty(renderNode, "position", endPosition, (1f / PHYSICS_FPS) * deltaRatio);
             }
             else
             {
@@ -227,16 +223,13 @@ public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
             ref var ev = ref areaEvents.Get(entity);
             var node = area.Node;
 
-            if (node.IsConnected("area_entered", game, nameof(game.AreaEvent)))
+            if (node.IsConnected("area_entered", new Callable(game, nameof(game.AreaEvent))))
             {
-                node.Disconnect("area_entered", game, nameof(game.AreaEvent));
+                node.Disconnect("area_entered", new Callable(game, nameof(game.AreaEvent)));
             }
 
             var packed = world.PackEntity(entity);
-            node.Connect("area_entered", game, nameof(game.AreaEvent), new Godot.Collections.Array() {
-                packed.Id,
-                packed.Gen
-            });
+            node.AreaEntered += (Area2D node) => game.AreaEvent(node, packed.Id, packed.Gen);
         }
 
         foreach (int entity in world.Filter<AreaNode>().Inc<Delete>().End())

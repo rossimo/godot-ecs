@@ -55,7 +55,7 @@ public class RendererSystem : IEcsRunSystem
     public void Run(EcsSystems systems)
     {
         var game = shared.Game;
-        float delta = 0;
+        double delta = 0;
         foreach (var entity in world.Filter<FrameTime>().End())
         {
             delta = deltas.Get(entity).Value;
@@ -66,18 +66,16 @@ public class RendererSystem : IEcsRunSystem
             ref var render = ref renders.Get(entity);
             ref var modulate = ref modulates.Get(entity);
             var flash = flashes.Get(entity);
-            
+
             flashes.Del(entity);
 
             var node = render.Node;
-            var tween = modulate.Tween;
+            var tween = modulate.Tween = node.CreateTween();
 
-            tween.InterpolateProperty(node, "modulate",
-                new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue),
+            node.Modulate = new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue);
+            tween.TweenProperty(node, "modulate",
                 new Godot.Color(1, 1, 1),
                 .33f);
-
-            tween.Start();
         }
 
         foreach (int entity in world.Filter<RenderNode>().Inc<Delete>().End())
@@ -93,7 +91,7 @@ public class RendererSystem : IEcsRunSystem
 
 public struct FrameTime
 {
-    public float Value;
+    public double Value;
 }
 
 public class FrameTimeSystem : IEcsInitSystem
@@ -110,14 +108,14 @@ public class FrameTimeSystem : IEcsInitSystem
         world.GetPool<FrameTime>().Add(shared.FrameTime);
     }
 
-    public void Run(EcsSystems systems, float delta)
+    public void Run(EcsSystems systems, double delta)
     {
         ref var component = ref pool.Get(shared.FrameTime);
         component.Value = delta;
     }
 }
 
-public class GodotWrapper : Godot.Object
+public partial class GodotWrapper : Godot.GodotObject
 {
     private object _value { get; set; }
 

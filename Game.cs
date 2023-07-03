@@ -3,7 +3,7 @@ using System.Linq;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
 
-public class Game : Godot.YSort
+public partial class Game : Godot.Node2D
 {
     public EcsWorld world = new EcsWorld();
     public EcsSystems systems;
@@ -48,7 +48,7 @@ public class Game : Godot.YSort
             .Add(new DeleteComponentSystem<Notify<AreaNode>>())
             .Add(new DeleteComponentSystem<Notify<Sprite>>())
             .Add(new DeleteComponentSystem<Notify<Flash>>())
-            .Add(new DeleteComponentSystem<Notify<Area>>())
+            .Add(new DeleteComponentSystem<Notify<Area3D>>())
             .Add(new DeleteComponentSystem<Collision>())
             .Add(new DeleteEntitySystem())
             .Inject()
@@ -75,10 +75,10 @@ public class Game : Godot.YSort
         }
 
         Node2D renderNode = null;
-        KinematicBody2D physicsNode = null;
+        CharacterBody2D physicsNode = null;
         Area2D areaNode = null;
 
-        if (node is KinematicBody2D foundPhysics)
+        if (node is CharacterBody2D foundPhysics)
         {
             physicsNode = foundPhysics;
         }
@@ -108,7 +108,7 @@ public class Game : Godot.YSort
         {
             foreach (var parent in new[] { renderNode })
             {
-                var potential = parent?.GetChildren().ToArray<Godot.Node>().OfType<KinematicBody2D>().FirstOrDefault();
+                var potential = parent?.GetChildren().ToArray<Godot.Node>().OfType<CharacterBody2D>().FirstOrDefault();
                 if (potential != null)
                 {
                     physicsNode = potential;
@@ -165,12 +165,10 @@ public class Game : Godot.YSort
             render.Node = renderNode;
 
             ref var position = ref positions.Add(entity);
-            position.Tween = new Tween() { Name = "position" };
-            renderNode.AddChild(position.Tween);
+            //position.Tween = renderNode.CreateTween();
 
             ref var modulate = ref modulates.Add(entity);
-            modulate.Tween = new Tween() { Name = "modulate" };
-            renderNode.AddChild(modulate.Tween);
+            //modulate.Tween = renderNode.CreateTween();
         }
 
         return entity;
@@ -181,7 +179,7 @@ public class Game : Godot.YSort
         input.Run(systems, @event);
     }
 
-    public override void _PhysicsProcess(float deltaValue)
+    public override void _Process(double deltaValue)
     {
         frameTime.Run(systems, deltaValue);
         systems.Run();

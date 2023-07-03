@@ -1,6 +1,6 @@
 using Godot;
 using System;
 
-public class EcsPropertyEditor : EditorProperty
+public partial class EcsPropertyEditor : EditorProperty
 {
 }

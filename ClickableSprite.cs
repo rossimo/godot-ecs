@@ -1,12 +1,12 @@
 using System;
 using Godot;
 
-public class ClickableSprite : Godot.Sprite
+public partial class ClickableSprite : Godot.Sprite2D
 {
     public Rect2 Rect = new Rect2();
 
     [Signal]
-    public delegate void pressed();
+    public delegate void pressedEventHandler();
 
     public override void _Input(InputEvent @event)
     {

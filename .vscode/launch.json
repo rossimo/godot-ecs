@@ -1,20 +1,19 @@
 {
-    // Use IntelliSense to find out which attributes exist for C# debugging
-    // Use hover for the description of the existing attributes
-    // For further information visit https://github.com/OmniSharp/omnisharp-vscode/blob/master/debugger-launchjson.md
     "version": "0.2.0",
     "configurations": [
-        {
-            "name": "Launch",
-            "type": "godot-mono",
-            "request": "launch",
-            "mode": "executable",
-            "preLaunchTask": "build",
-            "executable": "godot",
-            "executableArguments": [
-                "--path",
-                ""
-            ]
-        }
+      // For these launch configurations to work, you need to setup a GODOT4
+      // environment variable. On mac or linux, this can be done by adding
+      // the following to your .zshrc, .bashrc, or .bash_profile file:
+      // export GODOT4="/Applications/Godot.app/Contents/MacOS/Godot"
+      {
+        "name": "Play",
+        "type": "coreclr",
+        "request": "launch",
+        "preLaunchTask": "build",
+        "program": "godot",
+        "args": [],
+        "cwd": "${workspaceFolder}",
+        "stopAtEntry": false,
+      }
     ]
-}
+  }

@@ -58,8 +58,8 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
         foreach (var entity in world.Filter<Player>().Inc<RenderNode>().End())
         {
             ref var move = ref moves.Ensure(entity);
-            move.X = position.x;
-            move.Y = position.y;
+            move.X = position.X;
+            move.Y = position.Y;
         }
     }
 
@@ -69,12 +69,12 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
         {
             case InputEventMouseButton mouseButton:
                 {
-                    if ((mouseButton.ButtonIndex & (int)ButtonList.MaskLeft) != 0)
+                    if (mouseButton.ButtonIndex == MouseButton.Left)
                     {
                         ref var mouseLeft = ref mouseLefts.Get(shared.Input);
                         mouseLeft.Pressed |= mouseButton.IsPressed();
                     }
-                    else if ((mouseButton.ButtonIndex & (int)ButtonList.MaskRight) != 0)
+                    else if (mouseButton.ButtonIndex == MouseButton.Right)
                     {
                         ref var mouseRight = ref mouseRights.Get(shared.Input);
                         mouseRight.Pressed |= mouseButton.IsPressed();
@@ -119,15 +119,15 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
                     .DirectionTo(mousePosition)
                     .Normalized();
 
-                var node = GD.Load<PackedScene>("res://bullet.tscn").Instance<Node2D>();
+                var node = GD.Load<PackedScene>("res://bullet.tscn").Instantiate<Node2D>();
                 node.Position = playerNode.Position;
                 game.AddChild(node);
 
                 var bullet = game.DiscoverEntity(node);
 
                 ref var direction = ref directions.Add(bullet);
-                direction.X = directionVec.x;
-                direction.Y = directionVec.y;
+                direction.X = directionVec.X;
+                direction.Y = directionVec.Y;
 
                 ref var expiration = ref expirations.Add(bullet);
                 expiration.Tick = PhysicsSystem.MillisToTicks(1 * 1000) + tick;
@@ -140,8 +140,8 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
             }
         }
 
-        mouseLeft.Pressed = Input.IsMouseButtonPressed((int)ButtonList.MaskLeft);
-        mouseRight.Pressed = Input.IsMouseButtonPressed((int)ButtonList.MaskRight);
+        mouseLeft.Pressed = Input.IsMouseButtonPressed(MouseButton.Left);
+        mouseRight.Pressed = Input.IsMouseButtonPressed(MouseButton.Right);
 
         if (mouseRight.Pressed)
         {

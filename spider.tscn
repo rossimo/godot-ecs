@@ -10,9 +10,8 @@ radius = 8.0
 scale = Vector2( 2, 2 )
 texture = ExtResource( 1 )
 script = ExtResource( 2 )
-__meta__ = {
-"components/health/value": 20
-}
+metadata/componentsIhealthIvalue = 20
+
 
 [node name="area" type="Area2D" parent="."]
 collision_layer = 3

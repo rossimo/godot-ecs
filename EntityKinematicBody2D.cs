@@ -7,7 +7,7 @@ public interface EntityNode
     public EcsPackedEntity Entity { get; }
 }
 
-public class EntityKinematicBody2D : KinematicBody2D, EntityNode
+public partial class EntityKinematicBody2D : CharacterBody2D, EntityNode
 {
     private EcsPackedEntity _entity;
 
