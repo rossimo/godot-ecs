@@ -6,20 +6,25 @@
 ;   [section] ; section goes between []
 ;   param=value ; assign values to parameters
 
-config_version=4
+config_version=5
 
 [application]
 
 config/name="World"
 run/main_scene="res://Game.tscn"
+config/features=PackedStringArray("4.0", "C#")
+
+[dotnet]
+
+project/assembly_name="World"
 
 [editor_plugins]
 
-enabled=PoolStringArray( "res://addons/ecsplugin/plugin.cfg" )
+enabled=PackedStringArray("res://addons/ecsplugin/plugin.cfg")
 
 [global]
 
-default_clear_color=Color( 0, 0, 0, 1 )
+default_clear_color=Color(0, 0, 0, 1)
 batch=false
 physics=false
 pixel=false
@@ -35,8 +40,8 @@ common/physics_fps=30
 
 [rendering]
 
+environment/defaults/default_clear_color=Color(0, 0, 0, 1)
+environment/defaults/default_environment="res://default_env.tres"
 quality/intended_usage/framebuffer_allocation=1
 quality/intended_usage/framebuffer_allocation.mobile=1
 2d/snapping/use_gpu_pixel_snap=true
-environment/default_clear_color=Color( 0, 0, 0, 1 )
-environment/default_environment="res://default_env.tres"
