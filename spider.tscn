@@ -10,7 +10,7 @@ radius = 8.0
 scale = Vector2( 2, 2 )
 texture = ExtResource( 1 )
 script = ExtResource( 2 )
-metadata/componentsIhealthIvalue = 20
+metadata/components_health_value = 20
 
 
 [node name="area" type="Area2D" parent="."]

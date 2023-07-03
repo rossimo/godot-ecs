@@ -599,7 +599,7 @@ public static class Utils
         }.ToFlat(DELIMETER);
     }
 
-    public static string DELIMETER = "I";
+    public static string DELIMETER = "_";
     public static string MANY = "M";
     public static string EVENT = "E";
 

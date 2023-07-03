@@ -36,9 +36,9 @@ script = ExtResource( 1 )
 position = Vector2( 157, 160 )
 scale = Vector2( 3, 3 )
 texture = ExtResource( 2 )
-metadata/componentsIhealthIvalue = 40
-metadata/componentsIplayer = true
-metadata/componentsIspeedIvalue = 1.0
+metadata/components_health_value = 40
+metadata/components_player = true
+metadata/components_speed_value = 1.0
 
 [node name="physics" type="CharacterBody2D" parent="Game/player"]
 scale = Vector2( 0.333333, 0.333333 )
@@ -60,10 +60,10 @@ shape = SubResource( 2 )
 position = Vector2( 400, 200 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 3 )
-metadata/componentsIcollisionMEI0IcomponentIflashIcolorIblue = 0.0
-metadata/componentsIcollisionMEI0IcomponentIflashIcolorIgreen = 0.0
-metadata/componentsIcollisionMEI0IcomponentIflashIcolorIred =  1.0
-metadata/componentsIcollisionMEI0ItargetItargetother = true
+metadata/components_collisionME_0_component_flash_color_blue = 0.0
+metadata/components_collisionME_0_component_flash_color_green = 0.0
+metadata/components_collisionME_0_component_flash_color_red =  1.0
+metadata/components_collisionME_0_target_targetother = true
 
 [node name="physics" type="CharacterBody2D" parent="Game/fire"]
 
@@ -83,14 +83,14 @@ shape = SubResource( 4 )
 position = Vector2( 81.1977, 251.129 )
 scale = Vector2( 2, 2 )
 texture = ExtResource( 5 )
-metadata/componentsIareaMEI0IcomponentIspeedIvalue = 4.0
-metadata/componentsIareaMEI0ItargetItargetother = true
-metadata/componentsIareaMEI1IcomponentIdelete = true
-metadata/componentsIareaMEI1ItargetItargetself = true
-metadata/componentsIareaMEI2IcomponentIflashIcolorIblue = 1.0
-metadata/componentsIareaMEI2IcomponentIflashIcolorIgreen = 0
-metadata/componentsIareaMEI2IcomponentIflashIcolorIred = 0
-metadata/componentsIareaMEI2ItargetItargetother = true
+metadata/components_areaME_0_component_speed_value = 4.0
+metadata/components_areaME_0_target_targetother = true
+metadata/components_areaME_1_component_delete = true
+metadata/components_areaME_1_target_targetself = true
+metadata/components_areaME_2_component_flash_color_blue = 1.0
+metadata/components_areaME_2_component_flash_color_green = 0
+metadata/components_areaME_2_component_flash_color_red = 0
+metadata/components_areaME_2_target_targetother = true
 
 [node name="area" type="Area2D" parent="Game/potion"]
 

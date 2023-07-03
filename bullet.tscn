@@ -7,11 +7,11 @@ radius = 5.0
 
 [node name="bullet" type="Sprite2D"]
 texture = ExtResource( 1 )
-metadata/componentsIareaMEI0IcomponentIhealthupdateMI0Idelta = -10
-metadata/componentsIareaMEI0ItargetItargetother = true
-metadata/componentsIareaMEI1IcomponentIdelete = true
-metadata/componentsIareaMEI1ItargetItargetself = true
-metadata/componentsIspeedIvalue = 8.0
+metadata/components_areaME_0_component_healthupdateM_0_delta = -10
+metadata/components_areaME_0_target_targetother = true
+metadata/components_areaME_1_component_delete = true
+metadata/components_areaME_1_target_targetself = true
+metadata/components_speed_value = 8.0
 
 [node name="area" type="Area2D" parent="."]
 collision_layer = 2
