@@ -522,7 +522,8 @@ public static class Utils
             componentType = typeof(Many<>).MakeGenericType(new[] { componentType });
         }
 
-        var component = Activator.CreateInstance(componentType);
+        var component = Activator.CreateInstance(componentType) ??
+            throw new Exception($"Unable to instantiate {componentType}");
 
         if (baseComponentType.HasManyHint())
         {
@@ -545,7 +546,7 @@ public static class Utils
         {
             type = type.GetGenericArguments().First();
             name = type.Name.ToLower();
-            annotations.Add(EVENT);
+            annotations.Add(MANY);
         }
 
         var isEvent = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Event<>);
@@ -553,7 +554,7 @@ public static class Utils
         {
             type = type.GetGenericArguments().First();
             name = type.Name.ToLower();
-            annotations.Add(MANY);
+            annotations.Add(EVENT);
         }
 
         return $"{name}{(String.Join("", annotations))}";
@@ -606,12 +607,12 @@ public static class Utils
         {
             var eventDict = new Dictionary<string, object>();
 
-            var targetField = thisComponent.GetType().GetField("Target");
+            var targetField = thisComponent.GetType().GetField("Target") ?? throw new Exception("Target missing");
             var target = targetField.GetValue(thisComponent);
             var targetMeta = target?.ToMeta();
             eventDict["target"] = (targetMeta == null || targetMeta.Count == 0) ? false : targetMeta;
 
-            var childComponentField = thisComponent.GetType().GetField("Component");
+            var childComponentField = thisComponent.GetType().GetField("Component") ?? throw new Exception("Component missing");
             var childComponent = childComponentField.GetValue(thisComponent);
             var childMeta = childComponent?.ToMeta();
             eventDict["component"] = (childMeta == null || childMeta.Count == 0) ? false : childMeta;
@@ -623,14 +624,14 @@ public static class Utils
 
         if (isMany)
         {
-            var itemsField = component.GetType().GetField("Items");
+            var itemsField = component.GetType().GetField("Items") ?? throw new Exception("Items missing");
             var array = itemsField.GetValue(component) as Array;
             if (array == null) array = Array.CreateInstance(type, 0);
             var manyDict = new Dictionary<string, object>();
 
             for (var i = 0; i < array.Length; i++)
             {
-                var element = array.GetValue(i);
+                var element = array.GetValue(i) ?? throw new Exception("Element missing");
                 var elementMeta = isEvent ? eventMeta(element) : element.ToMeta();
                 var value = elementMeta.Select(entry =>
                    new KeyValuePair<string, object>(
@@ -666,11 +667,15 @@ public static class Utils
     public static string MANY = "M";
     public static string EVENT = "E";
 
+    public static string EncodeComponentPath(string path) {
+        return path.Replace("/", DELIMETER).Replace("[]", MANY).Replace("()", EVENT);
+    }
+
     public static object[] ToComponents(this Godot.GodotObject obj, string prefix, MetaType metaType = MetaType.Component)
     {
-        prefix = prefix.Replace("/", DELIMETER).Replace("[]", MANY).Replace("()", EVENT);
+        prefix = EncodeComponentPath(prefix);
 
-        var dict = new Dictionary<Type, object>();
+        var dict = new Dictionary<Type, object?>();
         var metalist = obj.GetMetaList() ?? new string[] { };
 
         foreach (var meta in metalist.Where(part => part.StartsWith(prefix)))
@@ -687,28 +692,31 @@ public static class Utils
             var isEvent = subpath[0].Contains(EVENT);
 
             var name = subpath[0].Replace(MANY, string.Empty).Replace(EVENT, string.Empty);
-            Type componentType = null;
+            Type componentType;
 
             switch (metaType)
             {
                 case MetaType.Component:
                     {
-                        componentType = COMPONENTS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower());
+                        componentType = COMPONENTS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower()) ??
+                            throw new Exception($"Component {name} not found");
                     }
                     break;
                 case MetaType.Target:
                     {
-                        componentType = TARGETS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower());
+                        componentType = TARGETS.FirstOrDefault(el => el.Name.ToLower() == name.ToLower()) ??
+                            throw new Exception($"Target {name} not found");
                     }
                     break;
+
+                default:
+                    continue;
             }
 
             var eventType = typeof(Event<>).MakeGenericType(new[] { componentType });
             var elementType = isEvent ? eventType : componentType;
             var manyType = typeof(Many<>).MakeGenericType(new[] { elementType });
             var manyDictType = typeof(Dictionary<,>).MakeGenericType(new[] { typeof(string), elementType });
-
-            if (componentType == null) continue;
 
             var type = componentType;
             if (isEvent)
@@ -720,9 +728,9 @@ public static class Utils
                 type = manyType;
             }
 
-            object component = null;
-            object manyComponent = null;
-            object eventComponent = null;
+            object? component = null;
+            object? manyComponent = null;
+            object? eventComponent = null;
 
             if (dict.ContainsKey(type))
             {
@@ -740,6 +748,10 @@ public static class Utils
                 }
 
                 dict[type] = component;
+            }
+
+            if (component == null) {
+                continue;
             }
 
             if (isMany)
@@ -911,7 +923,7 @@ public static class Utils
         getPoolMethodCache.TryGetValue(type, out getPoolMethod);
         if (getPoolMethod == null)
         {
-            getPoolMethod = typeof(EcsWorld).GetMethod("GetPool")
+            getPoolMethod = (typeof(EcsWorld).GetMethod("GetPool") ?? throw new Exception("GetPool method not found"))
                 .MakeGenericMethod(poolType);
 
             getPoolMethodCache.Add(type, getPoolMethod);
@@ -923,7 +935,7 @@ public static class Utils
         addMethodCache.TryGetValue(type, out addMethod);
         if (addMethod == null)
         {
-            addMethod = typeof(Utils).GetMethod("ReflectionAddNotify")
+            addMethod = (typeof(Utils).GetMethod("ReflectionAddNotify") ?? throw new Exception("ReflectionAddNotify method not found"))
                 .MakeGenericMethod(poolType);
 
             addMethodCache.Add(type, addMethod);

@@ -10,9 +10,6 @@ using System.Reflection;
 #pragma warning disable CS0618
 
 namespace Leopotam.EcsLite.Di {
-#if DEBUG
-    [Obsolete ("Use EcsWorldInject instead.")]
-#endif
     [AttributeUsage (AttributeTargets.Field)]
     public sealed class EcsWorldAttribute : Attribute {
         public readonly string World;
@@ -22,9 +19,6 @@ namespace Leopotam.EcsLite.Di {
         }
     }
 
-#if DEBUG
-    [Obsolete ("Use EcsPoolInject<> instead.")]
-#endif
     [AttributeUsage (AttributeTargets.Field)]
     public sealed class EcsPoolAttribute : Attribute {
         public readonly string World;
@@ -34,9 +28,6 @@ namespace Leopotam.EcsLite.Di {
         }
     }
 
-#if DEBUG
-    [Obsolete ("Use EcsFilterInject<> instead.")]
-#endif
     [AttributeUsage (AttributeTargets.Field)]
     public sealed class EcsFilterAttribute : Attribute {
         public readonly string World;
@@ -52,9 +43,6 @@ namespace Leopotam.EcsLite.Di {
         }
     }
 
-#if DEBUG
-    [Obsolete ("Use EcsFilterInject<> instead.")]
-#endif
     [AttributeUsage (AttributeTargets.Field)]
     public sealed class EcsFilterExcludeAttribute : Attribute {
         public readonly Type Exc1;
@@ -66,15 +54,9 @@ namespace Leopotam.EcsLite.Di {
         }
     }
 
-#if DEBUG
-    [Obsolete ("Use EcsSharedInject<> instead.")]
-#endif
     [AttributeUsage (AttributeTargets.Field)]
     public sealed class EcsSharedAttribute : Attribute { }
 
-#if DEBUG
-    [Obsolete ("Use EcsDataInject<> instead.")]
-#endif
     [AttributeUsage (AttributeTargets.Field)]
     public sealed class EcsInjectAttribute : Attribute { }
 

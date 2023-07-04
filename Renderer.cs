@@ -114,18 +114,3 @@ public class FrameTimeSystem : IEcsInitSystem
         component.Value = delta;
     }
 }
-
-public partial class GodotWrapper : Godot.GodotObject
-{
-    private object _value { get; set; }
-
-    public GodotWrapper(object value)
-    {
-        _value = value;
-    }
-
-    public T Get<T>()
-    {
-        return (T)_value;
-    }
-}

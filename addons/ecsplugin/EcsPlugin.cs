@@ -120,7 +120,7 @@ public partial class EcsPlugin : EditorPlugin
                 var array = arrayField.GetValue(obj) as Array;
                 for (var i = 0; i < array.Length; i++)
                 {
-                    addObject(manyLayout, array.GetValue(i), $"{prefix}/{i}", Category.MultiComponent);
+                    addObject(manyLayout, array.GetValue(i), $"{prefix}{Utils.DELIMETER}{i}", Category.MultiComponent);
                 }
                 return;
             }
@@ -180,7 +180,7 @@ public partial class EcsPlugin : EditorPlugin
                 };
                 outerChildLayout.AddChild(childLayout);
 
-                var targetField = type.GetField("Target");
+                var targetField = type.GetField("Target") ?? throw new Exception("Event must have a Target field.");
                 var target = targetField.GetValue(obj);
 
                 var targetLayout = new HBoxContainer()
@@ -219,7 +219,7 @@ public partial class EcsPlugin : EditorPlugin
                         SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
                     };
                     pickerLayout.AddChild(picker);
-                    picker.ItemSelected += (long index) => ReplaceComponent((int)index, prefix + "/target/", new GodotWrapper(MetaType.Target));
+                    picker.ItemSelected += (long index) => ReplaceComponent((int)index, prefix + "/target/", MetaType.Target);
 
                     for (var i = 0; i < Utils.TARGETS.Count; i++)
                     {
@@ -229,10 +229,10 @@ public partial class EcsPlugin : EditorPlugin
                 }
                 else
                 {
-                    addObject(targetLayout, target, prefix + "/target/" + Utils.ComponentName(target), Category.Target);
+                    addObject(targetLayout, target, prefix + Utils.DELIMETER + "target" + Utils.DELIMETER + Utils.ComponentName(target), Category.Target);
                 }
 
-                var componentField = type.GetField("Component");
+                var componentField = type.GetField("Component") ?? throw new Exception("Event must have a Component field.");
                 var component = componentField.GetValue(obj);
                 var childComponentLayout = new HBoxContainer()
                 {
@@ -270,7 +270,7 @@ public partial class EcsPlugin : EditorPlugin
                         SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
                     };
                     pickerLayout.AddChild(picker);
-                    picker.ItemSelected += (long index) => ReplaceComponent((int)index, prefix + "/component/", new GodotWrapper(MetaType.Component));
+                    picker.ItemSelected += (long index) => ReplaceComponent((int)index, prefix + Utils.DELIMETER + "component" + Utils.DELIMETER, MetaType.Component);
 
                     for (var i = 0; i < Utils.COMPONENTS.Count; i++)
                     {
@@ -280,7 +280,7 @@ public partial class EcsPlugin : EditorPlugin
                 }
                 else
                 {
-                    addObject(childComponentLayout, component, prefix + "/component/" + Utils.ComponentName(component), Category.Component);
+                    addObject(childComponentLayout, component, prefix + Utils.DELIMETER + "component" + Utils.DELIMETER + Utils.ComponentName(component), Category.Component);
                 }
 
                 return;
@@ -370,7 +370,7 @@ public partial class EcsPlugin : EditorPlugin
                             Text = $"{childObj}"
                         };
                         fieldLayout.AddChild(editor);
-                        editor.TextChanged += (string value) => FieldChanged(value, name, new GodotWrapper(fieldInfo.FieldType));
+                        editor.TextChanged += (string value) => FieldChanged(value, name, fieldInfo.FieldType);
                     }
                     else
                     {
@@ -420,7 +420,7 @@ public partial class EcsPlugin : EditorPlugin
             {
                 var manyType = type = type.GetGenericArguments().First();
                 name = manyType.Name.ToLower();
-                annotations.Add("[]");
+                annotations.Add(Utils.MANY);
             }
 
             var isEvent = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Event<>);
@@ -428,17 +428,17 @@ public partial class EcsPlugin : EditorPlugin
             {
                 var eventType = type = type.GetGenericArguments().First();
                 name = eventType.Name.ToLower();
-                annotations.Add("()");
+                annotations.Add(Utils.EVENT);
             }
 
             name = $"{name}{(String.Join("", annotations))}";
 
-            addObject(layout, obj, $"components/{name}", isMany ? Category.MultiComponent : Category.Component);
+            addObject(layout, obj, $"components{Utils.DELIMETER}{name}", isMany ? Category.MultiComponent : Category.Component);
         }
 
         var picker = new OptionButton() { Text = "Add Component" };
         layout.AddChild(picker);
-        picker.ItemSelected += (long index) => AddComponent((int)index, "components/");
+        picker.ItemSelected += (long index) => AddComponent((int)index, $"components{Utils.DELIMETER}");
 
         for (var i = 0; i < Utils.COMPONENTS.Count; i++)
         {
@@ -466,19 +466,21 @@ public partial class EcsPlugin : EditorPlugin
         }
     }
 
-    public void FieldChanged(string value, string path, GodotWrapper typeWrapper)
+    public void FieldChanged(string value, string path, Type typeWrapper)
     {
+        Console.WriteLine($"Field changed {current}: {path} = {value} ({typeWrapper})");
         if (current == null) return;
 
-        var type = typeWrapper.Get<Type>();
+        var type = typeWrapper;
 
         try
         {
-            current.SetMeta(path, Convert.ChangeType(value, type).ToVariant());
+            current.SetMeta(Utils.EncodeComponentPath(path), Convert.ChangeType(value, type).ToVariant());
         }
-        catch (Exception)
+        catch (Exception error)
         {
-            current.SetMeta(path, "");
+            Console.WriteLine(error);
+            current.SetMeta(Utils.EncodeComponentPath(path), "");
         }
 
         GetUndoRedo().CreateAction($"Edited {path}");
@@ -489,7 +491,7 @@ public partial class EcsPlugin : EditorPlugin
     {
         if (current == null) return;
 
-        foreach (var meta in current.GetMetaList().Where(meta => meta.StartsWith(prefix)))
+        foreach (var meta in current.GetMetaList().Where(meta => meta.StartsWith(Utils.EncodeComponentPath(prefix))))
         {
             current.RemoveMeta(meta);
         }
@@ -506,7 +508,7 @@ public partial class EcsPlugin : EditorPlugin
             var meta = component.ToMeta();
             foreach (var entry in meta)
             {
-                current.SetMeta("components" + Utils.DELIMETER + entry.Key.ToLower(), entry.Value.ToVariant());
+                current.SetMeta("components" + Utils.DELIMETER + entry.Key, entry.Value.ToVariant());
             }
         }
 
@@ -516,13 +518,13 @@ public partial class EcsPlugin : EditorPlugin
         RenderComponents();
     }
 
-    public void ReplaceComponent(int index, string prefix, GodotWrapper metaType)
+    public void ReplaceComponent(int index, string prefix, MetaType metaType)
     {
         if (current != null)
         {
             Type type = null;
 
-            switch (metaType.Get<MetaType>())
+            switch (metaType)
             {
                 case MetaType.Component:
                     {
@@ -585,7 +587,7 @@ public partial class EcsPlugin : EditorPlugin
                 {
                     key = key.Replace(prefix + metaName + Utils.DELIMETER + "0" + Utils.DELIMETER, prefix + metaName + $"{Utils.DELIMETER}{manyIndex}{Utils.DELIMETER}");
                 }
-                current.SetMeta(key, meta.Value.ToVariant());
+                current.SetMeta(Utils.EncodeComponentPath(key), meta.Value.ToVariant());
             }
 
             GetUndoRedo().CreateAction($"Add {type.Name}");
@@ -619,13 +621,13 @@ public partial class EcsPlugin : EditorPlugin
 
             foreach (var meta in metas)
             {
-                var key = prefix + meta.Key.ToLower();
+                var key = prefix + meta.Key;
                 if (type.HasManyHint())
                 {
                     key = key.Replace(prefix + metaName + Utils.DELIMETER + "0" + Utils.DELIMETER, prefix + metaName + $"{Utils.DELIMETER}{manyIndex}{Utils.DELIMETER}");
                 }
 
-                current.SetMeta(key, meta.Value.ToVariant());
+                current.SetMeta(Utils.EncodeComponentPath(key), meta.Value.ToVariant());
             }
 
             GetUndoRedo().CreateAction($"Add {type.Name}");

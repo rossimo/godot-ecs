@@ -74,9 +74,9 @@ public partial class Game : Godot.Node2D
             world.AddNotify(entity, component);
         }
 
-        Node2D renderNode = null;
-        CharacterBody2D physicsNode = null;
-        Area2D areaNode = null;
+        Node2D? renderNode = null;
+        CharacterBody2D? physicsNode = null;
+        Area2D? areaNode = null;
 
         if (node is CharacterBody2D foundPhysics)
         {
