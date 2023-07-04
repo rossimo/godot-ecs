@@ -130,7 +130,7 @@ public class InputSystem : IEcsInitSystem, IEcsRunSystem
                 direction.Y = directionVec.Y;
 
                 ref var expiration = ref expirations.Add(bullet);
-                expiration.Tick = PhysicsSystem.MillisToTicks(1 * 1000) + tick;
+                expiration.Tick = PhysicsSystem.MillisToTicks(5 * 1000) + tick;
 
                 ref var reloading = ref reloadings.Ensure(entity);
                 reloading = new Reloading()

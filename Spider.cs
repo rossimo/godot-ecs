@@ -1,8 +1,3 @@
-using System;
-using System.Threading;
-using Leopotam.EcsLite;
-using System.Threading.Tasks;
-
 public partial class Spider : Godot.Sprite2D
 {
     public override void _Ready()
@@ -13,40 +8,37 @@ public partial class Spider : Godot.Sprite2D
         this.RunEntityTask(world, Script);
     }
 
-    public static async Task Script(Entity entity, CancellationToken token)
+    public static async Task Script(Entity self, CancellationToken token)
     {
-        var origin = entity.Get<PhysicsNode>().Node.Position;
+        var origin = self.Get<PhysicsNode>().Node.Position;
         var originX = origin.X;
         var originY = origin.Y;
 
         var random = new Random();
 
-        while (token.Running())
+        while (true)
         {
-            entity.Set(new Timer()
+            self.Set(new Timer()
             {
                 RemainingTicks = PhysicsSystem.MillisToTicks(random.Within(3000))
             });
-            await entity.Removed<Timer>(token);
 
-            while (token.Running())
+            await self.WhenAny(token)
+                .Removed<Timer>()
+                .Task();
+
+            var theta = random.Within(2d * Math.PI);
+            var radius = random.Within(100, 200);
+
+            self.Set(new Move()
             {
-                var theta = random.Within(2d * Math.PI);
-                var radius = random.Within(100, 200);
+                X = Convert.ToSingle(originX + radius * Math.Cos(theta)),
+                Y = Convert.ToSingle(originY + radius * Math.Sin(theta)),
+            });
 
-                entity.Set(new Move()
-                {
-                    X = Convert.ToSingle(originX + radius * Math.Cos(theta)),
-                    Y = Convert.ToSingle(originY + radius * Math.Sin(theta)),
-                });
-
-                var complete = await entity.WhenAny(token)
-                    .Added<Collision>()
-                    .Removed<Move>()
-                    .Task();
-
-                if (complete is Task<Move>) break;
-            }
+            await self.WhenAny(token)
+                .Removed<Move>()
+                .Task();
         }
     }
 }

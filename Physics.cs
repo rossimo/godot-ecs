@@ -49,7 +49,7 @@ public struct Timer
 
 public class PhysicsSystem : IEcsInitSystem, IEcsRunSystem
 {
-    public static float TARGET_PHYSICS_FPS = 60f;
+    public static float TARGET_PHYSICS_FPS = 30f;
     public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_fps")}".ToFloat();
 
     public static ulong MillisToTicks(ulong millis)

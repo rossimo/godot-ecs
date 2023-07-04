@@ -70,12 +70,12 @@ public class RendererSystem : IEcsRunSystem
             flashes.Del(entity);
 
             var node = render.Node;
-            var tween = modulate.Tween = node.CreateTween();
-
             node.Modulate = new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue);
-            tween.TweenProperty(node, "modulate",
-                new Godot.Color(1, 1, 1),
-                .33f);
+
+            modulate.Tween = node.CreateTween();
+            modulate.Tween.TweenProperty(node, "modulate",
+               new Godot.Color(1, 1, 1),
+               .33f);
         }
 
         foreach (int entity in world.Filter<RenderNode>().Inc<Delete>().End())

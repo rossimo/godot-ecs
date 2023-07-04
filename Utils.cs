@@ -61,6 +61,13 @@ public class Entity
         return ref current;
     }
 
+    public ref T SetAndNotify<T>(T component) where T : struct
+    {
+        ref var current = ref this.Set(component);
+        World.AddNotify(GetId(), component);
+        return ref current;
+    }
+
     public TaskChain WhenAny(CancellationToken token)
     {
         return new TaskChain(this, token);
@@ -171,6 +178,15 @@ public static class Utils
         };
     }
 
+    public static async Task<Entity> AttachEntity(this int entity, EcsWorld world)
+    {
+        return new Entity()
+        {
+            Self = world.PackEntity(entity),
+            World = world
+        };
+    }
+
     public static (Task, CancellationTokenSource) RunEntityTask(this Godot.GodotObject obj, EcsWorld world, Func<Entity, CancellationToken, Task> script)
     {
         var source = new CancellationTokenSource();
@@ -192,17 +208,64 @@ public static class Utils
                                 ? aggregate.InnerException
                                 : task.Exception;
 
-                        Console.WriteLine(exception);
+                        var dead = exception is MissingEntityException missing &&
+                            missing.Packed.Id == entity.Self.Id &&
+                            missing.Packed.Gen == entity.Self.Gen;
 
+                        if (!dead)
+                        {
+                            Console.WriteLine(exception);
+                        }
                     }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
 
                 return Task
                     .WhenAny(deleteTask, scriptTask)
                     .ContinueWith(task =>
                     {
-
                         source.Cancel();
+                    }, TaskContinuationOptions.ExecuteSynchronously);
 
+            }, TaskContinuationOptions.ExecuteSynchronously);
+
+        return (task, source);
+    }
+
+    public static (Task, CancellationTokenSource) RunEntityTask(this int entity, EcsWorld world, Func<Entity, CancellationToken, Task> script)
+    {
+        var source = new CancellationTokenSource();
+
+        var task = entity
+            .AttachEntity(world)
+            .ContinueWith(task =>
+            {
+
+                var entity = task.Result;
+
+                var deleteTask = entity.Added<Delete>(source.Token);
+                var scriptTask = script(entity, source.Token)
+                    .ContinueWith(task =>
+                    {
+
+                        var exception = task.Exception is AggregateException aggregate
+                            && aggregate.InnerException != null
+                                ? aggregate.InnerException
+                                : task.Exception;
+
+                        var dead = exception is MissingEntityException missing &&
+                            missing.Packed.Id == entity.Self.Id &&
+                            missing.Packed.Gen == entity.Self.Gen;
+
+                        if (!dead)
+                        {
+                            Console.WriteLine(exception);
+                        }
+                    }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+
+                return Task
+                    .WhenAny(deleteTask, scriptTask)
+                    .ContinueWith(task =>
+                    {
+                        source.Cancel();
                     }, TaskContinuationOptions.ExecuteSynchronously);
 
             }, TaskContinuationOptions.ExecuteSynchronously);
@@ -606,7 +669,7 @@ public static class Utils
     public static object[] ToComponents(this Godot.GodotObject obj, string prefix, MetaType metaType = MetaType.Component)
     {
         prefix = prefix.Replace("/", DELIMETER).Replace("[]", MANY).Replace("()", EVENT);
-        
+
         var dict = new Dictionary<Type, object>();
         var metalist = obj.GetMetaList() ?? new string[] { };
 
@@ -771,7 +834,7 @@ public static class Utils
 
     public static object SetField(this object obj, string path, object value)
     {
-        var parts = path.Split('/');
+        var parts = path.Split(DELIMETER);
         if (parts.Length == 0) return obj;
 
         var fieldInfo = obj.GetType().GetFields()
@@ -809,7 +872,7 @@ public static class Utils
         }
         else
         {
-            fieldInfo.SetValue(obj, SetField(field, String.Join('/', parts.Skip(1)), value));
+            fieldInfo.SetValue(obj, SetField(field, String.Join(DELIMETER, parts.Skip(1)), value));
         }
 
         return obj;

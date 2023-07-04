@@ -165,10 +165,7 @@ public partial class Game : Godot.Node2D
             render.Node = renderNode;
 
             ref var position = ref positions.Add(entity);
-            //position.Tween = renderNode.CreateTween();
-
             ref var modulate = ref modulates.Add(entity);
-            //modulate.Tween = renderNode.CreateTween();
         }
 
         return entity;

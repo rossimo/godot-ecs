@@ -32,6 +32,11 @@ public class HealthSystem : IEcsRunSystem
             foreach (var update in updates)
             {
                 health.Value += update.Delta;
+
+                if (update.Delta < 0)
+                {
+                    entity.RunEntityTask(world, Damage.Script);
+                }
             }
 
             if (health.Value <= 0)
