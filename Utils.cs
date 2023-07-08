@@ -863,7 +863,7 @@ public static class Utils
 
             var isArray = fieldInfo.FieldType.IsArray;
 
-            object converted = null;
+            object converted;
 
             if (isConvertable)
             {
@@ -878,6 +878,8 @@ public static class Utils
                     length);
 
                 Array.Copy(value as Array, converted as Array, length);
+            } else {
+                throw new Exception($"Unable to set field {fieldInfo.Name} to {value}");
             }
 
             fieldInfo.SetValue(obj, converted);
@@ -919,7 +921,7 @@ public static class Utils
         var type = component.GetType();
         var poolType = type;
 
-        MethodInfo getPoolMethod;
+        MethodInfo? getPoolMethod;
         getPoolMethodCache.TryGetValue(type, out getPoolMethod);
         if (getPoolMethod == null)
         {
@@ -931,7 +933,7 @@ public static class Utils
 
         var pool = getPoolMethod.Invoke(world, null);
 
-        MethodInfo addMethod;
+        MethodInfo? addMethod;
         addMethodCache.TryGetValue(type, out addMethod);
         if (addMethod == null)
         {

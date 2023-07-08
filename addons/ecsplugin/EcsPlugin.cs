@@ -116,8 +116,8 @@ public partial class EcsPlugin : EditorPlugin
                 };
                 parent.AddChild(manyLayout);
 
-                var arrayField = type.GetField("Items");
-                var array = arrayField.GetValue(obj) as Array;
+                var arrayField = type.GetField("Items") ?? throw new Exception("Many<> must have Items field");
+                var array = arrayField.GetValue(obj) as Array ?? throw new Exception("Many<>.Items must be an array");
                 for (var i = 0; i < array.Length; i++)
                 {
                     addObject(manyLayout, array.GetValue(i), $"{prefix}{Utils.DELIMETER}{i}", Category.MultiComponent);
@@ -354,7 +354,7 @@ public partial class EcsPlugin : EditorPlugin
                     var fieldLayout = new HBoxContainer();
                     fieldsLayout.AddChild(fieldLayout);
 
-                    var childObj = fieldInfo.GetValue(obj);
+                    var childObj = fieldInfo.GetValue(obj) ?? throw new Exception("Field must have a value.");
                     var name = $"{prefix}/{fieldInfo.Name.ToLower()}";
 
                     if (fieldInfo.FieldType.IsEditable())
@@ -445,7 +445,7 @@ public partial class EcsPlugin : EditorPlugin
             var componentType = Utils.COMPONENTS[i];
             picker.GetPopup().AddItem(componentType.Name, i);
 
-            Texture2D iconTex = null;
+            Texture2D iconTex;
             if (componentType.HasEventHint())
             {
                 iconTex = GD.Load<Texture2D>("res://satellite.png");
@@ -522,7 +522,7 @@ public partial class EcsPlugin : EditorPlugin
     {
         if (current != null)
         {
-            Type type = null;
+            Type? type = null;
 
             switch (metaType)
             {

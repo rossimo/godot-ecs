@@ -5,7 +5,7 @@ using Leopotam.EcsLite.Di;
 
 public partial class Game : Godot.Node2D
 {
-    public EcsWorld world = new EcsWorld();
+    public EcsWorld world;
     public EcsSystems systems;
     public Shared shared;
     public InputSystem input;
@@ -23,8 +23,10 @@ public partial class Game : Godot.Node2D
     private EcsPool<ModulateTween> modulates;
     private EcsPool<RenderNode> renders;
 
-    public override void _Ready()
+    public Game() : base()
     {
+        world = new EcsWorld();
+
         physicsComponents = world.GetPool<PhysicsNode>();
         areaComponents = world.GetPool<AreaNode>();
         positions = world.GetPool<PositionTween>();
@@ -53,10 +55,21 @@ public partial class Game : Godot.Node2D
             .Add(new DeleteEntitySystem())
             .Inject()
             .Init();
+    }
 
+    public override void _Ready()
+    {
         foreach (var node in GetChildren().OfType<Godot.Node>())
         {
-            DiscoverEntity(node);
+            try
+            {
+                DiscoverEntity(node);
+            }
+            catch (System.Exception e)
+            {
+                Console.WriteLine($"Unable to discover entity for {node.Name}");
+                Console.WriteLine(e);
+            }
         }
 
         systems.Init();
@@ -185,7 +198,8 @@ public partial class Game : Godot.Node2D
     public void AreaEvent(Node targetNode, int id, int gen)
     {
         int entity = -1;
-        new EcsPackedEntity() {
+        new EcsPackedEntity()
+        {
             Id = id,
             Gen = gen
         }.Unpack(world, out entity);

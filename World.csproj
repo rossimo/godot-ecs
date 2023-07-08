@@ -5,5 +5,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <NoWarn>8625</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Remove="LeoEcsLite\**" />
+    <Compile Remove="LeoEcsLite\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="LeoEcsLite/LeoEcsLite.csproj" />
+  </ItemGroup>
 </Project>
