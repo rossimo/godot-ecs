@@ -140,8 +140,8 @@ public partial class Game : Godot.Node2D
             }
 
             physicsNode.GlobalPosition = position;
-            physicsNode.Scale *= renderNode.Scale;
-            physicsNode.Rotation += renderNode.Rotation;
+            physicsNode.Scale *= renderNode?.Scale ?? new Vector2(1, 1);
+            physicsNode.Rotation += renderNode?.Rotation ?? 0;
 
             physicsNode.SetEntity(world, entity);
 
@@ -159,8 +159,8 @@ public partial class Game : Godot.Node2D
                 physicsNode.AddChild(areaNode);
 
                 areaNode.GlobalPosition = position;
-                areaNode.Scale *= renderNode.Scale;
-                areaNode.Rotation += renderNode.Rotation;
+                areaNode.Scale *= renderNode?.Scale ?? new Vector2(1, 1);
+                areaNode.Rotation += renderNode?.Rotation ?? 0;
             }
 
             areaNode.SetEntity(world, entity);

@@ -16,13 +16,18 @@ public enum MetaType
 
 public class Entity
 {
-    public EcsWorld World;
-    public EcsPackedEntity Self;
+    readonly public EcsWorld World;
+    readonly public EcsPackedEntity Self;
+
+    public Entity(EcsWorld world, int id)
+    {
+        World = world;
+        Self = world.PackEntity(id);
+    }
 
     private int GetId()
     {
-        int id;
-        if (!Self.Unpack(World, out id))
+        if (!Self.Unpack(World, out int id))
         {
             throw new MissingEntityException(Self);
         }
@@ -76,14 +81,14 @@ public class Entity
 
 public class TaskWrapper
 {
-    public Task Task;
+    public Task Task = null;
 }
 
 public class TaskChain
 {
-    private Entity entity;
-    private CancellationToken token;
-    private List<Func<CancellationToken, Task>> links = new List<Func<CancellationToken, Task>>();
+    private readonly Entity entity;
+    private readonly CancellationToken token;
+    private readonly List<Func<CancellationToken, Task>> links = new();
 
     public TaskChain(Entity entity, CancellationToken token)
     {
@@ -171,21 +176,14 @@ public static class Utils
             id = obj.GetEntity(world);
         }
 
-        return new Entity()
-        {
-            Self = world.PackEntity(id),
-            World = world
-        };
+        return new Entity(world, id);
     }
 
-    public static async Task<Entity> AttachEntity(this int entity, EcsWorld world)
+    public static Task<Entity> AttachEntity(this int entity, EcsWorld world)
     {
-        return new Entity()
-        {
-            Self = world.PackEntity(entity),
-            World = world
-        };
+        return Task.FromResult(new Entity(world, entity));
     }
+
 
     public static (Task, CancellationTokenSource) RunEntityTask(this Godot.GodotObject obj, EcsWorld world, Func<Entity, CancellationToken, Task> script)
     {
@@ -275,15 +273,13 @@ public static class Utils
 
     public class EntityListener<T> : IEcsWorldComponentListener<T>, IEcsWorldEventListener
     {
-        public EcsPackedEntity[] Entities = new EcsPackedEntity[] { };
-        public EcsWorld World;
+        public EcsPackedEntity[] Entities = Array.Empty<EcsPackedEntity>();
         protected TaskCompletionSource<(EcsPackedEntity, T)> Source =
-            new TaskCompletionSource<(EcsPackedEntity, T)>(TaskCreationOptions.RunContinuationsAsynchronously);
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public void OnEntityDestroyed(int entity, short gen)
         {
-            EcsPackedEntity found;
-            if (HasEntity(entity, gen, out found))
+            if (HasEntity(entity, gen, out EcsPackedEntity found))
             {
                 Source.TrySetException(new MissingEntityException(found));
             }
@@ -310,7 +306,7 @@ public static class Utils
                 }
             }
 
-            found = default(EcsPackedEntity);
+            found = default;
             return false;
         }
 
@@ -326,8 +322,7 @@ public static class Utils
     {
         public override void OnComponentCreated(int id, short gen, T component)
         {
-            EcsPackedEntity entity;
-            if (HasEntity(id, gen, out entity))
+            if (HasEntity(id, gen, out EcsPackedEntity entity))
             {
                 Source.TrySetResult((entity, component));
             }
@@ -451,10 +446,10 @@ public static class Utils
         };
     }
 
-    public static Dictionary<string, object> ToFieldMap(this object obj)
+    public static Dictionary<string, object?> ToFieldMap(this object obj)
     {
         var type = obj.GetType();
-        var metadata = new Dictionary<string, object>();
+        var metadata = new Dictionary<string, object?>();
 
         foreach (var fieldInfo in type.GetFields())
         {
@@ -468,7 +463,7 @@ public static class Utils
             }
             else
             {
-                metadata.Add(key, value.ToFieldMap());
+                metadata.Add(key, value?.ToFieldMap());
             }
         }
 
@@ -667,7 +662,8 @@ public static class Utils
     public static string MANY = "M";
     public static string EVENT = "E";
 
-    public static string EncodeComponentPath(string path) {
+    public static string EncodeComponentPath(string path)
+    {
         return path.Replace("/", DELIMETER).Replace("[]", MANY).Replace("()", EVENT);
     }
 
@@ -676,7 +672,7 @@ public static class Utils
         prefix = EncodeComponentPath(prefix);
 
         var dict = new Dictionary<Type, object?>();
-        var metalist = obj.GetMetaList() ?? new string[] { };
+        var metalist = obj.GetMetaList() ?? Array.Empty<string>();
 
         foreach (var meta in metalist.Where(part => part.StartsWith(prefix)))
         {
@@ -750,7 +746,8 @@ public static class Utils
                 dict[type] = component;
             }
 
-            if (component == null) {
+            if (component == null)
+            {
                 continue;
             }
 
@@ -759,7 +756,8 @@ public static class Utils
                 manyComponent = component;
 
                 var key = subpath[1];
-                var manyDict = manyComponent as IDictionary;
+                if (manyComponent is not IDictionary manyDict)
+                    throw new Exception("Many[] component is not a dictionary");
 
                 component = manyDict.Contains(key)
                     ? manyDict[key]
@@ -788,11 +786,16 @@ public static class Utils
 
             try
             {
+                if (component is null)
+                {
+                    throw new Exception($"Component {componentType.Name} not null");
+                }
+
                 component = SetField(component, fieldPath, value);
             }
             catch (Exception ex)
             {
-                var objName = obj is Godot.Node node ? node.Name.ToString() : obj.ToString();
+                var objName = obj is Node node ? node.Name.ToString() : obj.ToString();
                 Console.WriteLine($"Unable to set {componentType.Name} {fieldPath} to '{value}' for '{objName}': {ex.Message}");
             }
 
@@ -801,12 +804,12 @@ public static class Utils
                 if (fieldPath.StartsWith("component" + DELIMETER))
                 {
                     var fieldInfo = eventType.GetField("Component");
-                    fieldInfo.SetValue(eventComponent, component);
+                    fieldInfo?.SetValue(eventComponent, component);
                 }
                 else if (fieldPath.StartsWith("target" + DELIMETER))
                 {
                     var fieldInfo = eventType.GetField("Target");
-                    fieldInfo.SetValue(eventComponent, component);
+                    fieldInfo?.SetValue(eventComponent, component);
                 }
                 component = eventComponent;
             }
@@ -814,8 +817,10 @@ public static class Utils
             if (isMany)
             {
                 var key = subpath[1];
-                var manyDict = manyComponent as IDictionary;
-                manyDict[key] = component;
+                if (manyComponent is IDictionary manyDict)
+                {
+                    manyDict[key] = component;
+                }
                 component = manyComponent;
             }
 
@@ -826,25 +831,25 @@ public static class Utils
         for (var i = 0; i < components.Length; i++)
         {
             ref var component = ref components[i];
-            var type = component.GetType();
-            if (type.FindInterfaces((intf, o) => intf == typeof(IDictionary), component).Count() > 0)
+            var type = component?.GetType();
+            if (type?.FindInterfaces((intf, o) => intf == typeof(IDictionary), component).Length > 0)
             {
                 var manyDict = component as IDictionary;
 
-                var elementType = manyDict.GetType().GenericTypeArguments[1];
+                var elementType = manyDict?.GetType().GenericTypeArguments[1] ?? throw new Exception("Many[] component is not a dictionary");
                 var manyType = typeof(Many<>).MakeGenericType(new[] { elementType });
                 var array = Array.CreateInstance(elementType, manyDict.Count);
                 manyDict.Values.CopyTo(array, 0);
 
-                component = Activator.CreateInstance(manyType);
+                component = Activator.CreateInstance(manyType) ?? throw new Exception("Many[] component is not a instantiated");
                 component = component.SetField("Items", array);
             }
         }
 
-        return components;
+        return (components as object[])?.Where(el => el != null).ToArray() ?? Array.Empty<object>();
     }
 
-    public static object SetField(this object obj, string path, object value)
+    public static object SetField(this object obj, string path, object? value)
     {
         var parts = path.Split(DELIMETER);
         if (parts.Length == 0) return obj;
@@ -859,11 +864,11 @@ public static class Utils
         {
             var isConvertable = fieldInfo.FieldType
                 .FindInterfaces((intf, o) => intf == typeof(IConvertible), value)
-                .Count() > 0;
+                .Length > 0;
 
             var isArray = fieldInfo.FieldType.IsArray;
 
-            object converted;
+            object? converted;
 
             if (isConvertable)
             {
@@ -871,20 +876,30 @@ public static class Utils
             }
             else if (isArray)
             {
-                var length = (value as Array).Length;
+                var array = value as Array;
+                var length = (value as Array)?.Length ?? 0;
 
                 converted = Array.CreateInstance(
-                    fieldInfo.FieldType.GetElementType(),
+                    fieldInfo.FieldType?.GetElementType() ?? throw new Exception("Unable to get array element type"),
                     length);
 
-                Array.Copy(value as Array, converted as Array, length);
-            } else {
+                if (value is Array arrayValue && converted is Array convertedValue)
+                {
+                    Array.Copy(arrayValue, convertedValue, length);
+                }
+                else
+                {
+                    throw new Exception("Cannot copy array");
+                }
+            }
+            else
+            {
                 throw new Exception($"Unable to set field {fieldInfo.Name} to {value}");
             }
 
             fieldInfo.SetValue(obj, converted);
         }
-        else
+        else if (field != null)
         {
             fieldInfo.SetValue(obj, SetField(field, String.Join(DELIMETER, parts.Skip(1)), value));
         }
@@ -910,19 +925,18 @@ public static class Utils
             .ToArray();
     }
 
-    private static Dictionary<Type, MethodInfo> getPoolMethodCache =
-        new Dictionary<Type, MethodInfo>();
+    private static readonly Dictionary<Type, MethodInfo> getPoolMethodCache =
+        new();
 
-    private static Dictionary<Type, MethodInfo> addMethodCache =
-        new Dictionary<Type, MethodInfo>();
+    private static readonly Dictionary<Type, MethodInfo> addMethodCache =
+        new();
 
     public static void AddNotify(this EcsWorld world, int entity, object component)
     {
         var type = component.GetType();
         var poolType = type;
 
-        MethodInfo? getPoolMethod;
-        getPoolMethodCache.TryGetValue(type, out getPoolMethod);
+        getPoolMethodCache.TryGetValue(type, out MethodInfo? getPoolMethod);
         if (getPoolMethod == null)
         {
             getPoolMethod = (typeof(EcsWorld).GetMethod("GetPool") ?? throw new Exception("GetPool method not found"))
@@ -933,8 +947,7 @@ public static class Utils
 
         var pool = getPoolMethod.Invoke(world, null);
 
-        MethodInfo? addMethod;
-        addMethodCache.TryGetValue(type, out addMethod);
+        addMethodCache.TryGetValue(type, out MethodInfo? addMethod);
         if (addMethod == null)
         {
             addMethod = (typeof(Utils).GetMethod("ReflectionAddNotify") ?? throw new Exception("ReflectionAddNotify method not found"))
@@ -995,7 +1008,7 @@ public static class Utils
             obj.AddUserSignal("entity");
         }
 
-        obj.EmitSignal("entity", new Godot.Variant[] { });
+        obj.EmitSignal("entity", Array.Empty<Variant>());
     }
 
     public static int GetEntity(this Godot.GodotObject obj, EcsWorld world)
@@ -1011,8 +1024,8 @@ public static class Utils
         packed.Id = obj.GetMeta($"entity{DELIMETER}id").AsInt32();
         packed.Gen = obj.GetMeta($"entity{DELIMETER}gen").AsInt32();
 
-        int entityId = -1;
-        packed.Unpack(world, out entityId);
+
+        packed.Unpack(world, out int entityId);
         return entityId;
     }
 

@@ -1,24 +1,20 @@
 using Godot;
-using System;
-using System.Linq;
-using System.Collections.Generic;
 
 [Tool]
 public partial class EcsPlugin : EditorPlugin
 {
-    private Control dock;
-    private Node current;
+    private Control dock = new()
+    {
+        Name = "Components",
+        SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+    };
+    private Node? current;
 
-    private static int MARGIN = 3;
+    private static readonly int MARGIN = 3;
 
     public override void _EnterTree()
     {
-        dock = new Control()
-        {
-            Name = "Components",
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-        };
         AddControlToDock(DockSlot.RightUl, dock);
 
         RenderComponents();
@@ -26,7 +22,7 @@ public partial class EcsPlugin : EditorPlugin
         var selector = GetEditorInterface().GetSelection();
         selector.Connect("selection_changed", new Callable(this, nameof(SelectedNode)));
 
-        current = selector.GetSelectedNodes().ToArray<Node>()?.FirstOrDefault();
+        current = selector?.GetSelectedNodes()?.ToArray<Node>()?.FirstOrDefault();
     }
 
     public override void _ExitTree()
@@ -100,9 +96,13 @@ public partial class EcsPlugin : EditorPlugin
         };
         panel.AddChild(layout);
 
-        Action<Godot.Control, object, string, Category> addObject = null;
-        addObject = (Godot.Control parent, object obj, string prefix, Category objCategory) =>
+        Action<Godot.Control, object?, string, Category> addObject =
+            (control, obj, prefix, category) => { };
+
+        addObject = (Godot.Control parent, object? obj, string prefix, Category objCategory) =>
         {
+            if (obj == null) return;
+
             var type = obj.GetType();
             var isMany = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Many<>);
             var isEvent = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Event<>);
@@ -306,7 +306,7 @@ public partial class EcsPlugin : EditorPlugin
             };
             componentPrimitiveLayout.AddChild(titleLayout);
 
-            Texture2D iconTex = null;
+            Texture2D? iconTex = null;
             switch (objCategory)
             {
                 case Category.Component:

@@ -2,7 +2,7 @@ public partial class Spider : Godot.Sprite2D
 {
     public override void _Ready()
     {
-        var game = this.GetParent() as Game;
+        var game = this.GetParent<Game>();
         var world = game.world;
 
         this.RunEntityTask(world, Script);

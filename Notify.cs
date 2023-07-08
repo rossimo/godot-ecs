@@ -51,7 +51,7 @@ public partial class DeleteEntitySystem : IEcsRunSystem
 public partial class DeleteComponentSystem<C> : IEcsInitSystem, IEcsRunSystem
     where C : struct
 {
-    EcsFilter _filter;
+    EcsFilter _filter = null;
     [EcsPool] readonly EcsPool<C> _pool = default;
 
     public void Init(EcsSystems systems)
