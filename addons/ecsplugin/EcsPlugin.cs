@@ -351,6 +351,15 @@ public partial class EcsPlugin : EditorPlugin
 
                 foreach (var fieldInfo in type.GetFields())
                 {
+                    var propertyAttributes = type.GetProperty(fieldInfo.Name)?.GetCustomAttributes(true).Select(attr => attr.GetType().Name) ?? Array.Empty<string>();
+                    var fieldAttributes = fieldInfo.GetCustomAttributes(true).Select(attr => attr.GetType().Name);
+
+                    var attributes = propertyAttributes.Concat(fieldAttributes);
+
+                    Console.WriteLine(String.Join(", ", attributes));
+                    var isHidden = attributes.Where(attr => attr == "Hidden").Any();
+                    if (isHidden) continue;
+
                     var fieldLayout = new HBoxContainer();
                     fieldsLayout.AddChild(fieldLayout);
 
@@ -491,7 +500,7 @@ public partial class EcsPlugin : EditorPlugin
     {
         if (current == null) return;
 
-        foreach (var meta in current.GetMetaList().Where(meta => meta.StartsWith(Utils.EncodeComponentPath(prefix))))
+        foreach (var meta in current.GetMetaList().Where(meta => meta.ToString().StartsWith(Utils.EncodeComponentPath(prefix))))
         {
             current.RemoveMeta(meta);
         }
@@ -549,8 +558,7 @@ public partial class EcsPlugin : EditorPlugin
             {
                 var existingMeta = current.GetMetaList();
                 while (existingMeta
-                    .Where(meta => meta.StartsWith($"{prefix}{Utils.DELIMETER}{manyIndex}".ToLower()))
-                    .Count() > 0)
+                    .Where(meta => meta.ToString().StartsWith($"{prefix}{Utils.DELIMETER}{manyIndex}".ToLower())).Any())
                 {
                     manyIndex++;
                 }
@@ -560,7 +568,7 @@ public partial class EcsPlugin : EditorPlugin
 
             foreach (var meta in current.GetMetaList().Where(meta =>
             {
-                var normalizedMeta = meta.Split(Utils.DELIMETER).Where(part => part.Length > 0).ToArray();
+                var normalizedMeta = meta.ToString().Split(Utils.DELIMETER).Where(part => part.Length > 0).ToArray();
                 if (normalizedMeta.Length < normalizedPrefix.Length)
                 {
                     return false;
@@ -612,8 +620,7 @@ public partial class EcsPlugin : EditorPlugin
             {
                 var existingMeta = current.GetMetaList();
                 while (existingMeta
-                    .Where(meta => meta.StartsWith($"components{Utils.DELIMETER}{metaName}{Utils.DELIMETER}{manyIndex}".ToLower()))
-                    .Count() > 0)
+                    .Where(meta => meta.ToString().StartsWith($"components{Utils.DELIMETER}{metaName}{Utils.DELIMETER}{manyIndex}".ToLower())).Any())
                 {
                     manyIndex++;
                 }

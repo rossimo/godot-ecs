@@ -8,6 +8,12 @@ using Leopotam.EcsLite;
 using System.Threading;
 using Godot;
 
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+public class Hidden : Attribute
+{
+
+}
+
 public enum MetaType
 {
     Component,
@@ -77,6 +83,15 @@ public class Entity
     {
         return new TaskChain(this, token);
     }
+}
+
+public struct Resolve<T> {
+    public T Component;
+}
+
+public struct Rejected<T> {
+    public T Component;
+    public Exception Exception;
 }
 
 public class TaskWrapper
@@ -672,7 +687,7 @@ public static class Utils
         prefix = EncodeComponentPath(prefix);
 
         var dict = new Dictionary<Type, object?>();
-        var metalist = obj.GetMetaList() ?? Array.Empty<string>();
+        var metalist = obj.GetMetaList()?.Select(meta => meta.ToString()) ?? Array.Empty<string>();
 
         foreach (var meta in metalist.Where(part => part.StartsWith(prefix)))
         {
