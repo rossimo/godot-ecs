@@ -8,10 +8,6 @@
     <NoWarn>8625</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <Content Remove="LeoEcsLite\**" />
-    <Compile Remove="LeoEcsLite\**" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="LeoEcsLite/LeoEcsLite.csproj" />
+    <Reference Include="Flecs-cs.dll" />
   </ItemGroup>
 </Project>

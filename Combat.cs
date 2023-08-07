@@ -1,31 +1,32 @@
-using Leopotam.EcsLite;
-using Leopotam.EcsLite.Di;
+using Flecs;
 
 [Editor]
-public struct Expiration
+public struct Expiration : IComponent
 {
     public ulong Tick;
 }
 
-public class CombatSystem : IEcsRunSystem
+public class CombatSystem
 {
-    [EcsWorld] readonly EcsWorld world = default;
-    [EcsShared] readonly Shared shared = default;
-    [EcsPool] readonly EcsPool<Tick> ticks = default;
-    [EcsPool] readonly EcsPool<Expiration> expirations = default;
-    [EcsPool] readonly EcsPool<Delete> deletes = default;
+    private Flecs.Entity tickEntity;
 
-    public void Run(EcsSystems systems)
+    public CombatSystem(World world)
     {
-        ulong tick = ticks.Get(shared.Physics).Value;
+        tickEntity = world.EntityIterator<Tick>().Entity(0);
+    }
 
-        foreach (var entity in world.Filter<Expiration>().End())
+    public void Run(Iterator iterator)
+    {
+        var tick = tickEntity.GetComponent<Tick>().Value;
+
+        for (var i = 0; i < iterator.Count; i++)
         {
-            ref var expiration = ref expirations.Get(entity);
+            var entity = iterator.Entity(i);
+            var expiration = entity.GetComponent<Expiration>();
 
             if (expiration.Tick <= tick)
             {
-                deletes.Ensure(entity);
+                entity.Add<Delete>();
             }
         }
     }

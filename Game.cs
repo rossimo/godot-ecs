@@ -2,6 +2,8 @@ using Godot;
 using System.Linq;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
 public partial class Game : Godot.Node2D
 {
@@ -25,6 +27,8 @@ public partial class Game : Godot.Node2D
 
     public Game() : base()
     {
+        NativeLibrary.Load("flecs.dll", Assembly.GetExecutingAssembly(), null);
+
         world = new EcsWorld();
 
         physicsComponents = world.GetPool<PhysicsNode>();

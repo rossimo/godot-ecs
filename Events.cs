@@ -1,4 +1,4 @@
-using Leopotam.EcsLite;
+using Flecs;
 
 public struct Event<E>
     where E : struct
@@ -6,7 +6,7 @@ public struct Event<E>
     public object Component;
     public object Target;
 
-    public void Add(EcsWorld world, int self, int other)
+    public void Add(World world, int self, int other)
     {
         if (Target is Target target)
         {

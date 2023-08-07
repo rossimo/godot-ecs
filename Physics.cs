@@ -1,9 +1,8 @@
 using Godot;
-using System;
-using Leopotam.EcsLite;
-using Leopotam.EcsLite.Di;
+using Flecs;
 
-public struct Tick
+
+public struct Tick : IComponent
 {
     public ulong Value;
 }

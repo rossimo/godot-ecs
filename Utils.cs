@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Leopotam.EcsLite;
+using Flecs;
 using System.Threading;
 using Godot;
 
@@ -22,7 +22,7 @@ public enum MetaType
 
 public class Entity
 {
-    readonly public EcsWorld World;
+    readonly public World World;
     readonly public EcsPackedEntity Self;
 
     public Entity(EcsWorld world, int id)
@@ -946,33 +946,11 @@ public static class Utils
     private static readonly Dictionary<Type, MethodInfo> addMethodCache =
         new();
 
-    public static void AddNotify(this EcsWorld world, int entity, object component)
+    public static void AddNotify<T>(this World world, Flecs.Entity entity, T component)
     {
-        var type = component.GetType();
-        var poolType = type;
-
-        getPoolMethodCache.TryGetValue(type, out MethodInfo? getPoolMethod);
-        if (getPoolMethod == null)
-        {
-            getPoolMethod = (typeof(EcsWorld).GetMethod("GetPool") ?? throw new Exception("GetPool method not found"))
-                .MakeGenericMethod(poolType);
-
-            getPoolMethodCache.Add(type, getPoolMethod);
-        }
-
-        var pool = getPoolMethod.Invoke(world, null);
-
-        addMethodCache.TryGetValue(type, out MethodInfo? addMethod);
-        if (addMethod == null)
-        {
-            addMethod = (typeof(Utils).GetMethod("ReflectionAddNotify") ?? throw new Exception("ReflectionAddNotify method not found"))
-                .MakeGenericMethod(poolType);
-
-            addMethodCache.Add(type, addMethod);
-        }
-
-        addMethod.Invoke(null, new[] { pool, entity, component });
+        entity.Add<Notify<T>>();
     }
+
 
     public static void ReflectionAddNotify<T>(EcsPool<T> pool, int entity, T value)
         where T : struct

@@ -1,6 +1,12 @@
-public class Shared
+
+
+using System.Runtime.InteropServices;
+using Flecs;
+
+[StructLayout(LayoutKind.Sequential)]
+public struct Shared : IComponent
 {
-    public Game Game = null;
+    public Game Game;
     public int Events;
     public int Physics;
     public int Input;

@@ -1,9 +1,8 @@
-using System;
-using Leopotam.EcsLite;
-using Leopotam.EcsLite.Di;
+using Flecs;
 using System.Runtime.CompilerServices;
 
-public struct Notify<C> { }
+
+public struct Notify<C> : Flecs.IComponent { }
 
 public static class NotifyUtils
 {
@@ -24,7 +23,7 @@ public static class NotifyUtils
 }
 
 [Editor]
-public struct Delete { }
+public struct Delete :IComponent { }
 
 public partial class DeleteEntitySystem : IEcsRunSystem
 {
