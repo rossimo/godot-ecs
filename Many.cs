@@ -1,7 +1,4 @@
-using Leopotam.EcsLite;
-using System.Linq;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+aaaaaaaaaausing System.Runtime.CompilerServices;
 
 public struct Many<T>
     where T : struct
