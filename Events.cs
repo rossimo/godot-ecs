@@ -1,22 +1,8 @@
-using Flecs;
-
 public struct Event<E>
     where E : struct
 {
     public object Component;
     public object Target;
-
-    public void Add(World world, int self, int other)
-    {
-        if (Target is Target target)
-        {
-            var entityId = target.Resolve(self, other);
-            if (entityId != -1)
-            {
-                world.AddNotify(entityId, Component);
-            }
-        }
-    }
 }
 
 public interface Target

@@ -166,6 +166,16 @@ public static class Utils
         return component;
     }
 
+    public static bool HasManyHint(this Type type)
+    {
+        return type.GetCustomAttributes(typeof(IsMany), false)?.Length > 0;
+    }
+
+    public static bool HasEventHint(this Type type)
+    {
+        return type.GetCustomAttributes(typeof(IsEvent), false)?.Length > 0;
+    }
+
     public static string ComponentName(object obj)
     {
         var type = obj.GetType();
