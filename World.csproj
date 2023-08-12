@@ -7,7 +7,7 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <NoWarn>8625</NoWarn>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="Flecs-cs.dll" />
+    <ItemGroup>
+    <Reference Include="RelEcs.dll" />
   </ItemGroup>
 </Project>

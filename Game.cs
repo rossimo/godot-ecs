@@ -1,19 +1,15 @@
-using Flecs;
+using System.Collections;
 using Godot;
 using System.Reflection;
-using System.Runtime.InteropServices;
+using RelEcs;
 
 public partial class Game : Node2D
 {
-    private World world;
+    private World world = new World();
 
     public Game() : base()
     {
-        NativeLibrary.Load("flecs.dll", Assembly.GetExecutingAssembly(), null);
 
-        world = new World(Array.Empty<string>());
-
-        world.RegisterComponent<Health>();
     }
 
     public override void _Ready()
@@ -43,12 +39,11 @@ public partial class Game : Node2D
             return;
         }
 
-        var entity = world.CreateEntity(node.Name);
-
+        var entity = world.Spawn().Id();
         foreach (var component in components)
         {
-            Console.WriteLine($"Adding component {component} to {node.Name}");
-            entity.UnsafeSet(component);
+            world.UnsafeAddComponent(entity, component);
+            Console.WriteLine($"Added {component} to entity {entity}");
         }
     }
 }

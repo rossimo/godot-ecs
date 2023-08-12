@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 
-public struct Many<T>
-    where T : struct
+public class Many<T>
 {
     public T[] Items;
 
@@ -17,7 +16,7 @@ public static class Many
 
 }
 
-[System.AttributeUsage(System.AttributeTargets.Struct)]
+[System.AttributeUsage(System.AttributeTargets.Class)]
 public class IsMany : System.Attribute
 {
 

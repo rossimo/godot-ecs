@@ -1,5 +1,4 @@
-public struct Event<E>
-    where E : struct
+public class Event<E>
 {
     public object Component;
     public object Target;
@@ -11,7 +10,7 @@ public interface Target
 }
 
 [IsTarget]
-public struct TargetSelf : Target
+public class TargetSelf : Target
 {
     public int Resolve(int self, int other)
     {
@@ -20,7 +19,7 @@ public struct TargetSelf : Target
 }
 
 [IsTarget]
-public struct TargetOther : Target
+public class TargetOther : Target
 {
     public int Resolve(int self, int other)
     {
@@ -28,13 +27,13 @@ public struct TargetOther : Target
     }
 }
 
-[System.AttributeUsage(System.AttributeTargets.Struct)]
+[System.AttributeUsage(System.AttributeTargets.Class)]
 public class IsEvent : System.Attribute
 {
 
 }
 
-[System.AttributeUsage(System.AttributeTargets.Struct)]
+[System.AttributeUsage(System.AttributeTargets.Class)]
 public class IsTarget : System.Attribute
 {
 

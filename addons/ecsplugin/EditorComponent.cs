@@ -1,4 +1,4 @@
-[System.AttributeUsage(System.AttributeTargets.Struct)]
+[System.AttributeUsage(System.AttributeTargets.Class)]
 public class Editor : System.Attribute
 {
 

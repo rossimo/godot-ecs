@@ -1,9 +1,5 @@
-using Flecs;
-using System.Runtime.InteropServices;
-
 [Editor]
-[StructLayout(LayoutKind.Sequential)]
-public struct Health : IComponent
+public class Health
 {
     public int Value;
 }
