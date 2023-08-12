@@ -9,5 +9,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Flecs-cs.dll" />
+    <Reference Include="C2CS.Runtime.dll" />
   </ItemGroup>
 </Project>

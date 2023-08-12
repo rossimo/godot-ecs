@@ -14,6 +14,7 @@ public partial class Game : Node2D
         world = new World(Array.Empty<string>());
 
         world.RegisterComponent<Health>();
+        world.RegisterComponent<PhysicsNode>();
     }
 
     public override void _Ready()
