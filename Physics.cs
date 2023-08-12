@@ -1,9 +1,9 @@
 using Flecs;
+using Godot;
 using System.Runtime.InteropServices;
 
-[Editor]
 [StructLayout(LayoutKind.Sequential)]
-public struct Health : IComponent
+public struct PhysicsNode : IComponent
 {
-    public int Value;
+    public CharacterBody2D Node;
 }

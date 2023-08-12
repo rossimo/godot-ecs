@@ -356,7 +356,6 @@ public partial class EcsPlugin : EditorPlugin
 
                     var attributes = propertyAttributes.Concat(fieldAttributes);
 
-                    Console.WriteLine(String.Join(", ", attributes));
                     var isHidden = attributes.Where(attr => attr == "Hidden").Any();
                     if (isHidden) continue;
 
@@ -477,7 +476,6 @@ public partial class EcsPlugin : EditorPlugin
 
     public void FieldChanged(string value, string path, Type typeWrapper)
     {
-        Console.WriteLine($"Field changed {current}: {path} = {value} ({typeWrapper})");
         if (current == null) return;
 
         var type = typeWrapper;

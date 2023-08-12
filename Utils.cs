@@ -1,5 +1,8 @@
 using System.Collections;
 using Godot;
+using Flecs;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public class Hidden : Attribute
@@ -569,5 +572,119 @@ public static class Utils
             .Where(type => type.GetCustomAttributes(typeof(IsTarget), false)?.Length > 0)
             .OrderBy(component => component.Name)
             .ToArray();
+    }
+
+    public static void UnsafeSet(this Entity entity, object component)
+    {
+        var type = component.GetType();
+
+        if (!type.IsComponent())
+        {
+            throw new Exception($"{type.Name} does not implement IComponent");
+        }
+
+        if (!type.IsUnManaged())
+        {
+            throw new Exception($"{type.Name} is a managed type");
+        }
+
+        if (!type.HasSequentialLayout())
+        {
+            throw new Exception($"{type.Name} does not have a sequential layout");
+        }
+
+        entity.InvokeSet(component);
+    }
+
+    private static Dictionary<Type, bool> isComponentCache = new Dictionary<Type, bool>();
+
+    public static bool IsComponent(this Type type)
+    {
+        var result = false;
+
+        if (isComponentCache.ContainsKey(type))
+        {
+            return isComponentCache[type];
+        }
+        else if (type.GetInterfaces().Any(i => i == typeof(IComponent)))
+        {
+            result = true;
+        }
+
+        isComponentCache.Add(type, result);
+
+        return result;
+    }
+
+    private static Dictionary<Type, bool> unmanagedCache = new Dictionary<Type, bool>();
+
+    public static bool IsUnManaged(this Type type)
+    {
+        var result = false;
+
+        if (unmanagedCache.ContainsKey(type))
+        {
+            return unmanagedCache[type];
+        }
+        else if (type.IsPrimitive || type.IsPointer || type.IsEnum)
+        {
+            result = true;
+        }
+        else if (type.IsGenericType || !type.IsValueType)
+        {
+            result = false;
+        }
+        else
+        {
+            result = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .All(x => x.FieldType.IsUnManaged());
+        }
+
+        unmanagedCache.Add(type, result);
+
+        return result;
+    }
+
+    private static Dictionary<Type, bool> sequentialLayoutCache = new Dictionary<Type, bool>();
+
+    public static bool HasSequentialLayout(this Type type)
+    {
+        var result = false;
+
+        if (sequentialLayoutCache.ContainsKey(type))
+        {
+            return sequentialLayoutCache[type];
+        }
+        else if (type.IsLayoutSequential)
+        {
+            result = true;
+        }
+
+        sequentialLayoutCache.Add(type, result);
+
+        return result;
+    }
+
+    private static Dictionary<Type, MethodInfo> setCache = new Dictionary<Type, MethodInfo>();
+
+    private static MethodInfo entitySetMethod = typeof(Entity).GetMethods().First(m => m.ToString() == "Void Set[TComponent](TComponent)");
+
+    private static void InvokeSet(this Entity entity, object component)
+    {
+        var type = component.GetType();
+        MethodInfo set = null;
+
+        if (setCache.ContainsKey(type))
+        {
+            set = setCache[type];
+        }
+
+        if (set == null)
+        {
+            set = entitySetMethod.MakeGenericMethod(new Type[] { type });
+            setCache.Add(type, set);
+        }
+
+        set.Invoke(entity, new[] { component });
     }
 }
