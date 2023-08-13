@@ -103,8 +103,9 @@ public static class Utils
             }
             else
             {
+                if (value == null) value = Activator.CreateInstance(fieldType);
                 Console.WriteLine($"Expanding {key} {value}");
-                metadata.Add(key, value?.ToFieldMap());
+                metadata.Add(key, value.ToFieldMap());
             }
         }
 

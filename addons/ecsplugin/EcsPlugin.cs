@@ -362,7 +362,7 @@ public partial class EcsPlugin : EditorPlugin
                     var fieldLayout = new HBoxContainer();
                     fieldsLayout.AddChild(fieldLayout);
 
-                    var childObj = fieldInfo.GetValue(obj) ?? throw new Exception("Field must have a value.");
+                    var childObj = fieldInfo.GetValue(obj) ?? Activator.CreateInstance(fieldInfo.FieldType);
                     var name = $"{prefix}/{fieldInfo.Name.ToLower()}";
 
                     if (fieldInfo.FieldType.IsEditable())

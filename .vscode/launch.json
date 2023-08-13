@@ -14,6 +14,16 @@
         "args": [],
         "cwd": "${workspaceFolder}",
         "stopAtEntry": false,
+      },
+      {
+        "name": "Debug Editor",
+        "type": "coreclr",
+        "request": "launch",
+        "preLaunchTask": "build",
+        "program": "godot",
+        "args": ["--editor"],
+        "cwd": "${workspaceFolder}",
+        "stopAtEntry": false,
       }
-    ]
+    ],
   }

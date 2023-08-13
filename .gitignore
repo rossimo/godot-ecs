@@ -3,4 +3,5 @@ obj
 .mono
 .idea
 .import
+*.import
 .godot

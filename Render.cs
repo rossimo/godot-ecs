@@ -9,13 +9,8 @@ public class Sprite
 public class RenderNode
 {
     public Node2D Node;
+    public Tween Modulate;
 }
-
-public class ModulateTween
-{
-    public Tween Tween;
-}
-
 
 [Editor]
 public class LowRenderPriority { }
@@ -51,22 +46,14 @@ public class RendererSystem : ISystem
 {
     public void Run(World world)
     {
-        foreach (var (render, modulate, flash) in world.Query<RenderNode, ModulateTween, Flash>().Build())
+        foreach (var (render, flash) in world.Query<RenderNode, Flash>().Build())
         {
             var node = render.Node;
             node.Modulate = new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue);
 
-            if (modulate.Tween != null)
-            {
-                modulate.Tween.Stop();
-            }
-
-            node.Modulate = new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue);
-
-            modulate.Tween = node.CreateTween();
-            modulate.Tween.TweenProperty(node, "modulate",
-               new Godot.Color(1, 1, 1),
-               .33f);
+            render.Modulate?.Stop();
+            render.Modulate = node.CreateTween();
+            render.Modulate.TweenProperty(node, "modulate", new Godot.Color(1, 1, 1), .33f);
         }
 
         foreach (var entity in world.Query().Has<Flash>().Build())
