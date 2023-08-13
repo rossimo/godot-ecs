@@ -1,9 +1,15 @@
-[gd_scene load_steps=2 format=3 uid="uid://bm1itup76t63w"]
+[gd_scene load_steps=3 format=3 uid="uid://bm1itup76t63w"]
 
 [ext_resource type="Script" path="res://Game.cs" id="1_vwyto"]
+[ext_resource type="Texture2D" uid="uid://clkwpa3186eo4" path="res://resources/tiles/tile462.png" id="2_2e57k"]
 
 [node name="Node2D" type="Node2D"]
+texture_filter = 1
 script = ExtResource("1_vwyto")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
-metadata/components_health_value = 40
+scale = Vector2(4, 4)
+texture = ExtResource("2_2e57k")
+metadata/components_flash_color_red = 1.0
+metadata/components_flash_color_green = 0.0
+metadata/components_flash_color_blue = 0.0

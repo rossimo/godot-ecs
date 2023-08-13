@@ -87,6 +87,7 @@ public static class Utils
     public static Dictionary<string, object?> ToFieldMap(this object obj)
     {
         var type = obj.GetType();
+        Console.WriteLine(type);
         var metadata = new Dictionary<string, object?>();
 
         foreach (var fieldInfo in type.GetFields())
@@ -97,10 +98,12 @@ public static class Utils
 
             if (fieldType.IsEditable())
             {
+                Console.WriteLine($"Adding {key} {value}");
                 metadata.Add(key, value);
             }
             else
             {
+                Console.WriteLine($"Expanding {key} {value}");
                 metadata.Add(key, value?.ToFieldMap());
             }
         }
