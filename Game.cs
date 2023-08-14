@@ -1,18 +1,19 @@
 using Godot;
-using RelEcs;
+using Arch;
+using Arch.Core;
+using Arch.Core.Extensions;
+using Arch.System;
 
 public partial class Game : Node2D
 {
-    private World world = new();
-    private SystemGroup systems = new();
+    private World world = World.Create();
+    private Group<Game> systems = new Group<Game>();
 
     public Game() : base()
     {
-        world.AddElement(this);
-
-        systems.Add(new RendererSystem());
-        systems.Add(new InputSystem());
-        systems.Add(new PhysicsSystem());
+        systems.Add(new RendererSystem(world));
+        systems.Add(new InputSystem(world));
+        systems.Add(new PhysicsSystem(world));
     }
 
     public override void _Ready()
@@ -29,17 +30,23 @@ public partial class Game : Node2D
                 Console.WriteLine(e);
             }
         }
+
+        systems.Initialize();
     }
 
     public override void _Process(double deltaValue)
     {
-        systems.Run(world);
-        world.Tick();
+        systems.BeforeUpdate(this);
+        systems.Update(this);
+        systems.AfterUpdate(this);
     }
 
     public override void _Input(InputEvent @event)
     {
-        world.Send(@event);
+        if (@event is InputEventMouseButton mouse)
+        {
+            world.Create(mouse);
+        }
     }
 
     public void DiscoverEntity(Node node)
@@ -53,10 +60,10 @@ public partial class Game : Node2D
             return;
         }
 
-        var entity = world.Spawn().Id();
+        var entity = world.Create();
         foreach (var component in components)
         {
-            world.UnsafeAddComponent(entity, component);
+            entity.Add(component);
             Console.WriteLine($"Added {component} to entity {entity}");
         }
 
@@ -84,7 +91,7 @@ public partial class Game : Node2D
                 }
             }
         }
-        
+
         if (physicsNode != null)
         {
             var position = physicsNode.GlobalPosition;
@@ -100,13 +107,13 @@ public partial class Game : Node2D
 
             physicsNode.SetEntity(entity);
 
-            world.AddComponent(entity, physicsNode);
+            entity.Add(physicsNode);
         }
 
         if (renderNode != null)
         {
             renderNode.SetEntity(entity);
-            world.AddComponent(entity, new RenderNode { Node = renderNode });
+            entity.Add(new RenderNode { Node = renderNode });
         }
     }
 }

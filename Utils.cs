@@ -1,7 +1,6 @@
 using System.Collections;
 using Godot;
 using System.Reflection;
-using RelEcs;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public class Hidden : Attribute
@@ -575,28 +574,5 @@ public static class Utils
             .Where(type => type.GetCustomAttributes(typeof(IsTarget), false)?.Length > 0)
             .OrderBy(component => component.Name)
             .ToArray();
-    }
-
-    private static Dictionary<Type, MethodInfo> addComponentCache = new Dictionary<Type, MethodInfo>();
-
-    private static MethodInfo worlAddComponentdMethod = typeof(World).GetMethods().First(m => m.ToString() == "Void AddComponent[T](RelEcs.Entity, T)");
-
-    public static void UnsafeAddComponent(this World world, Entity entity, object component)
-    {
-        var type = component.GetType();
-        MethodInfo set = null;
-
-        if (addComponentCache.ContainsKey(type))
-        {
-            set = addComponentCache[type];
-        }
-
-        if (set == null)
-        {
-            set = worlAddComponentdMethod.MakeGenericMethod(new Type[] { type });
-            addComponentCache.Add(type, set);
-        }
-
-        set.Invoke(world, new[] { entity, component });
     }
 }

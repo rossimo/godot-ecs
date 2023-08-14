@@ -1,5 +1,7 @@
 using Godot;
-using RelEcs;
+using Arch.Core;
+using Arch.System;
+using Arch.Core.Extensions;
 
 public struct Tick
 {
@@ -19,10 +21,12 @@ public class Direction
     public float Y;
 }
 
-public class PhysicsSystem : ISystem
+public class PhysicsSystem : BaseSystem<World, Game>
 {
     public static float TARGET_PHYSICS_FPS = 30f;
     public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_fps")}".ToFloat();
+
+    public PhysicsSystem(World world) : base(world) { }
 
     public static ulong MillisToTicks(ulong millis)
     {
@@ -34,47 +38,51 @@ public class PhysicsSystem : ISystem
         return MillisToTicks(Convert.ToUInt64(millis));
     }
 
-    public void Run(World world)
+    private QueryDescription step = new QueryDescription().WithAll<CharacterBody2D, Move, Speed>();
+    private QueryDescription checkMove = new QueryDescription().WithAll<CharacterBody2D, Move>();
+    private QueryDescription syncRender = new QueryDescription().WithAll<CharacterBody2D, RenderNode>();
+
+    public override void Update(in Game data)
     {
-        foreach (var (physics, move, speed) in world.Query<CharacterBody2D, Move, Speed>().Build())
+        World.Query(step, (ref CharacterBody2D physics, ref Move move, ref Speed speed) => Step(ref physics, ref move, ref speed));
+        World.Query(checkMove, (in Entity entity, ref CharacterBody2D physics, ref Move move) => CheckMove(in entity, ref physics, ref move));
+        World.Query(syncRender, (ref CharacterBody2D physics, ref RenderNode render) => SyncRender(ref physics, ref render));
+    }
+
+    public void Step(ref CharacterBody2D physics, ref Move move, ref Speed speed)
+    {
+        var direction = physics.Position
+            .DirectionTo(new Vector2(move.X, move.Y))
+            .Normalized();
+
+        var travel = direction * speed.Value;
+
+        var moveDistance = physics.Position.DistanceTo(new Vector2(move.X, move.Y));
+        var travelDistance = physics.Position.DistanceTo(physics.Position + travel);
+
+        if (moveDistance < travelDistance)
         {
-            var direction = physics.Position
-                .DirectionTo(new Vector2(move.X, move.Y))
-                .Normalized();
+            travel = new Vector2(move.X, move.Y) - physics.Position;
+        }
 
-            var travel = direction * speed.Value;
+        physics.MoveAndCollide(travel);
+    }
 
-            var moveDistance = physics.Position.DistanceTo(new Vector2(move.X, move.Y));
-            var travelDistance = physics.Position.DistanceTo(physics.Position + travel);
+    public void CheckMove(in Entity entity, ref CharacterBody2D physics, ref Move move)
+    {
+        var position = physics.Position;
 
-            if (moveDistance < travelDistance)
-            {
-                travel = new Vector2(move.X, move.Y) - physics.Position;
-            }
-
-            physics.MoveAndCollide(travel);
-        };
-
-        foreach (var entity in world.Query().Has<CharacterBody2D>().Has<Move>().Build())
+        if (position.X == move.X && position.Y == move.Y)
         {
+            entity.Remove<Move>();
+        }
+    }
 
-            var physics = world.GetComponent<CharacterBody2D>(entity);
-            var move = world.GetComponent<Move>(entity);
-
-            var position = physics.Position;
-
-            if (position.X == move.X && position.Y == move.Y)
-            {
-                world.RemoveComponent<Move>(entity);
-            }
-        };
-
-        foreach (var (physics, render) in world.Query<CharacterBody2D, RenderNode>().Build())
+    public void SyncRender(ref CharacterBody2D physics, ref RenderNode render)
+    {
+        if (physics.Position.X != render.Node.Position.X || physics.Position.Y != render.Node.Position.Y)
         {
-            if (physics.Position.X != render.Node.Position.X || physics.Position.Y != render.Node.Position.Y)
-            {
-                render.Node.Position = physics.Position;
-            }
-        };
+            render.Node.Position = physics.Position;
+        }
     }
 }
