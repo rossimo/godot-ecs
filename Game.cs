@@ -34,7 +34,7 @@ public partial class Game : Node2D
         systems.Initialize();
     }
 
-    public override void _Process(double deltaValue)
+    public override void _PhysicsProcess(double deltaValue)
     {
         systems.BeforeUpdate(this);
         systems.Update(this);
