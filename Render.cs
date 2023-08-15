@@ -12,6 +12,7 @@ public struct RenderNode
 {
     public Node2D Node;
     public Tween Modulate;
+    public Tween Position;
 }
 
 [Editor]

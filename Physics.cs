@@ -3,9 +3,12 @@ using Arch.Core;
 using Arch.System;
 using Arch.Core.Extensions;
 
-public struct FrameTime
+public struct Time
 {
-    public double Value;
+    public Time() { }
+    public double Delta = 1 / PhysicsSystem.PHYSICS_FPS;
+    public float Scale = 1;
+    public int Ticks = 0;
 }
 
 public struct Tick
@@ -52,9 +55,7 @@ public class PhysicsSystem : BaseSystem<World, Game>
 
     public void Step(ref CharacterBody2D physics, ref Move move, ref Speed speed)
     {
-        var frameTime = Data.Global.Get<FrameTime>().Value;
-
-        var timeScale = (float)(PHYSICS_RATIO * (frameTime * PHYSICS_FPS));
+        var timeScale = Data.Global.Get<Time>().Scale;
 
         var direction = physics.Position
             .DirectionTo(new Vector2(move.X, move.Y))
@@ -87,7 +88,9 @@ public class PhysicsSystem : BaseSystem<World, Game>
     {
         if (physics.Position.X != render.Node.Position.X || physics.Position.Y != render.Node.Position.Y)
         {
-            render.Node.Position = physics.Position;
+            render.Position?.Stop();
+            render.Position = render.Node.CreateTween();
+            render.Position.TweenProperty(render.Node, "position", physics.Position, 1 / PHYSICS_FPS);
         }
     }
 }

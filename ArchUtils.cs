@@ -1,5 +1,8 @@
 using Godot;
+using Arch;
 using Arch.Core;
+using Arch.Core.Extensions;
+using Arch.System;
 
 public static class RelEcsUtils
 {
@@ -15,5 +18,17 @@ public static class RelEcsUtils
         }
 
         obj.EmitSignal("entity", Array.Empty<Variant>());
+    }
+
+    public static void Update<T>(this Entity entity, T component)
+    {
+        if (entity.Has<T>())
+        {
+            entity.Set(component);
+        }
+        else
+        {
+            entity.Add(component);
+        }
     }
 }

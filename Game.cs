@@ -13,7 +13,7 @@ public partial class Game : Node2D
     public Game() : base()
     {
         Global = world.Create();
-        Global.Add(new FrameTime { Value = 1 / PhysicsSystem.PHYSICS_FPS });
+        Global.Add(new Time());
 
         systems.Add(new RendererSystem(world));
         systems.Add(new InputSystem(world));
@@ -38,10 +38,12 @@ public partial class Game : Node2D
         systems.Initialize();
     }
 
-    public override void _PhysicsProcess(double deltaValue)
+    public override void _PhysicsProcess(double frameTime)
     {
-        ref var frameTime = ref Global.Get<FrameTime>();
-        frameTime.Value = deltaValue;
+        ref var time = ref Global.Get<Time>();
+        time.Delta = frameTime;
+        time.Scale = (float)(PhysicsSystem.PHYSICS_RATIO * (frameTime * PhysicsSystem.PHYSICS_FPS));
+        time.Ticks++;
 
         systems.BeforeUpdate(this);
         systems.Update(this);

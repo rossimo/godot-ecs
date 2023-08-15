@@ -31,7 +31,7 @@ public class InputSystem : BaseSystem<World, Game>
             {
                 var position = Data.ToLocal(Data.GetViewport().GetMousePosition());
 
-                World.Query(players, (in Entity player) => player.Add(new Move
+                World.Query(players, (in Entity player) => player.Update(new Move
                 {
                     X = position.X,
                     Y = position.Y
