@@ -4,13 +4,13 @@ using Arch.System;
 using Arch.Core.Extensions;
 
 [Editor]
-public class Player
+public struct Player
 {
 
 }
 
 [Editor]
-public class Move
+public struct Move
 {
     public float X;
     public float Y;

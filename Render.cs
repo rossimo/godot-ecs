@@ -3,25 +3,25 @@ using Arch.Core;
 using Arch.System;
 using Arch.Core.Extensions;
 
-public class Sprite
+public struct Sprite
 {
     public string Image;
 }
 
-public class RenderNode
+public struct RenderNode
 {
     public Node2D Node;
     public Tween Modulate;
 }
 
 [Editor]
-public class Rotation
+public struct Rotation
 {
     public float Degrees;
 }
 
 [Editor]
-public class Color
+public struct Color
 {
     public float Red;
     public float Green;
@@ -29,9 +29,9 @@ public class Color
 }
 
 [Editor]
-public class Flash
+public struct Flash
 {
-    public Color Color = new();
+    public Color Color;
 }
 
 // public record ClickEvent : Event;

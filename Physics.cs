@@ -3,19 +3,24 @@ using Arch.Core;
 using Arch.System;
 using Arch.Core.Extensions;
 
+public struct FrameTime
+{
+    public double Value;
+}
+
 public struct Tick
 {
     public ulong Value;
 }
 
 [Editor]
-public class Speed
+public struct Speed
 {
     public float Value;
 }
 
 [Editor]
-public class Direction
+public struct Direction
 {
     public float X;
     public float Y;
@@ -24,18 +29,14 @@ public class Direction
 public class PhysicsSystem : BaseSystem<World, Game>
 {
     public static float TARGET_PHYSICS_FPS = 30f;
-    public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_fps")}".ToFloat();
+    public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_ticks_per_second")}".ToFloat();
+    public static float PHYSICS_RATIO = (1 / PHYSICS_FPS) / (1 / TARGET_PHYSICS_FPS);
 
     public PhysicsSystem(World world) : base(world) { }
 
-    public static ulong MillisToTicks(ulong millis)
-    {
-        return Convert.ToUInt64(Convert.ToSingle(millis) / 1000f * PHYSICS_FPS);
-    }
-
     public static ulong MillisToTicks(double millis)
     {
-        return MillisToTicks(Convert.ToUInt64(millis));
+        return Convert.ToUInt64(Convert.ToSingle(millis) / 1000f * PHYSICS_FPS);
     }
 
     private QueryDescription step = new QueryDescription().WithAll<CharacterBody2D, Move, Speed>();
@@ -51,11 +52,15 @@ public class PhysicsSystem : BaseSystem<World, Game>
 
     public void Step(ref CharacterBody2D physics, ref Move move, ref Speed speed)
     {
+        var frameTime = Data.Global.Get<FrameTime>().Value;
+
+        var timeScale = (float)(PHYSICS_RATIO * (frameTime * PHYSICS_FPS));
+
         var direction = physics.Position
             .DirectionTo(new Vector2(move.X, move.Y))
             .Normalized();
 
-        var travel = direction * speed.Value;
+        var travel = direction * speed.Value * timeScale;
 
         var moveDistance = physics.Position.DistanceTo(new Vector2(move.X, move.Y));
         var travelDistance = physics.Position.DistanceTo(physics.Position + travel);

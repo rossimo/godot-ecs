@@ -1,5 +1,5 @@
 [Editor]
-public class Health
+public struct Health
 {
     public int Value;
 }

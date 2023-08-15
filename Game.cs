@@ -8,9 +8,13 @@ public partial class Game : Node2D
 {
     private World world = World.Create();
     private Group<Game> systems = new Group<Game>();
+    public Entity Global;
 
     public Game() : base()
     {
+        Global = world.Create();
+        Global.Add(new FrameTime { Value = 1 / PhysicsSystem.PHYSICS_FPS });
+
         systems.Add(new RendererSystem(world));
         systems.Add(new InputSystem(world));
         systems.Add(new PhysicsSystem(world));
@@ -36,6 +40,9 @@ public partial class Game : Node2D
 
     public override void _PhysicsProcess(double deltaValue)
     {
+        ref var frameTime = ref Global.Get<FrameTime>();
+        frameTime.Value = deltaValue;
+
         systems.BeforeUpdate(this);
         systems.Update(this);
         systems.AfterUpdate(this);
