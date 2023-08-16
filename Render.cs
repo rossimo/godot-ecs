@@ -12,7 +12,7 @@ public struct RenderNode
 {
     public Node2D Node;
     public Tween Modulate;
-    public Tween Position;
+    public Tween PositionTween;
 }
 
 [Editor]
@@ -61,6 +61,10 @@ public class RendererSystem : BaseSystem<World, Game>
            render.Modulate.TweenProperty(node, "modulate", new Godot.Color(1, 1, 1), .33f);
        });
 
-        World.Query(flashes, (in Entity entity) => entity.Remove<Flash>());
+        World.Query(flashes, (in Entity entity) =>
+        {
+            entity.Remove<Flash>();
+            World.Cleanup(entity);
+        });
     }
 }

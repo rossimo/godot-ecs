@@ -31,4 +31,12 @@ public static class RelEcsUtils
             entity.Add(component);
         }
     }
+
+    public static void Cleanup(this World world, Entity entity)
+    {
+        if (entity.GetComponentTypes().Length == 0)
+        {
+            world.Destroy(entity);
+        }
+    }
 }

@@ -117,12 +117,14 @@ public partial class Game : Node2D
             physicsNode.SetEntity(entity);
 
             entity.Add(physicsNode);
+            entity.Update(new Position { X = physicsNode.Position.X, Y = physicsNode.Position.Y });
         }
 
         if (renderNode != null)
         {
             renderNode.SetEntity(entity);
             entity.Add(new RenderNode { Node = renderNode });
+            entity.Update(new Position { X = renderNode.Position.X, Y = renderNode.Position.Y });
         }
     }
 }

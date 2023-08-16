@@ -29,6 +29,12 @@ public struct Direction
     public float Y;
 }
 
+public struct Position
+{
+    public float X;
+    public float Y;
+}
+
 public class PhysicsSystem : BaseSystem<World, Game>
 {
     public static float TARGET_PHYSICS_FPS = 30f;
@@ -48,14 +54,19 @@ public class PhysicsSystem : BaseSystem<World, Game>
 
     public override void Update(in Game data)
     {
-        World.Query(step, (ref CharacterBody2D physics, ref Move move, ref Speed speed) => Step(ref physics, ref move, ref speed));
-        World.Query(checkMove, (in Entity entity, ref CharacterBody2D physics, ref Move move) => CheckMove(in entity, ref physics, ref move));
-        World.Query(syncRender, (ref CharacterBody2D physics, ref RenderNode render) => SyncRender(ref physics, ref render));
+        World.Query(step, (in Entity entity, ref Position position, ref CharacterBody2D physics, ref Move move, ref Speed speed) =>
+            Step(in entity, ref position, ref physics, ref move, ref speed));
+        World.Query(checkMove, (in Entity entity, ref Position position, ref Move move) =>
+            CheckMove(in entity, ref position, ref move));
+        World.Query(syncRender, (in Entity entity, ref Position physics, ref RenderNode render) =>
+            SyncRender(in entity, ref physics, ref render));
     }
 
-    public void Step(ref CharacterBody2D physics, ref Move move, ref Speed speed)
+    public void Step(in Entity entity, ref Position position, ref CharacterBody2D physics, ref Move move, ref Speed speed)
     {
         var timeScale = Data.Global.Get<Time>().Scale;
+
+        physics.Position = new Vector2(position.X, position.Y);
 
         var direction = physics.Position
             .DirectionTo(new Vector2(move.X, move.Y))
@@ -63,34 +74,41 @@ public class PhysicsSystem : BaseSystem<World, Game>
 
         var travel = direction * speed.Value * timeScale;
 
-        var moveDistance = physics.Position.DistanceTo(new Vector2(move.X, move.Y));
+        var remainingDistance = physics.Position.DistanceTo(new Vector2(move.X, move.Y));
         var travelDistance = physics.Position.DistanceTo(physics.Position + travel);
 
-        if (moveDistance < travelDistance)
+        if (remainingDistance < travelDistance)
         {
             travel = new Vector2(move.X, move.Y) - physics.Position;
         }
 
         physics.MoveAndCollide(travel);
+
+        entity.Update(new Position { X = physics.Position.X, Y = physics.Position.Y });
     }
 
-    public void CheckMove(in Entity entity, ref CharacterBody2D physics, ref Move move)
+    public void CheckMove(in Entity entity, ref Position position, ref Move move)
     {
-        var position = physics.Position;
-
         if (position.X == move.X && position.Y == move.Y)
         {
             entity.Remove<Move>();
         }
     }
 
-    public void SyncRender(ref CharacterBody2D physics, ref RenderNode render)
+    public void SyncRender(in Entity entity, ref Position position, ref RenderNode render)
     {
-        if (physics.Position.X != render.Node.Position.X || physics.Position.Y != render.Node.Position.Y)
+        if (position.X != render.Node.Position.X || position.Y != render.Node.Position.Y)
         {
-            render.Position?.Stop();
-            render.Position = render.Node.CreateTween();
-            render.Position.TweenProperty(render.Node, "position", physics.Position, 1 / PHYSICS_FPS);
+            render.PositionTween?.Stop();
+            if (entity.Has<Move>())
+            {
+                render.PositionTween = render.Node.CreateTween();
+                render.PositionTween.TweenProperty(render.Node, "position", new Vector2(position.X, position.Y), 1 / PHYSICS_FPS);
+            }
+            else
+            {
+                render.Node.Position = new Vector2(position.X, position.Y);
+            }
         }
     }
 }

@@ -27,18 +27,40 @@ public class InputSystem : BaseSystem<World, Game>
     {
         World.Query(inputEvents, (in Entity entity, ref InputEventMouseButton mouse) =>
         {
-            if (mouse.ButtonIndex == MouseButton.Right && mouse.IsPressed())
+            if (mouse.IsPressed())
             {
-                var position = Data.ToLocal(Data.GetViewport().GetMousePosition());
-
-                World.Query(players, (in Entity player) => player.Update(new Move
+                switch (mouse.ButtonIndex)
                 {
-                    X = position.X,
-                    Y = position.Y
-                }));
+                    case MouseButton.Left:
+                        {
+                            World.Query(players, (in Entity player) =>
+                            {
+                                player.Remove<Move>();
+                                player.Update(new Position
+                                {
+                                    X = 0,
+                                    Y = 0
+                                });
+                            });
+                        }
+                        break;
+
+                    case MouseButton.Right:
+                        {
+                            var position = Data.ToLocal(Data.GetViewport().GetMousePosition());
+
+                            World.Query(players, (in Entity player) => player.Update(new Move
+                            {
+                                X = position.X,
+                                Y = position.Y
+                            }));
+                        }
+                        break;
+                }
             }
 
             entity.Remove<InputEventMouseButton>();
+            World.Cleanup(entity);
         });
     }
 }
