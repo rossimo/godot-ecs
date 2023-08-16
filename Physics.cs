@@ -48,25 +48,35 @@ public class PhysicsSystem : BaseSystem<World, Game>
         return Convert.ToUInt64(Convert.ToSingle(millis) / 1000f * PHYSICS_FPS);
     }
 
+    private QueryDescription syncPhysics = new QueryDescription().WithAll<Position, CharacterBody2D>();
     private QueryDescription step = new QueryDescription().WithAll<CharacterBody2D, Move, Speed>();
-    private QueryDescription checkMove = new QueryDescription().WithAll<CharacterBody2D, Move>();
-    private QueryDescription syncRender = new QueryDescription().WithAll<CharacterBody2D, RenderNode>();
+    private QueryDescription checkMove = new QueryDescription().WithAll<Position, Move>();
+    private QueryDescription syncRender = new QueryDescription().WithAll<Position, RenderNode>();
 
     public override void Update(in Game data)
     {
-        World.Query(step, (in Entity entity, ref Position position, ref CharacterBody2D physics, ref Move move, ref Speed speed) =>
-            Step(in entity, ref position, ref physics, ref move, ref speed));
-        World.Query(checkMove, (in Entity entity, ref Position position, ref Move move) =>
-            CheckMove(in entity, ref position, ref move));
+        World.Query(syncPhysics, (ref Position position, ref CharacterBody2D physics) =>
+            SyncPhysics(ref position, ref physics));
+        World.Query(step, (in Entity entity, ref CharacterBody2D physics, ref Move move, ref Speed speed) =>
+            Move(in entity, ref physics, ref move, ref speed));
         World.Query(syncRender, (in Entity entity, ref Position physics, ref RenderNode render) =>
             SyncRender(in entity, ref physics, ref render));
+        World.Query(checkMove, (in Entity entity, ref Position position, ref Move move) =>
+            CleanupMove(in entity, ref position, ref move));
     }
 
-    public void Step(in Entity entity, ref Position position, ref CharacterBody2D physics, ref Move move, ref Speed speed)
+
+    public void SyncPhysics(ref Position position, ref CharacterBody2D physics)
+    {
+        if (position.X != physics.Position.X || position.Y != physics.Position.Y)
+        {
+            physics.Position = new Vector2(position.X, position.Y);
+        }
+    }
+
+    public void Move(in Entity entity, ref CharacterBody2D physics, ref Move move, ref Speed speed)
     {
         var timeScale = Data.Global.Get<Time>().Scale;
-
-        physics.Position = new Vector2(position.X, position.Y);
 
         var direction = physics.Position
             .DirectionTo(new Vector2(move.X, move.Y))
@@ -87,14 +97,6 @@ public class PhysicsSystem : BaseSystem<World, Game>
         entity.Update(new Position { X = physics.Position.X, Y = physics.Position.Y });
     }
 
-    public void CheckMove(in Entity entity, ref Position position, ref Move move)
-    {
-        if (position.X == move.X && position.Y == move.Y)
-        {
-            entity.Remove<Move>();
-        }
-    }
-
     public void SyncRender(in Entity entity, ref Position position, ref RenderNode render)
     {
         if (position.X != render.Node.Position.X || position.Y != render.Node.Position.Y)
@@ -109,6 +111,14 @@ public class PhysicsSystem : BaseSystem<World, Game>
             {
                 render.Node.Position = new Vector2(position.X, position.Y);
             }
+        }
+    }
+
+    public void CleanupMove(in Entity entity, ref Position position, ref Move move)
+    {
+        if (position.X == move.X && position.Y == move.Y)
+        {
+            entity.Remove<Move>();
         }
     }
 }
