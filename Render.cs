@@ -1,7 +1,5 @@
 using Godot;
-using Arch.Core;
-using Arch.System;
-using Arch.Core.Extensions;
+using Flecs.NET.Core;
 
 public struct Sprite
 {
@@ -35,23 +33,16 @@ public struct Flash
     public Color Color;
 }
 
-// public record ClickEvent : Event;
-
 public class Notify<C>
 {
     public Entity entity;
 }
 
-public class RendererSystem : BaseSystem<World, Game>
+public class RendererSystem
 {
-    private QueryDescription renderFlashes = new QueryDescription().WithAll<RenderNode, Flash>();
-    private QueryDescription flashes = new QueryDescription().WithAll<Flash>();
-
-    public RendererSystem(World world) : base(world) { }
-
-    public override void Update(in Game data)
+    public static Action StartFlash(World world)
     {
-        World.Query(renderFlashes, (ref RenderNode render, ref Flash flash) =>
+        return world.System((ref RenderNode render, ref Flash flash) =>
        {
            var node = render.Node;
            node.Modulate = new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue);
@@ -60,11 +51,14 @@ public class RendererSystem : BaseSystem<World, Game>
            render.Modulate = node.CreateTween();
            render.Modulate.TweenProperty(node, "modulate", new Godot.Color(1, 1, 1), .33f);
        });
+    }
 
-        World.Query(flashes, (in Entity entity) =>
+    public static Action CleanupFlash(World world)
+    {
+        return world.System((Entity entity, ref Flash flash) =>
         {
             entity.Remove<Flash>();
-            World.Cleanup(entity);
+            entity.Cleanup();
         });
     }
 }

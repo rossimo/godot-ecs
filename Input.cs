@@ -1,24 +1,19 @@
 using Godot;
-using Arch.Core;
-using Arch.System;
-using Arch.Core.Extensions;
+using Flecs.NET.Core;
 
 [Editor]
 public struct Player
 {
-
+    public int Test;
 }
 
-public class InputSystem : BaseSystem<World, Game>
+public class InputSystem
 {
-    private QueryDescription inputEvents = new QueryDescription().WithAll<InputEventMouseButton>();
-    private QueryDescription players = new QueryDescription().WithAll<Player>();
-
-    public InputSystem(World world) : base(world) { }
-
-    public override void Update(in Game data)
+    public static Action Update(World world)
     {
-        World.Query(inputEvents, (in Entity entity, ref InputEventMouseButton mouse) =>
+        var players = world.Query(filter: world.FilterBuilder().Term<Player>());
+        
+        return world.System((Entity entity, ref InputEventMouseButton mouse) =>
         {
             if (mouse.IsPressed())
             {
@@ -26,29 +21,38 @@ public class InputSystem : BaseSystem<World, Game>
                 {
                     case MouseButton.Left:
                         {
-                            World.Query(players, (in Entity player) =>
+                            players.Iter(it =>
                             {
-                                player.Remove<Move>();
-                                player.Update(new Position
+                                foreach (int i in it)
                                 {
-                                    X = 0,
-                                    Y = 0
-                                });
+                                    var player = it.Entity(i);
+                                    player.Remove<Move>();
+                                    player.Set(new Position
+                                    {
+                                        X = 0,
+                                        Y = 0
+                                    });
+                                }
                             });
                         }
                         break;
 
                     case MouseButton.Right:
                         {
-                            var position = Data.ToLocal(Data.GetViewport().GetMousePosition());
+                            var scene = world.Get<Game>();
+                            var position = scene.ToLocal(scene.GetViewport().GetMousePosition());
 
-                            World.Query(players, (in Entity player) =>
+                            players.Iter(it =>
                             {
-                                player.Update(new Move
+                                foreach (int i in it)
                                 {
-                                    X = position.X,
-                                    Y = position.Y
-                                });
+                                    var player = it.Entity(i);
+                                    player.Set(new Move
+                                    {
+                                        X = position.X,
+                                        Y = position.Y
+                                    });
+                                }
                             });
                         }
                         break;
@@ -56,7 +60,7 @@ public class InputSystem : BaseSystem<World, Game>
             }
 
             entity.Remove<InputEventMouseButton>();
-            World.Cleanup(entity);
+            entity.Cleanup();
         });
     }
 }

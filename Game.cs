@@ -1,23 +1,23 @@
 using Godot;
-using Arch;
-using Arch.Core;
-using Arch.Core.Extensions;
-using Arch.System;
+using Flecs.NET.Core;
 
 public partial class Game : Node2D
 {
     private World world = World.Create();
-    private Group<Game> systems = new Group<Game>();
-    public Entity Global;
+    private List<Action> systems = new List<Action>();
 
     public Game() : base()
     {
-        Global = world.Create();
-        Global.Add(new Time());
+        world.Set(this);
+        world.Set(new Time());
 
-        systems.Add(new RendererSystem(world));
-        systems.Add(new InputSystem(world));
-        systems.Add(new PhysicsSystem(world));
+        systems.Add(RendererSystem.StartFlash(world));
+        systems.Add(RendererSystem.CleanupFlash(world));
+        systems.Add(InputSystem.Update(world));
+        systems.Add(PhysicsSystem.SyncPhysics(world));
+        systems.Add(PhysicsSystem.Move(world));
+        systems.Add(PhysicsSystem.SyncRender(world));
+        systems.Add(PhysicsSystem.CleanupMove(world));
     }
 
     public override void _Ready()
@@ -34,27 +34,26 @@ public partial class Game : Node2D
                 Console.WriteLine(e);
             }
         }
-
-        systems.Initialize();
     }
 
     public override void _PhysicsProcess(double frameTime)
     {
-        ref var time = ref Global.Get<Time>();
+        ref var time = ref world.GetMut<Time>();
         time.Delta = frameTime;
         time.Scale = (float)(PhysicsSystem.PHYSICS_RATIO * (frameTime * PhysicsSystem.PHYSICS_FPS));
         time.Ticks++;
 
-        systems.BeforeUpdate(this);
-        systems.Update(this);
-        systems.AfterUpdate(this);
+        foreach (var system in systems)
+        {
+            system();
+        }
     }
 
     public override void _Input(InputEvent @event)
     {
         if (@event is InputEventMouseButton mouse)
         {
-            world.Create(mouse);
+            world.Entity().Set(mouse);
         }
     }
 
@@ -69,10 +68,12 @@ public partial class Game : Node2D
             return;
         }
 
-        var entity = world.Create();
+        var entity = world.Entity();
+        entity.Set(new Player());
+
         foreach (var component in components)
         {
-            entity.Add(component);
+            entity.UnsafeAddComponent(component);
             Console.WriteLine($"Added {component} to entity {entity}");
         }
 
@@ -116,15 +117,15 @@ public partial class Game : Node2D
 
             physicsNode.SetEntity(entity);
 
-            entity.Add(physicsNode);
-            entity.Update(new Position { X = physicsNode.Position.X, Y = physicsNode.Position.Y });
+            entity.Set(physicsNode);
+            entity.Set(new Position { X = physicsNode.Position.X, Y = physicsNode.Position.Y });
         }
 
         if (renderNode != null)
         {
             renderNode.SetEntity(entity);
-            entity.Add(new RenderNode { Node = renderNode });
-            entity.Update(new Position { X = renderNode.Position.X, Y = renderNode.Position.Y });
+            entity.Set(new RenderNode { Node = renderNode });
+            entity.Set(new Position { X = renderNode.Position.X, Y = renderNode.Position.Y });
         }
     }
 }

@@ -8,10 +8,7 @@
     <NoWarn>8625</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Arch" Version="1.2.6" />
-    <PackageReference Include="Arch.EventBus" Version="1.0.2" />
-    <PackageReference Include="Arch.LowLevel" Version="1.0.2" />
-    <PackageReference Include="Arch.System" Version="1.0.2" />
-    <PackageReference Include="Arch.System.SourceGenerator" Version="1.1.0" />
+    <PackageReference Include="Flecs.NET.Debug" Version="*-*" />
+    <PackageReference Include="Flecs.NET.Release" Version="*-*" />
   </ItemGroup>
 </Project>
