@@ -11,9 +11,10 @@ public struct Time
     public int Ticks = 0;
 }
 
-public struct Tick
+public struct Position
 {
-    public ulong Value;
+    public float X;
+    public float Y;
 }
 
 [Editor]
@@ -29,7 +30,8 @@ public struct Direction
     public float Y;
 }
 
-public struct Position
+[Editor]
+public struct Move
 {
     public float X;
     public float Y;
@@ -39,7 +41,7 @@ public class PhysicsSystem : BaseSystem<World, Game>
 {
     public static float TARGET_PHYSICS_FPS = 30f;
     public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_ticks_per_second")}".ToFloat();
-    public static float PHYSICS_RATIO = (1 / PHYSICS_FPS) / (1 / TARGET_PHYSICS_FPS);
+    public static float PHYSICS_RATIO = 1 / PHYSICS_FPS / (1 / TARGET_PHYSICS_FPS);
 
     public PhysicsSystem(World world) : base(world) { }
 
@@ -64,7 +66,6 @@ public class PhysicsSystem : BaseSystem<World, Game>
         World.Query(checkMove, (in Entity entity, ref Position position, ref Move move) =>
             CleanupMove(in entity, ref position, ref move));
     }
-
 
     public void SyncPhysics(ref Position position, ref CharacterBody2D physics)
     {
@@ -102,6 +103,7 @@ public class PhysicsSystem : BaseSystem<World, Game>
         if (position.X != render.Node.Position.X || position.Y != render.Node.Position.Y)
         {
             render.PositionTween?.Stop();
+
             if (entity.Has<Move>())
             {
                 render.PositionTween = render.Node.CreateTween();
@@ -119,6 +121,14 @@ public class PhysicsSystem : BaseSystem<World, Game>
         if (position.X == move.X && position.Y == move.Y)
         {
             entity.Remove<Move>();
+
+            if (entity.Has<RenderNode>())
+            {
+                ref var render = ref entity.Get<RenderNode>();
+
+                render.PositionTween?.Stop();
+                render.PositionTween = null;
+            }
         }
     }
 }

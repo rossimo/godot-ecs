@@ -9,13 +9,6 @@ public struct Player
 
 }
 
-[Editor]
-public struct Move
-{
-    public float X;
-    public float Y;
-}
-
 public class InputSystem : BaseSystem<World, Game>
 {
     private QueryDescription inputEvents = new QueryDescription().WithAll<InputEventMouseButton>();
@@ -49,11 +42,14 @@ public class InputSystem : BaseSystem<World, Game>
                         {
                             var position = Data.ToLocal(Data.GetViewport().GetMousePosition());
 
-                            World.Query(players, (in Entity player) => player.Update(new Move
+                            World.Query(players, (in Entity player) =>
                             {
-                                X = position.X,
-                                Y = position.Y
-                            }));
+                                player.Update(new Move
+                                {
+                                    X = position.X,
+                                    Y = position.Y
+                                });
+                            });
                         }
                         break;
                 }

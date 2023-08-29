@@ -24,12 +24,10 @@ public static class RelEcsUtils
     {
         if (entity.Has<T>())
         {
-            entity.Set(component);
+            entity.Remove<T>();
         }
-        else
-        {
-            entity.Add(component);
-        }
+
+        entity.Add(component);
     }
 
     public static void Cleanup(this World world, Entity entity)
