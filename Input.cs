@@ -7,6 +7,12 @@ public struct Player
     public int Index;
 }
 
+public struct MouseEvent
+{
+    public InputEventMouseButton mouse;
+    public Vector2 position;
+}
+
 public class Input
 {
     public static Action System(World world)
@@ -22,11 +28,11 @@ public class Input
     {
         var players = world.Query(filter: world.FilterBuilder().Term<Player>());
 
-        return world.System("Input.Update", (Entity entity, ref InputEventMouseButton mouse) =>
+        return world.System("Input.Update", (Entity entity, ref MouseEvent @event) =>
         {
-            if (mouse.IsPressed())
+            if (@event.mouse.IsPressed())
             {
-                switch (mouse.ButtonIndex)
+                switch (@event.mouse.ButtonIndex)
                 {
                     case MouseButton.Left:
                         {
@@ -45,7 +51,7 @@ public class Input
                     case MouseButton.Right:
                         {
                             var scene = world.Get<Game>();
-                            var position = scene.ToLocal(scene.GetViewport().GetMousePosition());
+                            var position = @event.position;
 
                             players.Each(player =>
                             {
@@ -60,7 +66,7 @@ public class Input
                 }
             }
 
-            entity.Remove<InputEventMouseButton>();
+            entity.Remove<MouseEvent>();
             entity.Cleanup();
         });
     }

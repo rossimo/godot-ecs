@@ -43,9 +43,9 @@ public struct Collision
 
 public class Physics
 {
-    public static float TARGET_PHYSICS_FPS = 30f;
     public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_ticks_per_second")}".ToFloat();
-    public static float PHYSICS_RATIO = 1 / PHYSICS_FPS / (1 / TARGET_PHYSICS_FPS);
+    public static float PHYSICS_SPEED_SCALE = 30f / PHYSICS_FPS;
+    public static float PHYSICS_TARGET_FRAMETIME = 1 / PHYSICS_FPS;
 
     public static ulong MillisToTicks(double millis)
     {
@@ -81,7 +81,7 @@ public class Physics
                 .DirectionTo(new Vector2(move.X, move.Y))
                 .Normalized();
 
-            var travel = direction * speed.Value * timeScale;
+            var travel = direction * speed.Value * timeScale * PHYSICS_SPEED_SCALE;
 
             var remainingDistance = physics.Position.DistanceTo(new Vector2(move.X, move.Y));
             var travelDistance = physics.Position.DistanceTo(physics.Position + travel);

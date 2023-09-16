@@ -15,7 +15,7 @@ public partial class Game : Node2D
 		systems.Add(Input.System(world));
 		systems.Add(Physics.System(world));
 		systems.Add(Renderer.System(world));
-		
+
 		world.Import<Ecs.Units>();
 		world.Import<Ecs.Monitor>();
 		world.Set<EcsRest>(default);
@@ -44,7 +44,7 @@ public partial class Game : Node2D
 	{
 		ref var time = ref world.GetMut<Time>();
 		time.Delta = frameTime;
-		time.Scale = (float)(Physics.PHYSICS_RATIO * (frameTime * Physics.PHYSICS_FPS));
+		time.Scale = (float)(frameTime / Physics.PHYSICS_TARGET_FRAMETIME);
 		time.Ticks++;
 
 		world.Progress();
@@ -55,7 +55,11 @@ public partial class Game : Node2D
 	{
 		if (@event is InputEventMouseButton mouse)
 		{
-			world.Entity().Set(mouse);
+			world.Entity().Set(new MouseEvent
+			{
+				mouse = mouse,
+				position = ToLocal(GetViewport().GetMousePosition())
+			});
 		}
 	}
 

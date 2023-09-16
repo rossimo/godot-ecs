@@ -76,26 +76,21 @@ public class Renderer
     public static Action SyncRender(World world) =>
     world.System("SyncRender", (Entity entity, ref Position position, ref RenderNode render) =>
     {
+        var time = world.Get<Time>();
+
         if (position.X != render.Node.Position.X || position.Y != render.Node.Position.Y)
         {
             render.PositionTween?.Stop();
 
-            if (entity.Has<Move>())
+            if (entity.Has<Speed>())
             {
-                var ratio = 1f;
+                var target = new Vector2(position.X, position.Y).DistanceTo(render.Node.Position);
+                var normal = entity.Get<Speed>().Value * Physics.PHYSICS_SPEED_SCALE;
 
-                if (entity.Has<Speed>())
-                {
-                    var speed = entity.Get<Speed>().Value;
-                    var distance = new Vector2(position.X, position.Y).DistanceTo(render.Node.Position);
-
-                    ratio = distance / speed;
-                    Console.WriteLine($"Distance: {distance}, Speed: {speed}, Ratio: {ratio}");
-
-                }
+                var ratio = normal > target ? target / normal : normal / target;
 
                 render.PositionTween = render.Node.CreateTween();
-                render.PositionTween.TweenProperty(render.Node, "position", new Vector2(position.X, position.Y), (1 / Physics.PHYSICS_FPS) * ratio);
+                render.PositionTween.TweenProperty(render.Node, "position", new Vector2(position.X, position.Y), Physics.PHYSICS_TARGET_FRAMETIME * ratio);
             }
             else
             {
