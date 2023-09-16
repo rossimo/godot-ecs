@@ -17,13 +17,25 @@ public static class FlecsUtils
         obj.EmitSignal("entity", Array.Empty<Variant>());
     }
 
+    public static Entity GetEntity(this GodotObject obj, World world)
+    {
+        if (obj.HasMeta($"entity{Utils.DELIMETER}id"))
+        {
+            var id = obj.GetMeta($"entity{Utils.DELIMETER}id");
+            var entity = world.Entity(id.AsUInt64());
+            if (entity.IsAlive() && entity.IsAlive())
+            {
+                return entity;
+            }
+        }
+
+        return Entity.Null();
+    }
+
     public static void Cleanup(this Entity entity)
     {
         var count = 0;
-        Ecs.EachIdCallback eachIdCallback = (id) =>
-        {
-            count++;
-        };
+        Ecs.EachIdCallback eachIdCallback = (id) => count++;
 
         entity.Each(eachIdCallback);
 
@@ -33,12 +45,12 @@ public static class FlecsUtils
         }
     }
 
-
     private static Dictionary<Type, MethodInfo> addComponentCache = new Dictionary<Type, MethodInfo>();
 
     private static MethodInfo entitySetComponentdMethod = typeof(Entity).GetMethods().First(m => m.ToString() == "Flecs.NET.Core.Entity& Set[T](T)");
+    private static MethodInfo entityAddComponentdMethod = typeof(Entity).GetMethods().First(m => m.ToString() == "Flecs.NET.Core.Entity& Add[T]()");
 
-    public static void UnsafeAddComponent(this Entity entity, object component)
+    public static void DiscoverAndSet(this Entity entity, object component)
     {
         var type = component.GetType();
         MethodInfo set = null;
@@ -59,9 +71,9 @@ public static class FlecsUtils
 
     public delegate void ForEach<T1>(ref T1 c1);
 
-    public static Action System<T1>(this World world, ForEach<T1> callback)
+    public static Action System<T1>(this World world, string name = "", ForEach<T1> callback = default)
     {
-        var query = world.Query(filter: world.FilterBuilder().Term<T1>());
+        var query = world.Query(name: name, filter: world.FilterBuilder().Term<T1>());
 
         return () => world.Defer(() => query.Iter(it =>
         {
@@ -74,9 +86,9 @@ public static class FlecsUtils
 
     public delegate void ForEachEntity<T1>(Entity entity, ref T1 c1);
 
-    public static Action System<T1>(this World world, ForEachEntity<T1> callback)
+    public static Action System<T1>(this World world, string name = "", ForEachEntity<T1> callback = default)
     {
-        var query = world.Query(filter: world.FilterBuilder().Term<T1>());
+        var query = world.Query(name: name, filter: world.FilterBuilder().Term<T1>());
 
         return () => world.Defer(() => query.Iter(it =>
         {
@@ -89,9 +101,9 @@ public static class FlecsUtils
 
     public delegate void ForEach<T1, T2>(ref T1 c1, ref T2 c2);
 
-    public static Action System<T1, T2>(this World world, ForEach<T1, T2> callback)
+    public static Action System<T1, T2>(this World world, string name = "", ForEach<T1, T2> callback = default)
     {
-        var query = world.Query(filter: world.FilterBuilder().Term<T1>().Term<T2>());
+        var query = world.Query(name: name, filter: world.FilterBuilder().Term<T1>().Term<T2>());
 
         return () => world.Defer(() => query.Iter(it =>
         {
@@ -105,9 +117,9 @@ public static class FlecsUtils
 
     public delegate void ForEachEntity<T1, T2>(Entity entity, ref T1 c1, ref T2 c2);
 
-    public static Action System<T1, T2>(this World world, ForEachEntity<T1, T2> callback)
+    public static Action System<T1, T2>(this World world, string name = "", ForEachEntity<T1, T2> callback = default)
     {
-        var query = world.Query(filter: world.FilterBuilder().Term<T1>().Term<T2>());
+        var query = world.Query(name: name, filter: world.FilterBuilder().Term<T1>().Term<T2>());
 
         return () => world.Defer(() => query.Iter(it =>
         {
@@ -121,9 +133,9 @@ public static class FlecsUtils
 
     public delegate void ForEach<T1, T2, T3>(ref T1 c1, ref T2 c2, ref T2 c3);
 
-    public static Action System<T1, T2, T3>(this World world, ForEach<T1, T2, T3> callback)
+    public static Action System<T1, T2, T3>(this World world, string name = "", ForEach<T1, T2, T3> callback = default)
     {
-        var query = world.Query(filter: world.FilterBuilder().Term<T1>().Term<T2>().Term<T3>());
+        var query = world.Query(name: name, filter: world.FilterBuilder().Term<T1>().Term<T2>().Term<T3>());
 
         return () => world.Defer(() => query.Iter(it =>
         {
@@ -138,9 +150,9 @@ public static class FlecsUtils
 
     public delegate void ForEachEntity<T1, T2, T3>(Entity entity, ref T1 c1, ref T2 c2, ref T3 c3);
 
-    public static Action System<T1, T2, T3>(this World world, ForEachEntity<T1, T2, T3> callback)
+    public static Action System<T1, T2, T3>(this World world, string name = "", ForEachEntity<T1, T2, T3> callback = default)
     {
-        var query = world.Query(filter: world.FilterBuilder().Term<T1>().Term<T2>().Term<T3>());
+        var query = world.Query(name: name, filter: world.FilterBuilder().Term<T1>().Term<T2>().Term<T3>());
 
         return () => world.Defer(() => query.Iter(it =>
         {

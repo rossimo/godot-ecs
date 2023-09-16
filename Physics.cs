@@ -4,7 +4,7 @@ using Flecs.NET.Core;
 public struct Time
 {
     public Time() { }
-    public double Delta = 1 / PhysicsSystem.PHYSICS_FPS;
+    public double Delta = 1 / Physics.PHYSICS_FPS;
     public float Scale = 1;
     public int Ticks = 0;
 }
@@ -35,7 +35,13 @@ public struct Move
     public float Y;
 }
 
-public class PhysicsSystem
+[Editor, IsEvent]
+public struct Collision
+{
+
+}
+
+public class Physics
 {
     public static float TARGET_PHYSICS_FPS = 30f;
     public static float PHYSICS_FPS = $"{ProjectSettings.GetSetting("physics/common/physics_ticks_per_second")}".ToFloat();
@@ -46,20 +52,28 @@ public class PhysicsSystem
         return Convert.ToUInt64(Convert.ToSingle(millis) / 1000f * PHYSICS_FPS);
     }
 
-    public static Action SyncPhysics(World world)
+    public static Action System(World world)
     {
-        return world.System((ref Position position, ref CharacterBody2D physics) =>
+        var systems = new List<Action>() {
+            SyncPhysics(world),
+            Move(world),
+            CleanupMove(world)
+        };
+
+        return () => systems.ForEach(system => system());
+    }
+
+    public static Action SyncPhysics(World world) =>
+        world.System("SyncPhysics", (ref Position position, ref CharacterBody2D physics) =>
         {
             if (position.X != physics.Position.X || position.Y != physics.Position.Y)
             {
                 physics.Position = new Vector2(position.X, position.Y);
             }
         });
-    }
 
-    public static Action Move(World world)
-    {
-        return world.System((Entity entity, ref CharacterBody2D physics, ref Move move, ref Speed speed) =>
+    public static Action Move(World world) =>
+        world.System("Move", (Entity entity, ref CharacterBody2D physics, ref Move move, ref Speed speed) =>
         {
             var timeScale = world.Get<Time>().Scale;
 
@@ -77,36 +91,37 @@ public class PhysicsSystem
                 travel = new Vector2(move.X, move.Y) - physics.Position;
             }
 
-            physics.MoveAndCollide(travel);
-
+            var collision = physics.MoveAndCollide(travel);
             entity.Set(new Position { X = physics.Position.X, Y = physics.Position.Y });
-        });
-    }
 
-    public static Action SyncRender(World world)
-    {
-        return world.System((Entity entity, ref Position position, ref RenderNode render) =>
-        {
-            if (position.X != render.Node.Position.X || position.Y != render.Node.Position.Y)
+            if (collision != null)
             {
-                render.PositionTween?.Stop();
+                entity.Remove<Move>();
 
-                if (entity.Has<Move>())
+                var other = collision.GetCollider().GetEntity(world);
+                if (other.IsValid())
                 {
-                    render.PositionTween = render.Node.CreateTween();
-                    render.PositionTween.TweenProperty(render.Node, "position", new Vector2(position.X, position.Y), 1 / PHYSICS_FPS);
-                }
-                else
-                {
-                    render.Node.Position = new Vector2(position.X, position.Y);
+                    other.Remove<Move>();
+
+                    if (other.Has<Event<Collision>>())
+                    {
+                        var ev = other.Get<Event<Collision>>();
+                        var target = ev.Target.Resolve(other, entity);
+                        target.DiscoverAndSet(ev.Component);
+                    }
+
+                    if (entity.Has<Event<Collision>>())
+                    {
+                        var ev = entity.Get<Event<Collision>>();
+                        var target = ev.Target.Resolve(entity, other);
+                        target.DiscoverAndSet(ev.Component);
+                    }
                 }
             }
         });
-    }
 
-    public static Action CleanupMove(World world)
-    {
-        return world.System((Entity entity, ref Position position, ref Move move) =>
+    public static Action CleanupMove(World world) =>
+        world.System("CleanupMove", (Entity entity, ref Position position, ref Move move) =>
         {
             if (position.X == move.X && position.Y == move.Y)
             {
@@ -121,5 +136,4 @@ public class PhysicsSystem
                 }
             }
         });
-    }
 }

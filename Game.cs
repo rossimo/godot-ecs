@@ -1,131 +1,132 @@
 using Godot;
 using Flecs.NET.Core;
+using static Flecs.NET.Bindings.Native;
 
 public partial class Game : Node2D
 {
-    private World world = World.Create();
-    private List<Action> systems = new List<Action>();
+	private World world = World.Create(System.Environment.GetCommandLineArgs());
+	private List<Action> systems = new List<Action>();
 
-    public Game() : base()
-    {
-        world.Set(this);
-        world.Set(new Time());
+	public Game() : base()
+	{
+		world.Set(this);
+		world.Set(new Time());
 
-        systems.Add(RendererSystem.StartFlash(world));
-        systems.Add(RendererSystem.CleanupFlash(world));
-        systems.Add(InputSystem.Update(world));
-        systems.Add(PhysicsSystem.SyncPhysics(world));
-        systems.Add(PhysicsSystem.Move(world));
-        systems.Add(PhysicsSystem.SyncRender(world));
-        systems.Add(PhysicsSystem.CleanupMove(world));
-    }
+		systems.Add(Input.System(world));
+		systems.Add(Physics.System(world));
+		systems.Add(Renderer.System(world));
+		
+		world.Import<Ecs.Units>();
+		world.Import<Ecs.Monitor>();
+		world.Set<EcsRest>(default);
 
-    public override void _Ready()
-    {
-        foreach (var node in GetChildren().OfType<Node>())
-        {
-            try
-            {
-                DiscoverEntity(node);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Unable to discover entity for {node.Name}");
-                Console.WriteLine(e);
-            }
-        }
-    }
+		world.Component<Speed>()
+			.Member<float, Ecs.Units.Speeds.MilesPerHour>("Value");
+	}
 
-    public override void _PhysicsProcess(double frameTime)
-    {
-        ref var time = ref world.GetMut<Time>();
-        time.Delta = frameTime;
-        time.Scale = (float)(PhysicsSystem.PHYSICS_RATIO * (frameTime * PhysicsSystem.PHYSICS_FPS));
-        time.Ticks++;
+	public override void _Ready()
+	{
+		foreach (var node in GetChildren().OfType<Node>())
+		{
+			try
+			{
+				DiscoverEntity(node);
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine($"Unable to discover entity for {node.Name}");
+				Console.WriteLine(e);
+			}
+		}
+	}
 
-        foreach (var system in systems)
-        {
-            system();
-        }
-    }
+	public override void _PhysicsProcess(double frameTime)
+	{
+		ref var time = ref world.GetMut<Time>();
+		time.Delta = frameTime;
+		time.Scale = (float)(Physics.PHYSICS_RATIO * (frameTime * Physics.PHYSICS_FPS));
+		time.Ticks++;
 
-    public override void _Input(InputEvent @event)
-    {
-        if (@event is InputEventMouseButton mouse)
-        {
-            world.Entity().Set(mouse);
-        }
-    }
+		world.Progress();
+		systems.ForEach(system => system());
+	}
 
-    public void DiscoverEntity(Node node)
-    {
-        var components = node.ToComponents("components/");
+	public override void _Input(InputEvent @event)
+	{
+		if (@event is InputEventMouseButton mouse)
+		{
+			world.Entity().Set(mouse);
+		}
+	}
 
-        Console.WriteLine($"Discovered {components.Length} components for {node.Name}");
+	public void DiscoverEntity(Node node)
+	{
+		var components = node.ToComponents("components/");
 
-        if (!components.Any())
-        {
-            return;
-        }
+		Console.WriteLine($"Discovered {components.Length} components for {node.Name}");
 
-        var entity = world.Entity();
-        entity.Set(new Player());
+		if (!components.Any())
+		{
+			return;
+		}
 
-        foreach (var component in components)
-        {
-            entity.UnsafeAddComponent(component);
-            Console.WriteLine($"Added {component} to entity {entity}");
-        }
+		var entity = world.Entity(node.Name);
 
-        Node2D renderNode = null;
-        CharacterBody2D? physicsNode = null;
+		foreach (var component in components)
+		{
+			entity.DiscoverAndSet(component);
+			Console.WriteLine($"Added {component} to entity {node.Name}");
+		}
 
-        if (node is Node2D found)
-        {
-            renderNode = found;
-        }
-        else if (node is CharacterBody2D foundPhysics)
-        {
-            physicsNode = foundPhysics;
-        }
+		Node2D renderNode = null;
+		CharacterBody2D? physicsNode = null;
 
-        if (physicsNode == null)
-        {
-            foreach (var parent in new[] { renderNode })
-            {
-                var potential = parent?.GetChildren().ToArray().OfType<CharacterBody2D>().FirstOrDefault();
-                if (potential != null)
-                {
-                    physicsNode = potential;
-                    break;
-                }
-            }
-        }
+		if (node is Node2D found)
+		{
+			renderNode = found;
+		}
+		else if (node is CharacterBody2D foundPhysics)
+		{
+			physicsNode = foundPhysics;
+		}
 
-        if (physicsNode != null)
-        {
-            var position = physicsNode.GlobalPosition;
-            if (physicsNode.GetParent() != this)
-            {
-                physicsNode.GetParent().RemoveChild(physicsNode);
-                AddChild(physicsNode);
-            }
+		if (physicsNode == null)
+		{
+			foreach (var parent in new[] { renderNode })
+			{
+				var potential = parent?.GetChildren().ToArray().OfType<CharacterBody2D>().FirstOrDefault();
+				if (potential != null)
+				{
+					physicsNode = potential;
+					break;
+				}
+			}
+		}
 
-            physicsNode.GlobalPosition = position;
-            physicsNode.Scale *= renderNode?.Scale ?? new Vector2(1, 1);
-            physicsNode.Rotation += renderNode?.Rotation ?? 0;
+		if (physicsNode != null)
+		{
+			var position = physicsNode.GlobalPosition;
+			if (physicsNode.GetParent() != this)
+			{
+				physicsNode.GetParent().RemoveChild(physicsNode);
+				AddChild(physicsNode);
+			}
 
-            physicsNode.SetEntity(entity);
+			physicsNode.GlobalPosition = position;
+			physicsNode.Scale *= renderNode?.Scale ?? new Vector2(1, 1);
+			physicsNode.Rotation += renderNode?.Rotation ?? 0;
 
-            entity.Set(physicsNode);
-            entity.Set(new Position { X = physicsNode.Position.X, Y = physicsNode.Position.Y });
-        }
+			physicsNode.SetEntity(entity);
 
-        if (renderNode != null)
-        {
-            renderNode.SetEntity(entity);
-            entity.Set(new RenderNode { Node = renderNode });
-            entity.Set(new Position { X = renderNode.Position.X, Y = renderNode.Position.Y });
-        }
-    }
+			entity.Set(physicsNode);
+			entity.Set(new Position { X = physicsNode.Position.X, Y = physicsNode.Position.Y });
+		}
+
+		if (renderNode != null)
+		{
+			renderNode.SetEntity(entity);
+			entity.Set(new RenderNode { Node = renderNode });
+			entity.Set(new Position { X = renderNode.Position.X, Y = renderNode.Position.Y });
+		}
+	}
 }

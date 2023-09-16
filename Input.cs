@@ -4,16 +4,25 @@ using Flecs.NET.Core;
 [Editor]
 public struct Player
 {
-    public int Test;
+    public int Index;
 }
 
-public class InputSystem
+public class Input
 {
+    public static Action System(World world)
+    {
+        var systems = new List<Action>() {
+            Update(world),
+        };
+
+        return () => systems.ForEach(system => system());
+    }
+
     public static Action Update(World world)
     {
         var players = world.Query(filter: world.FilterBuilder().Term<Player>());
-        
-        return world.System((Entity entity, ref InputEventMouseButton mouse) =>
+
+        return world.System("Input.Update", (Entity entity, ref InputEventMouseButton mouse) =>
         {
             if (mouse.IsPressed())
             {
@@ -21,18 +30,14 @@ public class InputSystem
                 {
                     case MouseButton.Left:
                         {
-                            players.Iter(it =>
+                            players.Each(player =>
                             {
-                                foreach (int i in it)
+                                player.Remove<Move>();
+                                player.Set(new Position
                                 {
-                                    var player = it.Entity(i);
-                                    player.Remove<Move>();
-                                    player.Set(new Position
-                                    {
-                                        X = 0,
-                                        Y = 0
-                                    });
-                                }
+                                    X = 0,
+                                    Y = 0
+                                });
                             });
                         }
                         break;
@@ -42,17 +47,13 @@ public class InputSystem
                             var scene = world.Get<Game>();
                             var position = scene.ToLocal(scene.GetViewport().GetMousePosition());
 
-                            players.Iter(it =>
+                            players.Each(player =>
                             {
-                                foreach (int i in it)
+                                player.Set(new Move
                                 {
-                                    var player = it.Entity(i);
-                                    player.Set(new Move
-                                    {
-                                        X = position.X,
-                                        Y = position.Y
-                                    });
-                                }
+                                    X = position.X,
+                                    Y = position.Y
+                                });
                             });
                         }
                         break;

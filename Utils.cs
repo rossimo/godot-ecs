@@ -14,7 +14,6 @@ public enum MetaType
     Target
 }
 
-
 public static class Utils
 {
     public static readonly List<Type> COMPONENTS = GetComponents().ToList();

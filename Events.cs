@@ -1,18 +1,20 @@
+using Flecs.NET.Core;
+
 public struct Event<E>
 {
     public object Component;
-    public object Target;
+    public Target Target;
 }
 
 public interface Target
 {
-    public int Resolve(int self, int other);
+    public Entity Resolve(Entity self, Entity other);
 }
 
 [IsTarget]
 public struct TargetSelf : Target
 {
-    public int Resolve(int self, int other)
+    public Entity Resolve(Entity self, Entity other)
     {
         return self;
     }
@@ -21,20 +23,20 @@ public struct TargetSelf : Target
 [IsTarget]
 public struct TargetOther : Target
 {
-    public int Resolve(int self, int other)
+    public Entity Resolve(Entity self, Entity other)
     {
         return other;
     }
 }
 
-[System.AttributeUsage(System.AttributeTargets.Struct)]
-public class IsEvent : System.Attribute
+[AttributeUsage(AttributeTargets.Struct)]
+public class IsEvent : Attribute
 {
 
 }
 
-[System.AttributeUsage(System.AttributeTargets.Struct)]
-public class IsTarget : System.Attribute
+[AttributeUsage(AttributeTargets.Struct)]
+public class IsTarget : Attribute
 {
 
 }

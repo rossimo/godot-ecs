@@ -1,25 +1,41 @@
-[gd_scene load_steps=4 format=3 uid="uid://bm1itup76t63w"]
+[gd_scene load_steps=6 format=3 uid="uid://bm1itup76t63w"]
 
 [ext_resource type="Script" path="res://Game.cs" id="1_vwyto"]
 [ext_resource type="Texture2D" uid="uid://cter3lfss5s2w" path="res://resources/tiles/tile462.png" id="2_2e57k"]
+[ext_resource type="Texture2D" uid="uid://dmvwqlnupokr6" path="res://resources/tiles/tile494.png" id="3_7643d"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_ka1or"]
 radius = 5.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_c3vmp"]
+radius = 8.0
 
 [node name="Node2D" type="Node2D"]
 texture_filter = 1
 script = ExtResource("1_vwyto")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
+[node name="player" type="Sprite2D" parent="."]
 scale = Vector2(4, 4)
 texture = ExtResource("2_2e57k")
-metadata/components_flash_color_red = 1.0
-metadata/components_flash_color_green = 0.0
-metadata/components_flash_color_blue = 0.0
-metadata/components_player = true
+metadata/components_player_index = 0
 metadata/components_speed_value = 8.0
 
-[node name="CharacterBody2D" type="CharacterBody2D" parent="Sprite2D"]
+[node name="CharacterBody2D" type="CharacterBody2D" parent="player"]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Sprite2D/CharacterBody2D"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="player/CharacterBody2D"]
 shape = SubResource("CircleShape2D_ka1or")
+
+[node name="fire" type="Sprite2D" parent="."]
+position = Vector2(346, 165)
+scale = Vector2(3, 3)
+texture = ExtResource("3_7643d")
+metadata/components_collisionE_target = false
+metadata/components_collisionE_target_targetother = true
+metadata/components_collisionE_component_flash_color_red = 1.0
+metadata/components_collisionE_component_flash_color_green = 0.0
+metadata/components_collisionE_component_flash_color_blue = 0.0
+
+[node name="CharacterBody2D" type="CharacterBody2D" parent="fire"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="fire/CharacterBody2D"]
+shape = SubResource("CircleShape2D_c3vmp")

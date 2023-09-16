@@ -38,11 +38,22 @@ public class Notify<C>
     public Entity entity;
 }
 
-public class RendererSystem
+public class Renderer
 {
-    public static Action StartFlash(World world)
+    public static Action System(World world)
     {
-        return world.System((ref RenderNode render, ref Flash flash) =>
+        var systems = new List<Action>() {
+            Flash(world),
+            CleanupFlash(world),
+            SyncRender(world)
+        };
+
+        return () => systems.ForEach(system => system());
+    }
+
+    public static Action Flash(World world)
+    {
+        return world.System("Flash", (ref RenderNode render, ref Flash flash) =>
        {
            var node = render.Node;
            node.Modulate = new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue);
@@ -55,10 +66,41 @@ public class RendererSystem
 
     public static Action CleanupFlash(World world)
     {
-        return world.System((Entity entity, ref Flash flash) =>
+        return world.System("CleanupFlash", (Entity entity, ref Flash flash) =>
         {
             entity.Remove<Flash>();
             entity.Cleanup();
         });
     }
+
+    public static Action SyncRender(World world) =>
+    world.System("SyncRender", (Entity entity, ref Position position, ref RenderNode render) =>
+    {
+        if (position.X != render.Node.Position.X || position.Y != render.Node.Position.Y)
+        {
+            render.PositionTween?.Stop();
+
+            if (entity.Has<Move>())
+            {
+                var ratio = 1f;
+
+                if (entity.Has<Speed>())
+                {
+                    var speed = entity.Get<Speed>().Value;
+                    var distance = new Vector2(position.X, position.Y).DistanceTo(render.Node.Position);
+
+                    ratio = distance / speed;
+                    Console.WriteLine($"Distance: {distance}, Speed: {speed}, Ratio: {ratio}");
+
+                }
+
+                render.PositionTween = render.Node.CreateTween();
+                render.PositionTween.TweenProperty(render.Node, "position", new Vector2(position.X, position.Y), (1 / Physics.PHYSICS_FPS) * ratio);
+            }
+            else
+            {
+                render.Node.Position = new Vector2(position.X, position.Y);
+            }
+        }
+    });
 }
