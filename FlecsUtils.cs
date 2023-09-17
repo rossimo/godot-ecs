@@ -23,7 +23,7 @@ public static class FlecsUtils
         {
             var id = obj.GetMeta($"entity{Utils.DELIMETER}id");
             var entity = world.Entity(id.AsUInt64());
-            if (entity.IsAlive() && entity.IsAlive())
+            if (entity.IsAlive())
             {
                 return entity;
             }
@@ -46,9 +46,11 @@ public static class FlecsUtils
     }
 
     private static Dictionary<Type, MethodInfo> addComponentCache = new Dictionary<Type, MethodInfo>();
+    private static Dictionary<Type, MethodInfo> eventBuilderCache = new Dictionary<Type, MethodInfo>();
 
     private static MethodInfo entitySetComponentdMethod = typeof(Entity).GetMethods().First(m => m.ToString() == "Flecs.NET.Core.Entity& Set[T](T)");
     private static MethodInfo entityAddComponentdMethod = typeof(Entity).GetMethods().First(m => m.ToString() == "Flecs.NET.Core.Entity& Add[T]()");
+    private static MethodInfo worldEventBuilderMethod = typeof(World).GetMethods().First(m => m.ToString() == "Flecs.NET.Core.EventBuilder Event[T]()");
 
     public static void DiscoverAndSet(this Entity entity, object component)
     {
@@ -69,9 +71,32 @@ public static class FlecsUtils
         set.Invoke(entity, new[] { component });
     }
 
+    public static void DiscoverAndEmit(this Entity entity, object component)
+    {
+        var type = component.GetType();
+        MethodInfo set = null;
+
+        if (eventBuilderCache.ContainsKey(type))
+        {
+            set = eventBuilderCache[type];
+        }
+
+        if (set == null)
+        {
+            set = worldEventBuilderMethod.MakeGenericMethod(new Type[] { type });
+            eventBuilderCache.Add(type, set);
+        }
+
+        var result = set.Invoke(entity.CsWorld(), Array.Empty<object>());
+        if (result is EventBuilder eventBuilder)
+        {
+            eventBuilder.Entity(entity.Id.Value).Emit();
+        }
+    }
+
     public delegate void ForEach<T1>(ref T1 c1);
 
-    public static Routine Routinse<T1>(this World world, string name = "", ForEach<T1> callback = default)
+    public static Routine Routine<T1>(this World world, string name = "", ForEach<T1> callback = default)
     {
         return world.Routine(
             name: name,
@@ -82,6 +107,20 @@ public static class FlecsUtils
 
                 foreach (int i in it)
                     callback(ref c1[i]);
+            });
+    }
+
+    public static Observer Observer<T1>(this World world, string name = "", ForEach<T1> callback = default)
+    {
+        return world.Observer(
+            name: name,
+            observer: world.ObserverBuilder().Event<T1>(),
+            callback: (Iter it) =>
+            {
+                var @event = it.Event().Get<T1>();
+
+                foreach (int i in it)
+                    callback(ref @event);
             });
     }
 
@@ -98,6 +137,22 @@ public static class FlecsUtils
 
                 foreach (int i in it)
                     callback(it.Entity(i), ref c1[i]);
+            });
+    }
+
+    public static Observer Observer<T1, T2>(this World world, string name = "", ForEachEntity<T1, T2> callback = default)
+    {
+        return world.Observer(
+            name: name,
+            filter: world.FilterBuilder().Term<T2>(),
+            observer: world.ObserverBuilder().Event<T1>(),
+            callback: (Iter it) =>
+            {
+                var @event = it.Event().Get<T1>();
+                var c2 = it.Field<T2>(1);
+
+                foreach (int i in it)
+                    callback(it.Entity(i), ref @event, ref c2[i]);
             });
     }
 

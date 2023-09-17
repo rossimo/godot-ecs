@@ -107,14 +107,14 @@ public class Physics
                         {
                             var ev = other.Get<Event<Collision>>();
                             var target = ev.Target.Resolve(other, entity);
-                            target.DiscoverAndSet(ev.Component);
+                            target.DiscoverAndEmit(ev.Component);
                         }
 
                         if (entity.Has<Event<Collision>>())
                         {
                             var ev = entity.Get<Event<Collision>>();
                             var target = ev.Target.Resolve(entity, other);
-                            target.DiscoverAndSet(ev.Component);
+                            target.DiscoverAndEmit(ev.Component);
                         }
                     }
                 }

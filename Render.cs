@@ -28,24 +28,20 @@ public struct Flash
     public Color Color;
 }
 
-public class Notify<C>
-{
-    public Entity entity;
-}
-
 public class Renderer
 {
-    public static IEnumerable<Routine> Routines(World world) =>
-        new[] {
-            Flash(world),
-            CleanupFlash(world),
+    public static (IEnumerable<Routine>, IEnumerable<Observer>) Routines(World world) =>
+        (new[] {
             SyncRender(world)
-        };
+        },
+        new[] {
+            Flash(world)
+        });
 
-    public static Routine Flash(World world) =>
-        world.Routine(
+    public static Observer Flash(World world) =>
+        world.Observer(
             name: "Flash",
-            callback: (ref RenderNode render, ref Flash flash) =>
+            callback: (Entity entity, ref Flash flash, ref RenderNode render) =>
             {
                 var node = render.Node;
                 node.Modulate = new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue);
@@ -53,15 +49,6 @@ public class Renderer
                 render.Modulate?.Kill();
                 render.Modulate = node.CreateTween();
                 render.Modulate.TweenProperty(node, "modulate", new Godot.Color(1, 1, 1), .33f);
-            });
-
-    public static Routine CleanupFlash(World world) =>
-        world.Routine(
-            name: "CleanupFlash",
-            callback: (Entity entity, ref Flash flash) =>
-            {
-                entity.Remove<Flash>();
-                entity.Cleanup();
             });
 
     public static Routine SyncRender(World world) =>
