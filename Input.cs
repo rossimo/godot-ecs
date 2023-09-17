@@ -15,59 +15,57 @@ public struct MouseEvent
 
 public class Input
 {
-    public static Action System(World world)
-    {
-        var systems = new List<Action>() {
+    public static IEnumerable<Routine> Routines(World world) =>
+        new[] {
             Update(world),
         };
 
-        return () => systems.ForEach(system => system());
-    }
-
-    public static Action Update(World world)
+    public static Routine Update(World world)
     {
         var players = world.Query(filter: world.FilterBuilder().Term<Player>());
 
-        return world.System("Input.Update", (Entity entity, ref MouseEvent @event) =>
-        {
-            if (@event.mouse.IsPressed())
+        return world.Routine(
+            name: "Input.Update",
+            callback: (Entity entity, ref MouseEvent @event) =>
             {
-                switch (@event.mouse.ButtonIndex)
+                if (@event.mouse.IsPressed())
                 {
-                    case MouseButton.Left:
-                        {
-                            players.Each(player =>
+                    switch (@event.mouse.ButtonIndex)
+                    {
+                        case MouseButton.Left:
                             {
-                                player.Remove<Move>();
-                                player.Set(new Position
+                                players.Each(player =>
                                 {
-                                    X = 0,
-                                    Y = 0
+                                    player.Remove<Move>();
+                                    player.Set(new Position
+                                    {
+                                        X = 0,
+                                        Y = 0
+                                    });
                                 });
-                            });
-                        }
-                        break;
+                            }
+                            break;
 
-                    case MouseButton.Right:
-                        {
-                            var scene = world.Get<Game>();
-                            var position = @event.position;
-
-                            players.Each(player =>
+                        case MouseButton.Right:
                             {
-                                player.Set(new Move
+                                var scene = world.Get<Game>();
+                                var position = @event.position;
+
+                                players.Each(player =>
                                 {
-                                    X = position.X,
-                                    Y = position.Y
+                                    player.Set(new Move
+                                    {
+                                        X = position.X,
+                                        Y = position.Y
+                                    });
                                 });
-                            });
-                        }
-                        break;
+                            }
+                            break;
+                    }
                 }
-            }
 
-            entity.Remove<MouseEvent>();
-            entity.Cleanup();
-        });
+                entity.Remove<MouseEvent>();
+                entity.Cleanup();
+            });
     }
 }

@@ -5,16 +5,15 @@ using static Flecs.NET.Bindings.Native;
 public partial class Game : Node2D
 {
 	private World world = World.Create(System.Environment.GetCommandLineArgs());
-	private List<Action> systems = new List<Action>();
 
 	public Game() : base()
 	{
 		world.Set(this);
 		world.Set(new Time());
 
-		systems.Add(Input.System(world));
-		systems.Add(Physics.System(world));
-		systems.Add(Renderer.System(world));
+		Input.Routines(world);
+		Physics.Routines(world);
+		Renderer.Routines(world);
 
 		world.Import<Ecs.Units>();
 		world.Import<Ecs.Monitor>();
@@ -48,7 +47,6 @@ public partial class Game : Node2D
 		time.Ticks++;
 
 		world.Progress();
-		systems.ForEach(system => system());
 	}
 
 	public override void _Input(InputEvent @event)

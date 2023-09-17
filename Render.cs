@@ -1,5 +1,6 @@
 using Godot;
 using Flecs.NET.Core;
+using System.Xml.Schema;
 
 public struct Sprite
 {
@@ -11,12 +12,6 @@ public struct RenderNode
     public Node2D Node;
     public Tween Modulate;
     public Tween PositionTween;
-}
-
-[Editor]
-public struct Rotation
-{
-    public float Degrees;
 }
 
 [Editor]
@@ -40,62 +35,55 @@ public class Notify<C>
 
 public class Renderer
 {
-    public static Action System(World world)
-    {
-        var systems = new List<Action>() {
+    public static IEnumerable<Routine> Routines(World world) =>
+        new[] {
             Flash(world),
             CleanupFlash(world),
             SyncRender(world)
         };
 
-        return () => systems.ForEach(system => system());
-    }
-
-    public static Action Flash(World world)
-    {
-        return world.System("Flash", (ref RenderNode render, ref Flash flash) =>
-       {
-           var node = render.Node;
-           node.Modulate = new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue);
-
-           render.Modulate?.Stop();
-           render.Modulate = node.CreateTween();
-           render.Modulate.TweenProperty(node, "modulate", new Godot.Color(1, 1, 1), .33f);
-       });
-    }
-
-    public static Action CleanupFlash(World world)
-    {
-        return world.System("CleanupFlash", (Entity entity, ref Flash flash) =>
-        {
-            entity.Remove<Flash>();
-            entity.Cleanup();
-        });
-    }
-
-    public static Action SyncRender(World world) =>
-    world.System("SyncRender", (Entity entity, ref Position position, ref RenderNode render) =>
-    {
-        var time = world.Get<Time>();
-
-        if (position.X != render.Node.Position.X || position.Y != render.Node.Position.Y)
-        {
-            render.PositionTween?.Stop();
-
-            if (entity.Has<Speed>())
+    public static Routine Flash(World world) =>
+        world.Routine(
+            name: "Flash",
+            callback: (ref RenderNode render, ref Flash flash) =>
             {
-                var target = new Vector2(position.X, position.Y).DistanceTo(render.Node.Position);
-                var normal = entity.Get<Speed>().Value * Physics.PHYSICS_SPEED_SCALE;
+                var node = render.Node;
+                node.Modulate = new Godot.Color(flash.Color.Red, flash.Color.Green, flash.Color.Blue);
 
-                var ratio = normal > target ? target / normal : normal / target;
+                render.Modulate?.Kill();
+                render.Modulate = node.CreateTween();
+                render.Modulate.TweenProperty(node, "modulate", new Godot.Color(1, 1, 1), .33f);
+            });
 
-                render.PositionTween = render.Node.CreateTween();
-                render.PositionTween.TweenProperty(render.Node, "position", new Vector2(position.X, position.Y), Physics.PHYSICS_TARGET_FRAMETIME * ratio);
-            }
-            else
+    public static Routine CleanupFlash(World world) =>
+        world.Routine(
+            name: "CleanupFlash",
+            callback: (Entity entity, ref Flash flash) =>
             {
-                render.Node.Position = new Vector2(position.X, position.Y);
-            }
-        }
-    });
+                entity.Remove<Flash>();
+                entity.Cleanup();
+            });
+
+    public static Routine SyncRender(World world) =>
+        world.Routine(
+            name: "SyncRender",
+            callback: (Entity entity, ref Position position, ref RenderNode render) =>
+            {
+                var node = render.Node;
+                var physics = new Vector2(position.X, position.Y);
+
+                if (!physics.Equals(node.Position))
+                {
+                    render.PositionTween?.Kill();
+
+                    var target = physics.DistanceTo(node.Position);
+                    var speed = entity.Has<Speed>() ? entity.Get<Speed>().Value : 1;
+                    var normal = speed * Physics.PHYSICS_SPEED_SCALE;
+
+                    var ratio = Math.Min(target / normal, 1);
+
+                    render.PositionTween = node.CreateTween();
+                    render.PositionTween.TweenProperty(node, "position", physics, Physics.PHYSICS_TARGET_FRAMETIME * ratio);
+                }
+            });
 }
